@@ -25,9 +25,7 @@ public class iTermMetalView: NSView {
     private static let getDrawableQueue = DispatchQueue(label: "com.iterm2.get-drawable")
     private var _needsDisplay = false
     private var lastDrawTriggerTime: CFTimeInterval = 0
-    // nonisolated(unsafe) because iTermMetalLayerBox provides its own thread-safe access
-    // via MutableAtomicObject, and we need to access it from the private render queue.
-    private nonisolated(unsafe) var metalLayerBox: iTermMetalLayerBox? = nil
+    private var metalLayerBox: iTermMetalLayerBox? = nil
     private var frameInterval: Int = 0
     private var sizeDirty: Bool = false
     private var drawableScaleFactor: CGSize = .zero
@@ -439,15 +437,19 @@ extension iTermMetalView {
     }
 }
 
-// MARK: - Thread-safe drawable acquisition (no main queue required)
+// MARK: - Thread-safe drawable acquisition helper
 
+@MainActor
 extension iTermMetalView {
-    /// Acquires a drawable directly without requiring the main queue.
-    /// This bypasses the promise-based waiting logic and calls CAMetalLayer.nextDrawable()
-    /// directly via the thread-safe iTermMetalLayerBox wrapper.
+    /// Creates a helper object that can be used from any thread to acquire a drawable
+    /// and validate that the layer context hasn't changed before presentation.
+    /// Call this method from the main thread, then use the returned helper from any thread.
     @objc
-    nonisolated func nextDrawableFromAnyThread() -> CAMetalDrawable? {
-        return metalLayerBox?.nextDrawable()
+    func createDrawableAcquisitionHelper() -> iTermDrawableAcquisitionHelper? {
+        guard let box = metalLayerBox else {
+            return nil
+        }
+        return iTermDrawableAcquisitionHelper(box: box)
     }
 }
 

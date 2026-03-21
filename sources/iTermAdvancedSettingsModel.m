@@ -820,6 +820,7 @@ DEFINE_BOOL(useModernScrollWheelAccumulator, YES, SECTION_EXPERIMENTAL @"Use mod
 DEFINE_BOOL(resetSGROnPrompt, YES, SECTION_EXPERIMENTAL @"Reset colors at shell prompt?\nUses shell integration to detect a shell prompt and, if enabled, resets colors to their defaults.");
 DEFINE_BOOL(retinaInlineImages, YES, SECTION_EXPERIMENTAL @"Show inline images at Retina resolution.");
 DEFINE_BOOL(throttleMetalConcurrentFrames, YES, SECTION_EXPERIMENTAL @"Reduce number of frames in flight when GPU can't produce drawables quickly.");
+DEFINE_BOOL(metalSynchronizedDrawing, NO, SECTION_EXPERIMENTAL @"Use synchronized Metal drawable presentation?\nDefers drawable acquisition until rendering completes, presents synchronously with Core Animation, and acquires drawables on the private render queue. May improve frame rates.");
 DEFINE_BOOL(sshURLsSupportPath, YES, SECTION_EXPERIMENTAL @"SSH URLs respect the path.\nThey run the command: ssh -t \"cd $$PATH$$; exec \\$SHELL -l\"");
 DEFINE_BOOL(useDivorcedProfileToSplit, YES, SECTION_EXPERIMENTAL @"When splitting a pane, use the profile with local modifications, not the backing profile.");
 DEFINE_BOOL(synergyModifierRemappingEnabled, YES, SECTION_EXPERIMENTAL @"Support modifier remapping for keystrokes originated by Synergy.");

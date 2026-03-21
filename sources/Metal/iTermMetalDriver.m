@@ -476,9 +476,9 @@ legacyScrollbarWidth:(unsigned int)legacyScrollbarWidth
 
 - (BOOL)reallyDrawInMTKView:(nonnull iTermMetalView *)view startToStartTime:(NSTimeInterval)startToStartTime {
     DLog(@"Draw in %@ for %@", view, self.dataSource);
-#if ENABLE_SYNCHRONOUS_PRESENTATION
-    view.presentsWithTransaction = YES;
-#endif
+    // Read the advanced setting once per frame to ensure consistent behavior throughout the frame.
+    const BOOL useSynchronizedDrawing = [iTermAdvancedSettingsModel metalSynchronizedDrawing];
+    view.presentsWithTransaction = useSynchronizedDrawing;
     @synchronized (self) {
         [_inFlightHistogram addValue:_currentFrames.count];
     }
@@ -497,7 +497,7 @@ legacyScrollbarWidth:(unsigned int)legacyScrollbarWidth
         return NO;
     }
 #endif
-    
+
     _total++;
     if (_total % 60 == 0) {
         @synchronized (self) {
@@ -512,6 +512,12 @@ legacyScrollbarWidth:(unsigned int)legacyScrollbarWidth
     }
 
     iTermMetalFrameData *frameData = [self newFrameDataForView:view];
+    frameData.useSynchronizedDrawing = useSynchronizedDrawing;
+    if (useSynchronizedDrawing) {
+        // Create helper on main thread; it captures iTermMetalLayerBox (thread-safe)
+        // and can be used from the private queue without touching NSView.
+        frameData.drawableAcquisitionHelper = [view createDrawableAcquisitionHelper];
+    }
     DLog(@"allocated metal frame %@", frameData);
     if (VT100GridSizeEquals(frameData.gridSize, VT100GridSizeMake(0, 0))) {
         DLog(@"  abort: 0x0 grid");
@@ -913,12 +919,8 @@ legacyScrollbarWidth:(unsigned int)legacyScrollbarWidth
         }];
 
     } else {
-#if ENABLE_DEFER_CURRENT_DRAWABLE
         const BOOL synchronousDraw = (_context.group != nil);
-        frameData.deferCurrentDrawable = !synchronousDraw;
-#else
-        frameData.deferCurrentDrawable = NO;
-#endif
+        frameData.deferCurrentDrawable = frameData.useSynchronizedDrawing && !synchronousDraw;
         if (!frameData.deferCurrentDrawable) {
             NSTimeInterval duration = [frameData measureTimeForStat:iTermMetalFrameDataStatMtGetCurrentDrawable ofBlock:^{
                 frameData.destinationDrawable = [view currentDrawableWithTimeout:timeout];
@@ -1152,9 +1154,8 @@ legacyScrollbarWidth:(unsigned int)legacyScrollbarWidth
         return;
     }
     _copyBackgroundRenderer.enabled = (frameData.intermediateRenderPassDescriptor != nil);
-#if ENABLE_DEFER_CURRENT_DRAWABLE
-    _copyToDrawableRenderer.enabled = YES;
-#endif
+    // Enable copy-to-drawable when using deferred drawable acquisition
+    _copyToDrawableRenderer.enabled = frameData.deferCurrentDrawable;
 }
 
 - (void)updateBadgeRendererForFrameData:(iTermMetalFrameData *)frameData {
@@ -2150,18 +2151,19 @@ extraIdentifyingInfoForIcon:button.extraIdentifyingInfoForIcon];
     __block BOOL shouldCopyToDrawable = NO;
     [frameData measureTimeForStat:iTermMetalFrameDataStatPqBlockOnSynchronousGetDrawable ofBlock:^{
         // Get a drawable and then copy to it.
-        if (!self.waitingOnSynchronousDraw) {
-#if ENABLE_NEXTDRAWABLE_ON_PRIVATE_QUEUE
-            // Acquire drawable directly on private queue - no main queue dispatch needed.
+        if (!self.waitingOnSynchronousDraw && frameData.drawableAcquisitionHelper) {
+            // Acquire drawable directly on private queue using the helper that was
+            // created on the main thread. The helper captures iTermMetalLayerBox
+            // (thread-safe) and doesn't touch NSView.
             __block id<CAMetalDrawable> drawable = nil;
             __block id<MTLTexture> texture = nil;
             __block MTLRenderPassDescriptor *renderPassDescriptor = nil;
             [frameData measureTimeForStat:iTermMetalFrameDataStatMtGetCurrentDrawable ofBlock:^{
-                drawable = [frameData.view nextDrawableFromAnyThread];
+                drawable = [frameData.drawableAcquisitionHelper acquireDrawable];
                 DLog(@"%p DEFERRED PATH (private queue): got drawable %@ for frame %@", self, drawable, @(frameData.frameNumber));
                 if (drawable) {
                     texture = drawable.texture;
-                    // Create render pass descriptor directly - avoids Swift concurrency issues.
+                    // Create render pass descriptor directly.
                     // clearColor doesn't matter since we do a full copy to the drawable.
                     renderPassDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
                     renderPassDescriptor.colorAttachments[0].texture = texture;
@@ -2173,52 +2175,6 @@ extraIdentifyingInfoForIcon:button.extraIdentifyingInfoForIcon];
             frameData.destinationTexture = texture;
             frameData.destinationTexture.label = @"Drawable destination";
             frameData.renderPassDescriptor = renderPassDescriptor;
-#else
-            dispatch_semaphore_t sema = dispatch_semaphore_create(0);
-            __block BOOL timedOut = NO;
-            __block id<CAMetalDrawable> drawable = nil;
-            __block id<MTLTexture> texture = nil;
-            __block MTLRenderPassDescriptor *renderPassDescriptor = nil;
-            dispatch_async(dispatch_get_main_queue(), ^{
-                @synchronized(self) {
-                    if (timedOut) {
-                        DLog(@"** TIMED OUT %@ **", frameData);
-                        dispatch_semaphore_signal(sema);
-                        return;
-                    }
-                    [frameData measureTimeForStat:iTermMetalFrameDataStatMtGetCurrentDrawable ofBlock:^{
-                        // Use nextDrawableWithTimeout: to get a fresh drawable for each frame,
-                        // avoiding the race condition where multiple in-flight frames share
-                        // the cached currentDrawable.
-#warning TODO: Infinity seems a bit too high.
-                        drawable = [frameData.view nextDrawableWithTimeout:INFINITY];
-                        DLog(@"%p DEFERRED PATH: got drawable %@ for frame %@", self, drawable, @(frameData.frameNumber));
-                        texture = drawable.texture;
-                        renderPassDescriptor = [frameData.view renderPassDescriptorForDrawable:drawable];
-                    }];
-                }
-                // Signal after work is done so the waiting thread sees the results
-                dispatch_semaphore_signal(sema);
-            });
-            // TODO: This could avoid false positives by polling every millisecond to see if
-            // waitingOnSynchronousDraw has become true.
-            const BOOL semaphoreTimeout =
-            (dispatch_semaphore_wait(sema,
-                                     dispatch_time(DISPATCH_TIME_NOW,
-                                                   (int64_t)(0.1 * NSEC_PER_SEC))) != 0);
-            if (semaphoreTimeout) {
-                // This is usually because the main thread is wedged
-                // waiting for a synchronous draw.
-                DLog(@"** SEMAPHORE EXPIRED %@ **", frameData);
-                @synchronized(self) {
-                    timedOut = YES;
-                }
-            }
-            frameData.destinationDrawable = drawable;
-            frameData.destinationTexture = texture;
-            frameData.destinationTexture.label = @"Drawable destination";
-            frameData.renderPassDescriptor = renderPassDescriptor;
-#endif
         }
         if (frameData.destinationTexture == nil) {
             DLog(@"  abort: failed to get drawable or RPD %@", frameData);
@@ -2242,8 +2198,7 @@ extraIdentifyingInfoForIcon:button.extraIdentifyingInfoForIcon];
     if (iTermTextIsMonochromeOnMojave()) {
         shouldCopyToDrawable = NO;
     }
-    
-#if ENABLE_DEFER_CURRENT_DRAWABLE
+
     if (frameData.deferCurrentDrawable) {
         if ([self deferredRequestCurrentDrawableWithCommandBuffer:commandBuffer frameData:frameData]) {
             shouldCopyToDrawable = YES;
@@ -2253,7 +2208,6 @@ extraIdentifyingInfoForIcon:button.extraIdentifyingInfoForIcon];
             return;
         }
     }
-#endif
 
     if (shouldCopyToDrawable) {
         // Copy to the drawable
@@ -2276,12 +2230,10 @@ extraIdentifyingInfoForIcon:button.extraIdentifyingInfoForIcon];
         [self copyOffscreenTextureToDrawableInFrameData:frameData];
     }
     [frameData measureTimeForStat:iTermMetalFrameDataStatPqEnqueueDrawPresentAndCommit ofBlock:^{
-#if !ENABLE_SYNCHRONOUS_PRESENTATION
-        if (frameData.destinationDrawable) {
+        if (!frameData.useSynchronizedDrawing && frameData.destinationDrawable) {
             DLog(@"  presentDrawable %@", frameData);
             [commandBuffer presentDrawable:frameData.destinationDrawable];
         }
-#endif
 
 #if ENABLE_STATS
         iTermPreciseTimerStatsStartTimer(&frameData.stats[iTermMetalFrameDataStatGpuScheduleWait]);
@@ -2311,16 +2263,22 @@ extraIdentifyingInfoForIcon:button.extraIdentifyingInfoForIcon];
 #endif
         }];
 
-#if ENABLE_SYNCHRONOUS_PRESENTATION
-        if (frameData.destinationDrawable) {
+        if (frameData.useSynchronizedDrawing && frameData.destinationDrawable) {
             id<CAMetalDrawable> drawable = frameData.destinationDrawable;
+            iTermDrawableAcquisitionHelper *helper = frameData.drawableAcquisitionHelper;
             [commandBuffer addScheduledHandler:^(id<MTLCommandBuffer> _Nonnull buffer) {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    [drawable present];
+                    // Validate that the layer context (size, scale, etc.) hasn't changed
+                    // since we acquired the drawable. If it has, skip presentation to avoid
+                    // presenting a mismatched drawable.
+                    if ([helper isContextStillValid]) {
+                        [drawable present];
+                    } else {
+                        DLog(@"Skipping presentation - layer context changed since drawable acquisition");
+                    }
                 });
             }];
         }
-#endif
 
         DLog(@"  commit %@", frameData);
         [commandBuffer commit];
