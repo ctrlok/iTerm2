@@ -39,13 +39,13 @@ static const CharRange sFullWidthSupp8[] = {
 static const int sFullWidthSupp8Count = sizeof(sFullWidthSupp8) / sizeof(sFullWidthSupp8[0]);
 
 // Supplementary plane ranges for full-width Unicode 9
-// Generated from Unicode 16.0.0 by tools/eastasian.py
+// Generated from Unicode 17.0.0 by tools/eastasian.py
 static const CharRange sFullWidthSupp9[] = {
     {0x16fe0, 0x16fe4},
-    {0x16ff0, 0x16ff1},
-    {0x17000, 0x187f7},
-    {0x18800, 0x18cd5},
-    {0x18cff, 0x18d08},
+    {0x16ff0, 0x16ff6},
+    {0x17000, 0x18cd5},
+    {0x18cff, 0x18d1e},
+    {0x18d80, 0x18df2},
     {0x1aff0, 0x1aff3},
     {0x1aff5, 0x1affb},
     {0x1affd, 0x1affe},
@@ -87,7 +87,7 @@ static const CharRange sFullWidthSupp9[] = {
     {0x1f680, 0x1f6c5},
     {0x1f6cc, 0x1f6cc},
     {0x1f6d0, 0x1f6d2},
-    {0x1f6d5, 0x1f6d7},
+    {0x1f6d5, 0x1f6d8},
     {0x1f6dc, 0x1f6df},
     {0x1f6eb, 0x1f6ec},
     {0x1f6f4, 0x1f6fc},
@@ -97,11 +97,12 @@ static const CharRange sFullWidthSupp9[] = {
     {0x1f93c, 0x1f945},
     {0x1f947, 0x1f9ff},
     {0x1fa70, 0x1fa7c},
-    {0x1fa80, 0x1fa89},
-    {0x1fa8f, 0x1fac6},
-    {0x1face, 0x1fadc},
-    {0x1fadf, 0x1fae9},
-    {0x1faf0, 0x1faf8},
+    {0x1fa80, 0x1fa8a},
+    {0x1fa8e, 0x1fac6},
+    {0x1fac8, 0x1fac8},
+    {0x1facd, 0x1fadc},
+    {0x1fadf, 0x1faea},
+    {0x1faef, 0x1faf8},
     {0x20000, 0x2fffd},
     {0x30000, 0x3fffd},
 };
@@ -120,7 +121,7 @@ static const CharRange sAmbiguousSupp8[] = {
 static const int sAmbiguousSupp8Count = sizeof(sAmbiguousSupp8) / sizeof(sAmbiguousSupp8[0]);
 
 // Supplementary plane ranges for ambiguous Unicode 9
-// Generated from Unicode 16.0.0 by tools/eastasian.py
+// Generated from Unicode 17.0.0 by tools/eastasian.py
 static const CharRange sAmbiguousSupp9[] = {
     {0x1f100, 0x1f10a},
     {0x1f110, 0x1f12d},
@@ -218,7 +219,7 @@ static void initFullWidth8(void) {
 }
 
 // Initialize full-width bitmap for Unicode 9
-// Generated from Unicode 16.0.0 by tools/eastasian.py
+// Generated from Unicode 17.0.0 by tools/eastasian.py
 static void initFullWidth9(void) {
     memset(&sFullWidthBMP9, 0, sizeof(sFullWidthBMP9));
 
@@ -499,7 +500,7 @@ static void initAmbiguous8(void) {
 }
 
 // Initialize ambiguous width bitmap for Unicode 9
-// Generated from Unicode 16.0.0 by tools/eastasian.py
+// Generated from Unicode 17.0.0 by tools/eastasian.py
 static void initAmbiguous9(void) {
     memset(&sAmbiguousBMP9, 0, sizeof(sAmbiguousBMP9));
 
