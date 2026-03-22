@@ -57,6 +57,8 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <wctype.h>
 
+#import "iTermCharacterWidth.h"
+
 @implementation NSString (iTerm)
 
 + (NSString *)stringWithInt:(int)num {
@@ -67,23 +69,7 @@
         ambiguousIsDoubleWidth:(BOOL)ambiguousIsDoubleWidth
                 unicodeVersion:(NSInteger)version
                 fullWidthFlags:(BOOL)fullWidthFlags {
-    if (unicode <= 0xa0 ||
-        (unicode > 0x452 && unicode < 0x1100)) {
-        // Quickly cover the common cases.
-        return NO;
-    }
-
-    if ([[NSCharacterSet fullWidthCharacterSetForUnicodeVersion:version] longCharacterIsMember:unicode]) {
-        return YES;
-    }
-    if (ambiguousIsDoubleWidth &&
-        [[NSCharacterSet ambiguousWidthCharacterSetForUnicodeVersion:version] longCharacterIsMember:unicode]) {
-        return YES;
-    }
-    if (fullWidthFlags && [[NSCharacterSet flagCharactersForUnicodeVersion:version] longCharacterIsMember:unicode]) {
-        return YES;
-    }
-    return NO;
+    return iTermIsDoubleWidthCharacter(unicode, ambiguousIsDoubleWidth, (int)version, fullWidthFlags);
 }
 
 + (NSString *)stringWithLongCharacter:(UTF32Char)longCharacter {
