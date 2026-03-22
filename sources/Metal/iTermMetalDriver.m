@@ -904,8 +904,7 @@ legacyScrollbarWidth:(unsigned int)legacyScrollbarWidth
 
 // Main thread
 - (void)acquireScarceResources:(iTermMetalFrameData *)frameData view:(iTermMetalView *)view {
-                 #warning TODO: Try lowering the timeout
-    const NSTimeInterval timeout = INFINITY;
+    const NSTimeInterval timeout = 1.0 / 60.0;
 
     if (frameData.debugInfo) {
         [frameData measureTimeForStat:iTermMetalFrameDataStatMtGetRenderPassDescriptor ofBlock:^{
