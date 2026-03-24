@@ -844,6 +844,11 @@ DEFINE_BOOL(supportDecsetMetaSendsEscape, YES_IF_BETA_ELSE_NO, SECTION_EXPERIMEN
 DEFINE_BOOL(fastTriggerRegexes, YES, SECTION_EXPERIMENTAL @"Fast regular expression evaluation for triggers.\nThis is experimental because it could potentially change how regular expressions are interpreted.");
 DEFINE_BOOL(postFakeFlagsChangedEvents, NO, SECTION_EXPERIMENTAL @"Post fake flags-changed events when remapping modifiers with an event tap.\nThis is an attempt to work around incompatibilities with AltTab in issue 10220.");
 DEFINE_BOOL(fullWidthFlags, YES, SECTION_EXPERIMENTAL @"Flag emoji render full-width");
+DEFINE_BOOL(preconvertStringsOnParserThread, YES, SECTION_EXPERIMENTAL @"Pre-convert non-ASCII strings to screen characters on the parser thread.\nThis exploits parallelism between parsing and screen mutation for better performance.");
+DEFINE_BOOL(asyncPreconvertStrings, YES, SECTION_EXPERIMENTAL @"Pre-convert long non-ASCII strings on a background queue.\nThis decouples preconversion from the parser thread for better throughput.");
+DEFINE_INT(asyncPreconvertMinStringLength, 128, SECTION_EXPERIMENTAL @"Minimum string length (in UTF-16 code units) to dispatch for async pre-conversion.");
+DEFINE_INT(asyncPreconvertMaxOutstandingBytes, 1048576, SECTION_EXPERIMENTAL @"Maximum bytes of outstanding async pre-conversions.\nWhen this limit is reached, new strings are converted synchronously on the mutation thread.");
+DEFINE_BOOL(logNonASCIIStringLengthHistogram, NO, SECTION_EXPERIMENTAL @"Log a histogram of non-ASCII string lengths periodically.\nUseful for tuning the async pre-conversion minimum string length.");
 DEFINE_STRING(aiModernModelPrefixes, @"gpt-", SECTION_EXPERIMENTAL @"AI model name substrings that use the modern 'completions' API.\nSubstrings should be space-delimited. This handles OpenRouter-style names like 'openai/gpt-4o'. Note that o1 models use a different API and have hard-coded behavior.");
 DEFINE_STRING(aiProxy, @"", SECTION_EXPERIMENTAL @"Host and port for proxy for AI requests.\ni.e., example.com:8080")
 DEFINE_BOOL(addUtilitiesToPATH, YES, SECTION_EXPERIMENTAL @"Add path to iTerm2 utilities to $PATH for new sessions?");

@@ -37,11 +37,16 @@
 }
 
 - (void)terminalAppendString:(NSString *)string {
+    [self terminalAppendString:string preconvertedData:NULL];
+}
+
+- (void)terminalAppendString:(NSString *)string
+          preconvertedData:(PreconvertedStringData *)preconvertedData {
     DLog(@"begin %@", string);
     if (_collectInputForPrinting) {
         [self.printBuffer appendString:string];
     } else {
-        [self appendStringAtCursor:string];
+        [self appendStringAtCursor:string preconvertedData:preconvertedData];
     }
     [self appendStringToTriggerLine:string];
     if (self.config.loggingEnabled) {

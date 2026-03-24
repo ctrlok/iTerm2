@@ -476,6 +476,8 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
         [_promptStateMachine revealOrDismissComposerAgain];
     }
     _tokenExecutor.isBackgroundSession = !config.sessionIsVisible;
+
+    [self pushStringConversionConfigWithSoftAlternateScreenMode:self.terminal.softAlternateScreenMode];
 }
 
 - (void)movePromptUnderComposerIfNeeded {
@@ -723,6 +725,8 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
     [self addSideEffect:^(id<VT100ScreenDelegate>  _Nonnull delegate) {
         [delegate screenSoftAlternateScreenModeDidChangeTo:enabled showingAltScreen:showing];
     }  name:@"soft alternate screen mode did change"];
+
+    [self pushStringConversionConfigWithSoftAlternateScreenMode:enabled];
 }
 
 - (void)performBlockWithoutTriggers:(void (^)(void))block {
@@ -750,7 +754,59 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
     }];
 }
 
+- (VT100StringConversionConfig)stringConversionConfigWithSoftAlternateScreenMode:(BOOL)mode {
+    return (VT100StringConversionConfig){
+        .ambiguousIsDoubleWidth = self.config.treatAmbiguousCharsAsDoubleWidth,
+        .normalization = self.config.normalization,
+        .unicodeVersion = self.config.unicodeVersion,
+        .softAlternateScreenMode = mode,
+    };
+}
+
+- (void)pushStringConversionConfigWithSoftAlternateScreenMode:(BOOL)mode {
+    const VT100StringConversionConfig convConfig = [self stringConversionConfigWithSoftAlternateScreenMode:mode];
+    [self.terminal.parser updateStringConversionConfig:convConfig];
+}
+
 - (void)appendStringAtCursor:(NSString *)string {
+    [self appendStringAtCursor:string preconvertedData:NULL];
+}
+
+- (BOOL)canUsePreconvertedData:(PreconvertedStringData *)pre
+                needColorFixup:(BOOL *)needColorFixup {
+    if (!pre || !pre->valid) {
+        return NO;
+    }
+    // Check config match field-by-field (memcmp is unsafe due to struct padding).
+    const VT100StringConversionConfig currentConfig =
+        [self stringConversionConfigWithSoftAlternateScreenMode:self.terminal.softAlternateScreenMode];
+    if (!VT100StringConversionConfigEquals(&pre->config, &currentConfig)) {
+        return NO;
+    }
+    // Check rendition match
+    screen_char_t actualFg = [self.terminal foregroundColorCode];
+    screen_char_t actualBg = [self.terminal backgroundColorCode];
+    screen_char_t preFg = { 0 };
+    screen_char_t preBg = { 0 };
+    VT100GraphicRendition rendition = pre->rendition;
+    VT100GraphicRenditionUpdateForeground(&rendition, YES, pre->protectedMode, &preFg);
+    VT100GraphicRenditionUpdateBackground(&rendition, YES, &preBg);
+
+    // Combine fg+bg from each side into a single screen_char_t for comparison,
+    // since ScreenCharFGBGEqual checks all fields that CopyForeground/BackgroundColor writes.
+    screen_char_t actual = { 0 };
+    CopyForegroundColor(&actual, actualFg);
+    CopyBackgroundColor(&actual, actualBg);
+    screen_char_t expected = { 0 };
+    CopyForegroundColor(&expected, preFg);
+    CopyBackgroundColor(&expected, preBg);
+
+    *needColorFixup = !ScreenCharFGBGEqual(actual, expected);
+    return YES;
+}
+
+- (void)appendStringAtCursor:(NSString *)string
+          preconvertedData:(PreconvertedStringData *)pre {
     int len = [string length];
     if (len < 1 || !string) {
         return;
@@ -763,107 +819,197 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
          self.currentGrid.cursorY,
          self.currentGrid.cursorY + [self.linebuffer numLinesWithWidth:self.currentGrid.size.width]);
 
-    // Allocate a buffer of screen_char_t and place the new string in it.
-    const int kStaticBufferElements = 1024;
-    screen_char_t staticBuffer[kStaticBufferElements];
-    screen_char_t *dynamicBuffer = 0;
+    assert(self.terminal);
+
+    // Check if we can use the preconverted data from the parser thread.
+    BOOL needColorFixup = NO;
+    const BOOL usePreconverted = [self canUsePreconvertedData:pre needColorFixup:&needColorFixup];
+
     screen_char_t *buffer;
-    string = [string normalized:self.normalization];
-    len = [string length];
-    if (3 * len >= kStaticBufferElements) {
-        buffer = dynamicBuffer = (screen_char_t *) iTermCalloc(3 * len,
-                                                               sizeof(screen_char_t));
-        assert(buffer);
-        if (!buffer) {
-            NSLog(@"%s: Out of memory", __PRETTY_FUNCTION__);
-            return;
+    screen_char_t *dynamicBuffer = NULL;
+    BOOL dwc = NO;
+    BOOL rtlFound = NO;
+
+    if (usePreconverted) {
+        // Fast or medium path: use preconverted buffer (space-augmented).
+        buffer = pre->buffer;
+        len = pre->length;
+        dwc = pre->foundDwc;
+        rtlFound = pre->rtlFound;
+
+        if (needColorFixup) {
+            // Medium path: character codes and DWC_RIGHT markers are correct but colors differ.
+            const screen_char_t actualFg = [self.terminal foregroundColorCode];
+            const screen_char_t actualBg = [self.terminal backgroundColorCode];
+            for (int i = 0; i < len; i++) {
+                CopyForegroundColor(&buffer[i], actualFg);
+                CopyBackgroundColor(&buffer[i], actualBg);
+            }
         }
+
+        // Handle combining mark predecessor fixup.
+        // The preconverted buffer was augmented with a space at index 0.
+        BOOL predecessorIsDoubleWidth = NO;
+        const VT100GridCoord pred = [self.currentGrid coordinateBefore:self.currentGrid.cursor
+                                              movedBackOverDoubleWidth:&predecessorIsDoubleWidth];
+        NSString *predecessorString = pred.x >= 0 ? [self.currentGrid stringOrKittyPlaceholderStringForCharacterAt:pred] : nil;
+        const BOOL hasPredecessor = predecessorString != nil;
+
+        ssize_t bufferOffset = 0;
+        if (hasPredecessor && len > 0) {
+            // Re-do the augmentation with the actual predecessor to check if
+            // a combining mark at the start of the string modifies it.
+            const NSRange firstCharRange = [string rangeOfComposedCharacterSequenceAtIndex:0];
+            NSString *firstChar = [string substringWithRange:firstCharRange];
+            NSString *augmented = [predecessorString stringByAppendingString:firstChar];
+            screen_char_t firstChars[8] = { 0 };
+            int firstLen = 8;
+            BOOL firstDwc = NO;
+            // After color fixup, buffer[0] has correct fg+bg fields.
+            StringToScreenChars(augmented,
+                                firstChars,
+                                buffer[0],
+                                buffer[0],
+                                &firstLen,
+                                self.config.treatAmbiguousCharsAsDoubleWidth,
+                                NULL,
+                                &firstDwc,
+                                self.config.normalization,
+                                self.config.unicodeVersion,
+                                self.terminal.softAlternateScreenMode,
+                                NULL);
+            if (rtlFound) {
+                [[self.currentGrid lineInfoAtLineNumber:pred.y] setRTLFound:YES];
+            }
+            const screen_char_t current = [self.currentGrid characterAt:pred];
+            const unichar predecessorCode = firstChars[0].code;
+            const BOOL predecessorComplexChar = firstChars[0].complexChar;
+            if (current.code != predecessorCode || current.complexChar != predecessorComplexChar) {
+                [self.currentGrid mutateCharactersInRange:VT100GridCoordRangeMake(pred.x, pred.y, pred.x + 1, pred.y)
+                                                  dwcFree:YES
+                                                    block:^(screen_char_t *sct,
+                                                            iTermExternalAttribute *__autoreleasing *eaOut,
+                                                            VT100GridCoord coord,
+                                                            BOOL *stop) {
+                    sct->code = predecessorCode;
+                    sct->complexChar = predecessorComplexChar;
+                }];
+            }
+            bufferOffset++;
+            if (predecessorIsDoubleWidth && len > 1 && ScreenCharIsDWC_RIGHT(buffer[1])) {
+                bufferOffset++;
+            }
+        } else if (!buffer[0].complexChar) {
+            // No predecessor; first char is not a combining mark. Skip the prepended space.
+            bufferOffset++;
+        }
+
+        if (dwc) {
+            self.linebuffer.mayHaveDoubleWidthCharacter = dwc;
+        }
+        [self appendScreenCharArrayAtCursor:buffer + bufferOffset
+                                     length:len - bufferOffset
+                     externalAttributeIndex:[iTermUniformExternalAttributes withAttribute:self.terminal.externalAttributes]
+                                   rtlFound:rtlFound
+                                    dwcFree:!dwc];
     } else {
-        buffer = staticBuffer;
-    }
+        // Slow path: augment with actual predecessor and run StringToScreenChars.
+        const int kStaticBufferElements = 1024;
+        screen_char_t staticBuffer[kStaticBufferElements];
+        string = [string normalized:self.normalization];
+        len = [string length];
+        if (3 * len >= kStaticBufferElements) {
+            buffer = dynamicBuffer = (screen_char_t *) iTermCalloc(3 * len,
+                                                                   sizeof(screen_char_t));
+            assert(buffer);
+            if (!buffer) {
+                NSLog(@"%s: Out of memory", __PRETTY_FUNCTION__);
+                return;
+            }
+        } else {
+            buffer = staticBuffer;
+        }
 
     // `predecessorIsDoubleWidth` will be true if the cursor is over a double-width character
     // but NOT if it's over a DWC_RIGHT.
-    BOOL predecessorIsDoubleWidth = NO;
-    const VT100GridCoord pred = [self.currentGrid coordinateBefore:self.currentGrid.cursor
-                                          movedBackOverDoubleWidth:&predecessorIsDoubleWidth];
-    NSString *augmentedString = string;
-    NSString *predecessorString = pred.x >= 0 ? [self.currentGrid stringOrKittyPlaceholderStringForCharacterAt:pred] : nil;
-    const BOOL augmented = predecessorString != nil;
-    if (augmented) {
-        augmentedString = [predecessorString stringByAppendingString:string];
-    } else {
+        BOOL predecessorIsDoubleWidth = NO;
+        const VT100GridCoord pred = [self.currentGrid coordinateBefore:self.currentGrid.cursor
+                                              movedBackOverDoubleWidth:&predecessorIsDoubleWidth];
+        NSString *augmentedString = string;
+        NSString *predecessorString = pred.x >= 0 ? [self.currentGrid stringOrKittyPlaceholderStringForCharacterAt:pred] : nil;
+        const BOOL augmented = predecessorString != nil;
+        if (augmented) {
+            augmentedString = [predecessorString stringByAppendingString:string];
+        } else {
         // Prepend a space so we can detect if the first character is a combining mark.
-        augmentedString = [@" " stringByAppendingString:string];
-    }
-
-    assert(self.terminal);
-    // Add DWC_RIGHT after each double-width character, build complex characters out of surrogates
-    // and combining marks, replace private codes with replacement characters, swallow zero-
-    // width spaces, and set fg/bg colors and attributes.
-    BOOL dwc = NO;
-    BOOL rtlFound = NO;
-    StringToScreenChars(augmentedString,
-                        buffer,
-                        [self.terminal foregroundColorCode],
-                        [self.terminal backgroundColorCode],
-                        &len,
-                        self.config.treatAmbiguousCharsAsDoubleWidth,
-                        NULL,
-                        &dwc,
-                        self.config.normalization,
-                        self.config.unicodeVersion,
-                        self.terminal.softAlternateScreenMode,
-                        &rtlFound);
-    ssize_t bufferOffset = 0;
-    if (augmented && len > 0) {
-        if (rtlFound) {
-            [[self.currentGrid lineInfoAtLineNumber:pred.y] setRTLFound:YES];
+            augmentedString = [@" " stringByAppendingString:string];
         }
-        const screen_char_t current = [self.currentGrid characterAt:pred];
-        if (current.code != buffer[0].code || current.complexChar != buffer[0].complexChar) {
-            // This handles the rare case where we receive a combining mark at the beginning of
-            // `string` and have to modify the preciding character.
-            [self.currentGrid mutateCharactersInRange:VT100GridCoordRangeMake(pred.x, pred.y, pred.x + 1, pred.y)
-                                              dwcFree:YES
-                                                block:^(screen_char_t *sct,
-                                                        iTermExternalAttribute *__autoreleasing *eaOut,
-                                                        VT100GridCoord coord,
-                                                        BOOL *stop) {
-                sct->code = buffer[0].code;
-                sct->complexChar = buffer[0].complexChar;
-            }];
-        }
-        bufferOffset++;
 
-        // Does the augmented result begin with a double-width character? If so skip over the
-        // DWC_RIGHT when appending. I *think* this is redundant with the `predecessorIsDoubleWidth`
-        // test but I'm reluctant to remove it because it could break something.
-        const BOOL augmentedResultBeginsWithDoubleWidthCharacter = (augmented &&
-                                                                    len > 1 &&
-                                                                    ScreenCharIsDWC_RIGHT(buffer[1]) &&
-                                                                    !buffer[1].complexChar);
-        if ((augmentedResultBeginsWithDoubleWidthCharacter || predecessorIsDoubleWidth) && len > 1 && ScreenCharIsDWC_RIGHT(buffer[1])) {
-            // Skip over a preexisting DWC_RIGHT in the predecessor.
+        // Add DWC_RIGHT after each double-width character, build complex characters out of surrogates
+        // and combining marks, replace private codes with replacement characters, swallow zero-
+        // width spaces, and set fg/bg colors and attributes.
+        StringToScreenChars(augmentedString,
+                            buffer,
+                            [self.terminal foregroundColorCode],
+                            [self.terminal backgroundColorCode],
+                            &len,
+                            self.config.treatAmbiguousCharsAsDoubleWidth,
+                            NULL,
+                            &dwc,
+                            self.config.normalization,
+                            self.config.unicodeVersion,
+                            self.terminal.softAlternateScreenMode,
+                            &rtlFound);
+        ssize_t bufferOffset = 0;
+        if (augmented && len > 0) {
+            if (rtlFound) {
+                [[self.currentGrid lineInfoAtLineNumber:pred.y] setRTLFound:YES];
+            }
+            const screen_char_t current = [self.currentGrid characterAt:pred];
+            if (current.code != buffer[0].code || current.complexChar != buffer[0].complexChar) {
+                // This handles the rare case where we receive a combining mark at the beginning of
+                // `string` and have to modify the preciding character.
+                [self.currentGrid mutateCharactersInRange:VT100GridCoordRangeMake(pred.x, pred.y, pred.x + 1, pred.y)
+                                                  dwcFree:YES
+                                                    block:^(screen_char_t *sct,
+                                                            iTermExternalAttribute *__autoreleasing *eaOut,
+                                                            VT100GridCoord coord,
+                                                            BOOL *stop) {
+                    sct->code = buffer[0].code;
+                    sct->complexChar = buffer[0].complexChar;
+                }];
+            }
+            bufferOffset++;
+
+            // Does the augmented result begin with a double-width character? If so skip over the
+            // DWC_RIGHT when appending. I *think* this is redundant with the `predecessorIsDoubleWidth`
+            // test but I'm reluctant to remove it because it could break something.
+            const BOOL augmentedResultBeginsWithDoubleWidthCharacter = (augmented &&
+                                                                        len > 1 &&
+                                                                        ScreenCharIsDWC_RIGHT(buffer[1]) &&
+                                                                        !buffer[1].complexChar);
+            if ((augmentedResultBeginsWithDoubleWidthCharacter || predecessorIsDoubleWidth) && len > 1 && ScreenCharIsDWC_RIGHT(buffer[1])) {
+                // Skip over a preexisting DWC_RIGHT in the predecessor.
+                bufferOffset++;
+            }
+        } else if (!buffer[0].complexChar) {
+            // We infer that the first character in |string| was not a combining mark. If it were, it
+            // would have combined with the space we added to the start of |augmentedString|. Skip past
+            // the space.
             bufferOffset++;
         }
-    } else if (!buffer[0].complexChar) {
-        // We infer that the first character in |string| was not a combining mark. If it were, it
-        // would have combined with the space we added to the start of |augmentedString|. Skip past
-        // the space.
-        bufferOffset++;
-    }
 
-    if (dwc) {
-        self.linebuffer.mayHaveDoubleWidthCharacter = dwc;
-    }
-    [self appendScreenCharArrayAtCursor:buffer + bufferOffset
-                                 length:len - bufferOffset
-                 externalAttributeIndex:[iTermUniformExternalAttributes withAttribute:self.terminal.externalAttributes]
-                               rtlFound:rtlFound
-                                dwcFree:!dwc];
-    if (buffer == dynamicBuffer) {
-        free(buffer);
+        if (dwc) {
+            self.linebuffer.mayHaveDoubleWidthCharacter = dwc;
+        }
+        [self appendScreenCharArrayAtCursor:buffer + bufferOffset
+                                     length:len - bufferOffset
+                     externalAttributeIndex:[iTermUniformExternalAttributes withAttribute:self.terminal.externalAttributes]
+                                   rtlFound:rtlFound
+                                    dwcFree:!dwc];
+        if (buffer == dynamicBuffer) {
+            free(buffer);
+        }
     }
 }
 

@@ -110,6 +110,8 @@ NS_ASSUME_NONNULL_BEGIN
 // around modes are respected, the cursor is advanced, the screen may be scrolled, and the line
 // buffer may change.
 - (void)appendStringAtCursor:(NSString *)string;
+- (void)appendStringAtCursor:(NSString *)string
+          preconvertedData:(nullable PreconvertedStringData *)preconvertedData;
 
 - (void)appendScreenCharArrayAtCursor:(const screen_char_t *)buffer
                                length:(int)len
