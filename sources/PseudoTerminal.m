@@ -5424,7 +5424,7 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
 
     return [[settings.allKeys mapWithBlock:^id _Nullable(NSString * _Nonnull key) {
         return [NSString stringWithFormat:@"%@=%@", key, settings[key]];
-    }] componentsJoinedByString:@";"];
+    }] componentsJoinedByString:@"&"];
 }
 
 - (void)setTmuxPerWindowSetting:(NSString *)setting 
