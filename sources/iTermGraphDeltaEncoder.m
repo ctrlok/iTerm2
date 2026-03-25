@@ -72,12 +72,12 @@
     }
     // Same key+id, new generation.
     NSInteger realGeneration = generation;
-    if (generation == iTermGenerationAlwaysEncode) {
+    if (generation == iTermGenerationAlwaysEncode || record.generation >= generation) {
+        // Generation regression can happen when the DB lock was held by another
+        // process during init, preventing generation counters from being restored.
+        // Bump forward to ensure monotonic progress.
         realGeneration = record.generation + 1;
     }
-#if DEBUG
-    assert(record.generation < generation);
-#endif
     iTermGraphEncoder *encoder = [[iTermGraphDeltaEncoder alloc] initWithKey:key
                                                                   identifier:identifier
                                                                   generation:realGeneration
