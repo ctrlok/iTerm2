@@ -5904,7 +5904,7 @@ lengthExcludingInBandSignaling:data.length
     if (mouse && mouse.intValue) {
         [self.terminal setMouseMode:MOUSE_REPORTING_BUTTON_MOTION];
     }
-    mouse = state[kStateDictMouseButtonMode];
+    mouse = state[kStateDictMouseAnyMode];
     if (mouse && mouse.intValue) {
         [self.terminal setMouseMode:MOUSE_REPORTING_ALL_MOTION];
     }
@@ -5952,6 +5952,9 @@ lengthExcludingInBandSignaling:data.length
     } else {
         [self.terminal setMouseFormat:MOUSE_FORMAT_XTERM];
     }
+
+    // Gracefully degrades to NO on tmux versions that lack bracket_paste_flag.
+    [self.terminal setBracketedPasteMode:[state[kStateDictBracketedPasteMode] boolValue]];
 }
 
 #pragma mark - SSH
