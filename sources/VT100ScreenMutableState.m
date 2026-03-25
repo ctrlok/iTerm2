@@ -5820,6 +5820,7 @@ lengthExcludingInBandSignaling:data.length
             o++;
         } while (o < self.altGrid.size.height && length > 0);
     }
+    [self.altGrid markAllCharsDirty:YES updateTimestamps:NO];
 }
 
 
@@ -5843,6 +5844,10 @@ lengthExcludingInBandSignaling:data.length
         id<VT100GridReading> temp = self.altGrid;
         self.altGrid = self.primaryGrid;
         self.primaryGrid = temp;
+        // After swapping grid pointers, the read-only state's grids still reference old copies.
+        // Mark all cells dirty to force a full resync during mergeFrom:.
+        [self.primaryGrid markAllCharsDirty:YES updateTimestamps:NO];
+        [self.altGrid markAllCharsDirty:YES updateTimestamps:NO];
     }
 
     NSNumber *altSavedX = state[kStateDictAltSavedCX];
