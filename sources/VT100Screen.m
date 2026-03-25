@@ -1614,7 +1614,7 @@ additionalWordCharacters:(NSString *)additionalWordCharacters
     if (_sharedStateCount > 0) {
         DLog(@"Short-circuiting sync because there is shared state between threads.\n%@", [NSThread callStackSymbols]);
         return (VT100SyncResult) {
-            .overflow = [mutableState scrollbackOverflow] > 0,
+            .overflow = 0,
             .haveScrolled = _state.currentGrid.haveScrolled
         };
     }
