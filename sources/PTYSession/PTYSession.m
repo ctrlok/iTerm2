@@ -570,6 +570,7 @@ typedef NS_ENUM(NSUInteger, PTYSessionTurdType) {
     iTermSessionTabStatus *_tabStatus;
 
     iTermBackgroundDrawingHelper *_backgroundDrawingHelper;
+    iTermBackgroundImageRotationManager *_backgroundImageRotator;
     iTermMetaFrustrationDetector *_metaFrustrationDetector;
 
     iTermTmuxStatusBarMonitor *_tmuxStatusBarMonitor;
@@ -1087,6 +1088,8 @@ ITERM_WEAKLY_REFERENCEABLE
         CGContextRelease(_metalContextDoubleWidth);
     }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+
+    [_backgroundImageRotator release];
 
     if (_dvrDecoder) {
         [_dvr releaseDecoder:_dvrDecoder];
@@ -5009,6 +5012,32 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     return didChange;
 }
 
+- (void)setBackgroundImageRotator:(iTermBackgroundImageRotationManager *)rotator {
+    if (_backgroundImageRotator == rotator) {
+        return;
+    }
+    if (_backgroundImageRotator) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                        name:iTermBackgroundImageRotationManager.didChangeNotification
+                                                      object:_backgroundImageRotator];
+        [_backgroundImageRotator release];
+    }
+    _backgroundImageRotator = [rotator retain];
+    if (rotator) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(backgroundImageRotatorDidChange:)
+                                                     name:iTermBackgroundImageRotationManager.didChangeNotification
+                                                   object:rotator];
+    }
+}
+
+- (void)backgroundImageRotatorDidChange:(NSNotification *)notification {
+    if (notification.object != _backgroundImageRotator) {
+        return;
+    }
+    [self setBackgroundImagePath:_backgroundImageRotator.currentImage];
+}
+
 - (void)loadColorsFromProfile:(Profile *)aDict {
     const BOOL dark = [NSApp effectiveAppearance].it_isDark;
     NSDictionary<NSNumber *, NSString *> *keyMap = [self colorTableForProfile:aDict darkMode:dark];
@@ -5242,7 +5271,28 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     [self loadColorsFromProfile:aDict];
 
     // background image
-    [self setBackgroundImagePath:aDict[KEY_BACKGROUND_IMAGE_LOCATION]];
+    const iTermBackgroundImageSourceMode sourceMode =
+        [iTermProfilePreferences unsignedIntegerForKey:KEY_BACKGROUND_IMAGE_SOURCE_MODE inProfile:aDict];
+    switch (sourceMode) {
+        case iTermBackgroundImageSourceModeSingleImage:
+            [self setBackgroundImageRotator:nil];
+            [self setBackgroundImagePath:aDict[KEY_BACKGROUND_IMAGE_LOCATION]];
+            break;
+        case iTermBackgroundImageSourceModeFolderRotation: {
+            NSString *folder = [iTermProfilePreferences stringForKey:KEY_BACKGROUND_IMAGE_FOLDER_LOCATION inProfile:aDict];
+            NSInteger interval = [iTermProfilePreferences integerForKey:KEY_BACKGROUND_IMAGE_FOLDER_INTERVAL inProfile:aDict];
+            if (folder.length > 0) {
+                iTermBackgroundImageRotationManager *rotator =
+                    [iTermBackgroundImageRotationManager sharedRotatorForFolder:folder interval:interval];
+                [self setBackgroundImageRotator:rotator];
+                [self setBackgroundImagePath:rotator.currentImage];
+            } else {
+                [self setBackgroundImageRotator:nil];
+                [self setBackgroundImagePath:nil];
+            }
+            break;
+        }
+    }
     [self setBackgroundImageMode:[iTermProfilePreferences unsignedIntegerForKey:KEY_BACKGROUND_IMAGE_MODE
                                                                       inProfile:aDict]];
 
