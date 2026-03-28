@@ -30,8 +30,8 @@ private func callStringToScreenChars(
     let buffer = malloced.assumingMemoryBound(to: screen_char_t.self)
     defer { free(malloced) }
 
-    var fg = screen_char_t()
-    var bg = screen_char_t()
+    let fg = screen_char_t()
+    let bg = screen_char_t()
     var len = Int32(0)
     var foundDwc: ObjCBool = false
     var rtlFound: ObjCBool = false
@@ -438,7 +438,7 @@ final class StringToScreenCharsTests: XCTestCase {
     /// 2.6.2 Heart without VS16 → single-width.
     func testEmojiVS16_heartWithoutVS16() {
         let s = stringFromCodePoints([0x2764])
-        let (buf, len, _) = callStringToScreenChars(s, softAlternateScreenMode: false)
+        let (_, len, _) = callStringToScreenChars(s, softAlternateScreenMode: false)
         XCTAssertEqual(len, 1)
     }
 
@@ -469,7 +469,7 @@ final class StringToScreenCharsTests: XCTestCase {
     /// 2.6.5 VS16 not supported (softAlternateScreenMode=YES) → single-width.
     func testEmojiVS16_notSupported() {
         let s = stringFromCodePoints([0x2764, 0xFE0F])
-        let (buf, len, _) = callStringToScreenChars(s, softAlternateScreenMode: true)
+        let (_, len, _) = callStringToScreenChars(s, softAlternateScreenMode: true)
         XCTAssertEqual(len, 1)
     }
 

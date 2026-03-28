@@ -110,7 +110,6 @@ class ExtendURLSearchResultsTests: XCTestCase {
 
         // Create a search result for just the first part of the URL (ends at column 18)
         let result = SearchResult(fromX: 0, y: 0, toX: 18, y: 0)!
-        let results = NSMutableArray(array: [result])
 
         // Create a text view mock or use the extractor directly
         let extractor = iTermTextExtractor(dataSource: dataSource)
@@ -134,8 +133,6 @@ class ExtendURLSearchResultsTests: XCTestCase {
         let result = SearchResult(fromX: 0, y: 0, toX: 23, y: 0)!
         let originalEndX = result.internalEndX
         let originalEndY = result.internalAbsEndY
-
-        let results = NSMutableArray(array: [result])
 
         // Without a divider, the logical window should span the full width
         let extractor = iTermTextExtractor(dataSource: dataSource)

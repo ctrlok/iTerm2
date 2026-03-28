@@ -2301,7 +2301,7 @@ class FakeSession: NSObject, VT100ScreenDelegate {
 
     func screenExecDidFail() {
     }
-    func screenSetProfileProperties(_ dict: [AnyHashable : Any]!) {
+    func screenSetProfileProperties(_ dict: [AnyHashable : Any]) {
     }
 
     func triggerSessionSetBufferInput(_ shouldBuffer: Bool) {
@@ -2311,7 +2311,7 @@ class FakeSession: NSObject, VT100ScreenDelegate {
         return false
     }
 
-    func screenUpdateBlock(_ blockID: String?, action: iTermUpdateBlockAction) {
+    func screenUpdateBlock(_ blockID: String, action: iTermUpdateBlockAction) {
     }
 
     func screenPollLocalDirectoryOnly() {
