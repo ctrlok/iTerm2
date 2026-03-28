@@ -282,10 +282,15 @@ additionalWordCharacters:(NSString *)additionalWordCharacters
     }];
 }
 
-- (BOOL)removeFoldsInRange:(NSRange)absRange {
+- (BOOL)removeFoldsInRange:(NSRange)absRange completion:(void (^)(BOOL))completion {
     [self.delegate screenEnsureDefaultMode];
     [self mutateAsynchronously:^(VT100Terminal *terminal, VT100ScreenMutableState *mutableState, id<VT100ScreenDelegate> delegate) {
-        [mutableState removeFoldsInRange:absRange];
+        const BOOL ok = [mutableState removeFoldsInRange:absRange];
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(ok);
+            });
+        }
     }];
     return [_state haveFoldsInRange:absRange];
 }

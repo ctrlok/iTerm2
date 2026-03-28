@@ -219,6 +219,7 @@ NSString *const PTYSessionDidResizeNotification = @"PTYSessionDidResizeNotificat
 NSString *const PTYSessionDidDealloc = @"PTYSessionDidDealloc";
 NSNotificationName const PTYCommandDidExitNotification = @"PTYCommandDidExitNotification";
 
+
 NSString *const PTYCommandDidExitUserInfoKeyCommand = @"Command";
 NSString *const PTYCommandDidExitUserInfoKeyExitCode = @"Code";
 NSString *const PTYCommandDidExitUserInfoKeyRemoteHost = @"Host";
@@ -14475,6 +14476,19 @@ typedef NS_ENUM(NSUInteger, PTYSessionTmuxReport) {
     [_textview deselect];
 }
 
+- (void)screenDidClearFromAbsoluteLineToEnd:(long long)absY {
+    // Copy block to the heap. PTYSession.m is MRR, so block literals are stack
+    // blocks. NSDictionary only retains (doesn't copy), which is a no-op for
+    // stack blocks.
+    VT100GridAbsCoordRange (^converter)(id<IntervalTreeImmutableObject>) = [[^VT100GridAbsCoordRange(id<IntervalTreeImmutableObject> obj) {
+        const VT100GridCoordRange range = [self.screen coordRangeForInterval:obj.entry.interval];
+        return VT100GridAbsCoordRangeFromCoordRange(range, self.screen.totalScrollbackOverflow);
+    } copy] autorelease];
+    [iTermRCClearToEndNotification postWithGuid:self.guid
+                                           absY:absY
+                              intervalConverter:converter];
+}
+
 - (void)screenMoveSelectionUpBy:(int)n
                        inRegion:(VT100GridRect)region {
     [_textview moveSelectionUpBy:n inRegion:region];
@@ -16133,6 +16147,27 @@ typedef NS_ENUM(NSUInteger, PTYSessionTmuxReport) {
         return;
     }
     [_screen foldAbsLineRange:range];
+}
+
+- (void)screenDidShiftLinesAtAbsLine:(long long)absLine
+                                  by:(long long)delta
+                                mark:(id<iTermWidthSavingMark>)mark
+                              reason:(iTermLinesShiftedReason)reason
+                       replacedRange:(NSRange)replacedRange
+                           converter:(VT100GridCoord (^)(VT100GridCoord))converter {
+    NSMutableDictionary *userInfo = [@{
+        iTermLinesShiftedNotification.absLineKey: @(absLine),
+        iTermLinesShiftedNotification.deltaKey: @(delta),
+        iTermLinesShiftedNotification.reasonKey: @(reason),
+        iTermLinesShiftedNotification.replacedRangeKey: [NSValue valueWithRange:replacedRange],
+        iTermLinesShiftedNotification.converterKey: [converter copy]
+    } mutableCopy];
+    if (mark) {
+        userInfo[iTermLinesShiftedNotification.markKey] = mark;
+    }
+    [[NSNotificationCenter defaultCenter] postNotificationName:iTermLinesShiftedNotification.name
+                                                        object:self.guid
+                                                      userInfo:userInfo];
 }
 
 - (void)screenStatPath:(NSString *)path
@@ -21521,6 +21556,13 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
         return NO;
     }
     return YES;
+}
+
+- (void)screenResizeResilientCoordinates:(VT100GridAbsCoord(^ _Nonnull)(VT100GridAbsCoord))convert {
+    // Copy the block to the heap. It arrives as a stack block from the ARC caller,
+    // and NSDictionary only retains (doesn't copy), which is a no-op for stack blocks.
+    convert = [[convert copy] autorelease];
+    [iTermRCResizeNotification postWithGuid:self.guid converter:convert];
 }
 
 - (void)screenUpdateBlock:(NSString *)blockID action:(iTermUpdateBlockAction)action {

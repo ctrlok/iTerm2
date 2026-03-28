@@ -6,7 +6,10 @@ if {$argc < 1} {
     exit 1
 }
 
-set test_name [lindex $argv 0]
+set only_testing_flags {}
+foreach test_name $argv {
+    lappend only_testing_flags -only-testing:$test_name
+}
 set timeout -1
 
 if {[info exists env(SIGNED)] && $env(SIGNED) eq "1"} {
@@ -28,7 +31,7 @@ proc kill_tree {pid} {
     catch {exec kill -9 $pid}
 }
 
-spawn xcodebuild test -project iTerm2.xcodeproj -scheme ModernTests -only-testing:$test_name -parallel-testing-enabled NO {*}$signing_flags
+spawn xcodebuild test -project iTerm2.xcodeproj -scheme ModernTests {*}$only_testing_flags -parallel-testing-enabled NO {*}$signing_flags
 set spawned_pid [exp_pid]
 
 proc cleanup_and_exit {code} {

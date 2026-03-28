@@ -1943,6 +1943,7 @@ void VT100ScreenEraseCell(screen_char_t *sct,
 
     [self addSideEffect:^(id<VT100ScreenDelegate>  _Nonnull delegate) {
         [delegate screenRemoveSelection];
+        [delegate screenDidClearFromAbsoluteLineToEnd:absLine];
     } name:@"really clear from absline to end 2"];
     [self setNeedsRedraw];
 }
@@ -4155,7 +4156,15 @@ void VT100ScreenEraseCell(screen_char_t *sct,
         return [lb screenCharArrayForLine:line width:self.width paddedTo:self.width eligibleForDWC:NO];
     }];
 
-    [self replaceRange:range withLines:reflowed removedIntervalTreeObjects:nil removedLines:nil];
+    const iTermLinesShiftedReason reason = [PortholeMark castFrom:mark] ? iTermLinesShiftedReasonPortholeRemoved : iTermLinesShiftedReasonUnfold;
+    [self replaceRange:range
+            withLines:reflowed
+            removedIntervalTreeObjects:nil
+            removedLines:nil
+            markProvider:^id<iTermWidthSavingMark> _Nullable{
+        return (id<iTermWidthSavingMark>)mark.doppelganger;
+    }
+            reason:reason];
     if (mark.entry) {
         // Not sure how you could get here since the previous method should have removed it, but
         // better to be safe.
@@ -4174,6 +4183,7 @@ void VT100ScreenEraseCell(screen_char_t *sct,
     if (self.config.useLineStyleMarks) {
         [self movePromptUnderComposerIfNeeded];
     }
+
     DLog(@"After unfold:");
     DLog(@"%@", [self compactLineDumpWithHistoryAndContinuationMarksAndLineNumbersAndIntervalTreeObjects]);
 }
@@ -4232,10 +4242,15 @@ void VT100ScreenEraseCell(screen_char_t *sct,
     NSArray<iTermSavedIntervalTreeObject *> *savedITOs = nil;
     NSArray<ScreenCharArray *> *savedLines = nil;
     NSSet<NSNumber *> *imageCodes = [self imageCodesUsedInAbsRange:absRange];
+    __block iTermFoldMark *createdFoldMark = nil;
     const VT100GridAbsCoordRange markRange = [self replaceRange:absRange
                                                       withLines:lines
                                      removedIntervalTreeObjects:&savedITOs
-                                                   removedLines:&savedLines];
+                                                   removedLines:&savedLines
+                                                   markProvider:^id<iTermWidthSavingMark> _Nullable{
+        return (id<iTermWidthSavingMark>)createdFoldMark.doppelganger;
+    }
+                                                         reason:iTermLinesShiftedReasonFold];
     if (!VT100GridAbsCoordRangeIsValid(markRange)) {
         return;
     }
@@ -4262,8 +4277,10 @@ void VT100ScreenEraseCell(screen_char_t *sct,
         iTermFoldMark *mark = [[iTermFoldMark alloc] initWithLines:savedLines
                                                          savedITOs:savedITOs
                                                       promptLength:promptLength
-                                                        imageCodes:imageCodes];
+                                                        imageCodes:imageCodes
+                                                             width:self.width];
         [self.mutableIntervalTree addObject:mark withInterval:interval];
+        createdFoldMark = mark;
     }
     if (self.config.useLineStyleMarks) {
         [self movePromptUnderComposerIfNeeded];
@@ -4297,17 +4314,23 @@ void VT100ScreenEraseCell(screen_char_t *sct,
         [lines addObject:[[ScreenCharArray alloc] init]];
     }
     NSArray<iTermSavedIntervalTreeObject *> *savedITOs = nil;
+    __block PortholeMark *createdMark = nil;
     const VT100GridAbsCoordRange markRange = [self replaceRange:absRange
                                                       withLines:lines
                                      removedIntervalTreeObjects:&savedITOs
-                                                   removedLines:nil];
+                                                   removedLines:nil
+                                                   markProvider:^id<iTermWidthSavingMark> _Nullable{
+        return (id<iTermWidthSavingMark>)createdMark.doppelganger;
+    }
+                                                         reason:iTermLinesShiftedReasonPortholeAdded];
     if (!VT100GridAbsCoordRangeIsValid(markRange)) {
         return;
     }
     porthole.savedITOs = savedITOs;
     Interval *interval = [self intervalForGridAbsCoordRange:markRange];
-    PortholeMark *mark = [[PortholeMark alloc] init:porthole.uniqueIdentifier];
+    PortholeMark *mark = [[PortholeMark alloc] init:porthole.uniqueIdentifier width:self.width];
     [self.mutableIntervalTree addObject:mark withInterval:interval];
+    createdMark = mark;
     if (self.config.useLineStyleMarks) {
         [self movePromptUnderComposerIfNeeded];
     }
@@ -4328,7 +4351,14 @@ void VT100ScreenEraseCell(screen_char_t *sct,
     for (int i = 0; i < newHeight; i++) {
         [lines addObject:[[ScreenCharArray alloc] init]];
     }
-    [self replaceRange:range withLines:lines removedIntervalTreeObjects:nil removedLines:nil];
+    [self replaceRange:range
+            withLines:lines
+            removedIntervalTreeObjects:nil
+            removedLines:nil
+            markProvider:^id<iTermWidthSavingMark> _Nullable{
+        return (id<iTermWidthSavingMark>)mark.doppelganger;
+    }
+            reason:iTermLinesShiftedReasonPortholeResized];
 
     replacementAbsRange.end.y = replacementAbsRange.start.y + newHeight - 1;
     replacementAbsRange.start.y = MAX(self.totalScrollbackOverflow, replacementAbsRange.start.y);
@@ -4346,6 +4376,20 @@ void VT100ScreenEraseCell(screen_char_t *sct,
                              withLines:(NSArray<ScreenCharArray *> *)replacementLines
             removedIntervalTreeObjects:(out NSArray<iTermSavedIntervalTreeObject *> **)removedIntervalTreeObjects
                           removedLines:(out NSArray<ScreenCharArray *> **)removedLines {
+    return [self replaceRange:absRange
+                    withLines:replacementLines
+   removedIntervalTreeObjects:removedIntervalTreeObjects
+                 removedLines:removedLines
+                 markProvider:nil
+                       reason:iTermLinesShiftedReasonPortholeResized];
+}
+
+- (VT100GridAbsCoordRange)replaceRange:(VT100GridAbsCoordRange)absRange
+                             withLines:(NSArray<ScreenCharArray *> *)replacementLines
+            removedIntervalTreeObjects:(out NSArray<iTermSavedIntervalTreeObject *> **)removedIntervalTreeObjects
+                          removedLines:(out NSArray<ScreenCharArray *> **)removedLines
+                          markProvider:(id<iTermWidthSavingMark> _Nullable (^ _Nullable)(void))markProvider
+                                reason:(iTermLinesShiftedReason)reason {
     __block VT100GridAbsCoordRange result;
     __block NSArray<iTermSavedIntervalTreeObject *> *removedMarks = nil;
     __block NSArray<ScreenCharArray *> *removedSCAs = nil;
@@ -4353,7 +4397,9 @@ void VT100ScreenEraseCell(screen_char_t *sct,
         result = [self reallyReplaceRange:absRange
                                 withLines:replacementLines
                removedIntervalTreeObjects:&removedMarks
-                             removedLines:&removedSCAs];
+                             removedLines:&removedSCAs
+                             markProvider:markProvider
+                                   reason:reason];
     }];
     if (removedIntervalTreeObjects) {
         *removedIntervalTreeObjects = removedMarks;
@@ -4367,7 +4413,9 @@ void VT100ScreenEraseCell(screen_char_t *sct,
 - (VT100GridAbsCoordRange)reallyReplaceRange:(VT100GridAbsCoordRange)absRange
                                    withLines:(NSArray<ScreenCharArray *> *)replacementLines
                   removedIntervalTreeObjects:(out NSArray<iTermSavedIntervalTreeObject *> **)removedIntervalTreeObjects
-                                removedLines:(out NSArray<ScreenCharArray *> **)removedLines {
+                                removedLines:(out NSArray<ScreenCharArray *> **)removedLines
+                                markProvider:(id<iTermWidthSavingMark> _Nullable (^ _Nullable)(void))markProvider
+                                      reason:(iTermLinesShiftedReason)reason {
     DLog(@"reallyReplaceRange:%@ withLines:%@", VT100GridAbsCoordRangeDescription(absRange), replacementLines);
 
     const long long overflow = self.cumulativeScrollbackOverflow;
@@ -4384,7 +4432,9 @@ void VT100ScreenEraseCell(screen_char_t *sct,
         return [self reallyReplaceRange:fixed
                               withLines:replacementLines
              removedIntervalTreeObjects:removedIntervalTreeObjects
-                           removedLines:removedLines];
+                           removedLines:removedLines
+                           markProvider:markProvider
+                                 reason:reason];
     }
 
     DLog(@"Before replacing range:");
@@ -4598,6 +4648,91 @@ void VT100ScreenEraseCell(screen_char_t *sct,
     DLog(@"Removed %@", objectsToRemove);
     DLog(@"%@", [self compactLineDumpWithHistoryAndContinuationMarksAndLineNumbersAndIntervalTreeObjects]);
     [self.linebuffer sanityCheck];
+
+    if (delta != 0) {
+        const long long absLine = absRange.start.y;
+        const NSRange replacedRange = NSMakeRange((NSUInteger)absRange.start.y,
+                                                   (NSUInteger)(absRange.end.y - absRange.start.y + 1));
+
+        // Block that converts a coord relative to the replaced range from old layout to new layout.
+        // Capture everything by value to avoid retaining self or the mark.
+        const int currentWidth = self.width;
+        __block LineBuffer *removedContent = nil;
+        __block id<iTermWidthSavingMark> cachedMark = nil;
+        __block int cachedOriginalWidth = 0;
+        __block BOOL cachedMarkResolved = NO;
+        VT100GridCoord (^converter)(VT100GridCoord) = ^VT100GridCoord(VT100GridCoord relativeCoord) {
+            // Resolve the mark once and cache for subsequent calls.
+            if (!cachedMarkResolved) {
+                cachedMarkResolved = YES;
+                cachedMark = markProvider();
+                if (cachedMark) {
+                    cachedOriginalWidth = cachedMark.savedWidth;
+                }
+            }
+            if (!cachedMark) {
+                return relativeCoord;
+            }
+            const int originalWidth = cachedOriginalWidth;
+            assert(originalWidth > 0);
+            const int newWidth = currentWidth;
+            if (newWidth == originalWidth) {
+                return relativeCoord;
+            }
+            // Build the LineBuffer lazily on first use and reuse for subsequent calls.
+            if (!removedContent) {
+                removedContent = [[LineBuffer alloc] init];
+                NSArray<ScreenCharArray *> *savedLines = cachedMark.savedLines ?: @[];
+                for (ScreenCharArray *sca in savedLines) {
+                    [removedContent appendScreenCharArray:sca width:currentWidth];
+                }
+            }
+            LineBufferPosition *pos = [removedContent positionForCoordinate:relativeCoord
+                                                                      width:originalWidth
+                                                                     offset:0];
+            if (!pos) {
+                return VT100GridCoordInvalid;
+            }
+            BOOL ok = NO;
+            VT100GridCoord result = [removedContent coordinateForPosition:pos
+                                                                    width:newWidth
+                                                             extendsRight:NO
+                                                                       ok:&ok];
+            if (!ok) {
+                return VT100GridCoordInvalid;
+            }
+            return result;
+        };
+
+        // Post immediately for mutation-thread ResilientCoordinates.
+        {
+            id<iTermWidthSavingMark> mark = markProvider ? markProvider() : nil;
+            NSMutableDictionary *userInfo = [@{
+                iTermLinesShiftedNotification.absLineKey: @(absLine),
+                iTermLinesShiftedNotification.deltaKey: @(delta),
+                iTermLinesShiftedNotification.reasonKey: @(reason),
+                iTermLinesShiftedNotification.replacedRangeKey: [NSValue valueWithRange:replacedRange],
+                iTermLinesShiftedNotification.converterKey: [converter copy]
+            } mutableCopy];
+            if (mark) {
+                userInfo[iTermLinesShiftedNotification.markKey] = mark;
+            }
+            [[NSNotificationCenter defaultCenter] postNotificationName:iTermRCNotificationNames.linesShifted
+                                                                object:self.uniqueIdentifier
+                                                              userInfo:userInfo];
+        }
+
+        [self addSideEffect:^(id<VT100ScreenDelegate> delegate) {
+            id<iTermWidthSavingMark> mark = markProvider ? markProvider() : nil;
+            [delegate screenDidShiftLinesAtAbsLine:absLine
+                                                by:delta
+                                              mark:mark
+                                            reason:reason
+                                     replacedRange:replacedRange
+                                         converter:converter];
+        } name:@"lines shifted"];
+    }
+
     return resultingRange;
 }
 

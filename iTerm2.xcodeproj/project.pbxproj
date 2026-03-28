@@ -4644,6 +4644,8 @@
 		A6EA848627223B02009D14AB /* graphic_emacs@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A6EA848227223B02009D14AB /* graphic_emacs@2x.png */; };
 		A6EA848727223B02009D14AB /* graphic_emacs@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A6EA848227223B02009D14AB /* graphic_emacs@2x.png */; };
 		A6EA848827223B02009D14AB /* graphic_emacs@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A6EA848227223B02009D14AB /* graphic_emacs@2x.png */; };
+		A6EB08852F785939009F5D5D /* FoldSearchResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EB08842F785939009F5D5D /* FoldSearchResult.swift */; };
+		A6EB08872F785985009F5D5D /* FoldSearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EB08862F785985009F5D5D /* FoldSearchEngine.swift */; };
 		A6EB08892F7859D1009F5D5D /* ResilientCoordinate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EB08882F7859D1009F5D5D /* ResilientCoordinate.swift */; };
 		A6EB2042223EC54E00E928C3 /* ini.c in Sources */ = {isa = PBXBuildFile; fileRef = A6EB2040223EC54D00E928C3 /* ini.c */; };
 		A6EB2043223EC54E00E928C3 /* ini.h in Headers */ = {isa = PBXBuildFile; fileRef = A6EB2041223EC54E00E928C3 /* ini.h */; };
@@ -8850,6 +8852,8 @@
 		A6EA071D24EA441900DD6E17 /* NSURL+IDN.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "NSURL+IDN.h"; path = "NSURL-IDN/NSURL+IDN.h"; sourceTree = "<group>"; };
 		A6EA848127223B02009D14AB /* graphic_emacs.png */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = graphic_emacs.png; path = images/FirstPartyTabIcons/graphic_emacs.png; sourceTree = "<group>"; };
 		A6EA848227223B02009D14AB /* graphic_emacs@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = "graphic_emacs@2x.png"; path = "images/FirstPartyTabIcons/graphic_emacs@2x.png"; sourceTree = "<group>"; };
+		A6EB08842F785939009F5D5D /* FoldSearchResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldSearchResult.swift; sourceTree = "<group>"; };
+		A6EB08862F785985009F5D5D /* FoldSearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldSearchEngine.swift; sourceTree = "<group>"; };
 		A6EB08882F7859D1009F5D5D /* ResilientCoordinate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResilientCoordinate.swift; sourceTree = "<group>"; };
 		A6EB2040223EC54D00E928C3 /* ini.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ini.c; path = inih/ini.c; sourceTree = "<group>"; };
 		A6EB2041223EC54E00E928C3 /* ini.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ini.h; path = inih/ini.h; sourceTree = "<group>"; };
@@ -11305,6 +11309,8 @@
 		A61A85A624F23C7A00B03880 /* Global Search */ = {
 			isa = PBXGroup;
 			children = (
+				A6EB08862F785985009F5D5D /* FoldSearchEngine.swift */,
+				A6EB08842F785939009F5D5D /* FoldSearchResult.swift */,
 				A61A85A024F1A70500B03880 /* iTermGlobalSearch.xib */,
 				A61A85B324F23D0700B03880 /* iTermGlobalSearchEngine.h */,
 				A61A85B424F23D0700B03880 /* iTermGlobalSearchEngine.m */,
@@ -18917,6 +18923,7 @@
 				A6631A1F2D6E4E41006C603B /* Result+iTerm.swift in Sources */,
 				A6EED4622A804A2E006F0DB4 /* InputSourceForcer.swift in Sources */,
 				A6D10E3327F7C2BC0026DB56 /* MultiCursorTextView.swift in Sources */,
+				A6EB08872F785985009F5D5D /* FoldSearchEngine.swift in Sources */,
 				A6CC49902C08EFC1003484B2 /* CommandURLBuilder.swift in Sources */,
 				535EA4E720D04C2A00FC81E0 /* iTermTip.m in Sources */,
 				A6D90D642E2F627B00BA9F4F /* ImageViewWithPopoverMessage.swift in Sources */,
@@ -18974,6 +18981,7 @@
 				5312269B20CB1D3A004831C6 /* iTermBuiltInFunctions.m in Sources */,
 				A60D023F2687F5D800E19362 /* StatusBarKnobFontViewController.swift in Sources */,
 				A65660D92372A69A00DC6744 /* iTermDoublyLinkedList.m in Sources */,
+				A6EB08852F785939009F5D5D /* FoldSearchResult.swift in Sources */,
 				A6E3043F2DFA06B80029CAB4 /* AIMetadata.swift in Sources */,
 				A6352257238CA38A00FED5BC /* iTermMultiServerJobManager.m in Sources */,
 				A6F1B3C52693BC2F00546767 /* iTermNotificationController.m in Sources */,

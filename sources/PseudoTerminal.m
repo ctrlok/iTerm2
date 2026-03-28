@@ -11356,11 +11356,15 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
 - (IBAction)clearToStartOfSelection:(id)sender {
     const long long line = self.currentSession.textview.selection.firstAbsRange.coordRange.start.y;
     [self.currentSession resetMode];
-    [self.currentSession.screen performBlockWithJoinedThreads:^(VT100Terminal *terminal,
-                                                                VT100ScreenMutableState *mutableState,
-                                                                id<VT100ScreenDelegate> delegate) {
-        [mutableState clearFromAbsoluteLineToEnd:line];
-    }];
+    @autoreleasepool {
+        [self.currentSession.screen performBlockWithJoinedThreads:^(VT100Terminal *terminal,
+                                                                    VT100ScreenMutableState *mutableState,
+                                                                    id<VT100ScreenDelegate> delegate) {
+            @autoreleasepool {
+                [mutableState clearFromAbsoluteLineToEnd:line];
+            }
+        }];
+    }
 }
 
 - (IBAction)clearInstantReplay:(id)sender {
