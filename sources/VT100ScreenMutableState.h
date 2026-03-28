@@ -44,6 +44,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (iTermEventuallyConsistentIntervalTree *)mutableSavedIntervalTree;
 - (void)setConfig:(VT100MutableScreenConfiguration *)config;
 
+// Specific to the mutable state. Not related to PTYSession's guid.
+@property (nonatomic, readonly) NSString *uniqueIdentifier;
+
 #pragma mark - Internal
 
 @property (class, atomic, readonly) BOOL performingJoinedBlock;

@@ -59,6 +59,7 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
 @end
 
 @implementation VT100ScreenMutableState {
+    NSString *_uniqueIdentifier;
     BOOL _terminalEnabled;
     VT100Terminal *_terminal;
     BOOL _echoProbeShouldSendPassword;
@@ -87,6 +88,7 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
 
     self = [super initForMutationOnQueue:queue];
     if (self) {
+        _uniqueIdentifier = [[NSUUID UUID] UUIDString];
         _queue = queue;
         _executorUpdate = [[VT100ScreenTokenExecutorUpdate alloc] init];
         __weak __typeof(self) weakSelf = self;
@@ -134,6 +136,10 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
         _kittyImageController.delegate = self;
     }
     return self;
+}
+
+- (void)dealloc {
+    [iTermRCDataSourceDeallocNotification postWithGuid:_uniqueIdentifier];
 }
 
 - (NSString *)description {
@@ -1921,6 +1927,20 @@ void VT100ScreenEraseCell(screen_char_t *sct,
         }];
     }
     [self reloadMarkCache];
+
+    // Post immediately for mutation-thread ResilientCoordinates.
+    {
+        const long long overflow = self.cumulativeScrollbackOverflow;
+        VT100GridAbsCoordRange (^intervalConverter)(id<IntervalTreeImmutableObject>) =
+            ^VT100GridAbsCoordRange(id<IntervalTreeImmutableObject> obj) {
+                const VT100GridCoordRange range = [self coordRangeForInterval:obj.entry.interval];
+                return VT100GridAbsCoordRangeFromCoordRange(range, overflow);
+            };
+        [iTermRCClearToEndNotification postWithGuid:self.uniqueIdentifier
+                                               absY:absLine
+                                  intervalConverter:intervalConverter];
+    }
+
     [self addSideEffect:^(id<VT100ScreenDelegate>  _Nonnull delegate) {
         [delegate screenRemoveSelection];
     } name:@"really clear from absline to end 2"];

@@ -984,7 +984,9 @@ ITERM_WEAKLY_REFERENCEABLE
     [NSApp removeObserver:self forKeyPath:@"effectiveAppearance"];
     NSString *guid = [_guid copy];
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:PTYSessionDidDealloc object:[guid autorelease]];
+        [[NSNotificationCenter defaultCenter] postNotificationName:PTYSessionDidDealloc object:guid];
+        [iTermRCDataSourceDeallocNotification postWithGuid:guid];
+        [guid release];
     });
     if (_textview.delegate == self) {
         _textview.delegate = nil;

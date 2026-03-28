@@ -1489,6 +1489,20 @@ extension PTYSession {
     }
 }
 
+extension PTYSession: ResilientCoordinateDataSource {
+    var rcScrollbackOverflow: Int64 { screen.totalScrollbackOverflow() }
+    var rcNumberOfLines: Int32 { screen.numberOfLines() }
+    var rcGuid: String { guid }
+    var rcWidth: Int32 { screen.width() }
+}
+
+extension VT100ScreenMutableState: ResilientCoordinateDataSource {
+    var rcScrollbackOverflow: Int64 { cumulativeScrollbackOverflow }
+    var rcNumberOfLines: Int32 { Int32(numberOfLines) }
+    var rcGuid: String { uniqueIdentifier }
+    var rcWidth: Int32 { Int32(width) }
+}
+
 extension PTYSession: AutomaticProfileSwitchingSessionDelegate {
     func automaticProfileSwitchingSessionExpressionNeedEvaluation(_ session: AutomaticProfileSwitchingSession) {
         if iTermProfilePreferences.bool(forKey: KEY_PREVENT_APS, inProfile: profile) {
