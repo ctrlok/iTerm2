@@ -20,3 +20,4 @@
 - Avoid duplicate expressions; hoist shared computations into a named `const` before branching.
 - Don't change defaults silently.
 - Use [iTermUserDefaults userDefaults] instead of [NSUserDefaults standardUserDefaults]
+- Use `make run` to build and run a debug build.

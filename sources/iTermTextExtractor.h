@@ -20,8 +20,8 @@ NS_ASSUME_NONNULL_BEGIN
 @class iTermProgress;
 
 typedef NS_ENUM(NSInteger, iTermTextExtractorNullPolicy) {
-    kiTermTextExtractorNullPolicyFromStartToFirst,  // Ignore content prior to last null
-    kiTermTextExtractorNullPolicyFromLastToEnd,  // Ignore content after last null
+    kiTermTextExtractorNullPolicyFromStartToFirst,  // Ignore content after first null
+    kiTermTextExtractorNullPolicyFromLastToEnd,  // Ignore content before last null
     kiTermTextExtractorNullPolicyTreatAsSpace,  // Treat midline nulls as spaces and a range of terminal nulls as a single space
     kiTermTextExtractorNullPolicyMidlineAsSpaceIgnoreTerminal,  // Treat midline nulls as space and strip terminal nulls
 };
