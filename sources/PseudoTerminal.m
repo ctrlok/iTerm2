@@ -4208,7 +4208,9 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
     }
 
     if (shouldClose) {
-        [self killOrHideTmuxWindowForController:nil];
+        if (![self killOrHideTmuxWindowForController:nil]) {
+            shouldClose = NO;
+        }
     }
 
     DLog(@"Return %@", @(shouldClose));
@@ -4216,7 +4218,8 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
 }
 
 // If controller is nil, then do all of them.
-- (void)killOrHideTmuxWindowForController:(TmuxController *)controller {
+// Returns YES if the close should proceed, NO if the user canceled.
+- (BOOL)killOrHideTmuxWindowForController:(TmuxController *)controller {
     int n = 0;
     for (PTYTab *aTab in [self tabs]) {
         if ([aTab isTmuxTab] && !aTab.tmuxController.detached) {
@@ -4263,14 +4266,14 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
                         break;
                     case kiTermWarningSelection3:
                         // Cancel
-                        return;
+                        return NO;
                     case kiTermWarningSelection4:
                     case kiTermWarningSelection5:
                     case kiTermWarningSelection6:
                         ITAssertWithMessage(NO, @"Unexpected selection %@", @(selection));
                         break;
                     case kItermWarningSelectionError:
-                        return;
+                        return NO;
                 }
             }
         }
@@ -4280,6 +4283,7 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
              [[aSession tmuxController] requestDetach];
          }
     }
+    return YES;
 }
 
 - (void)closeInstantReplayWindow {
