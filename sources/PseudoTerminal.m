@@ -550,6 +550,7 @@ typedef NS_ENUM(int, iTermShouldHaveTitleSeparator) {
     const BOOL disableAutoFrame = [_initialProfile[KEY_DISABLE_AUTO_FRAME] boolValue];
     _windowPositioner = [[iTermWindowInitialPositioner alloc] initWithScreenNumberFromFirstProfile:screenNumber
                                                                                   disableAutoFrame:disableAutoFrame
+                                                                                       profileGUID:profile[KEY_GUID]
                                                                                           delegate:self];
     _titlebarAccessoryNanny = [[iTermTitlebarAccessoryNanny alloc] init];
     _titlebarAccessoryNanny.windowController = self;
