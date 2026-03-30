@@ -230,3 +230,4 @@
 #import "iTermCharacterParts.h"
 #import "iTermCharacterSourceTestHelper.h"
 #import "iTermImageComparison.h"
+#import "iTermUnderlineSpanTestHelper.h"

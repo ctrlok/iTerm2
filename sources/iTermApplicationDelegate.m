@@ -253,13 +253,41 @@ static BOOL hasBecomeActive = NO;
     iTermGlobalSearchWindowController *_globalSearchWindowController;
 }
 
++ (BOOL)isCompareRenderingMode {
+    static BOOL result;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSArray *arguments = [[NSProcessInfo processInfo] arguments];
+        for (NSString *arg in arguments) {
+            if ([arg isEqualToString:@"-compare-rendering"]) {
+                result = YES;
+                return;
+            }
+        }
+    });
+    return result;
+}
+
+static NSModalResponse iTermCompareRenderingRunModal(id self, SEL _cmd) {
+    return NSAlertFirstButtonReturn;
+}
+
 - (instancetype)init {
     self = [super init];
     if (self) {
+        if ([iTermApplicationDelegate isCompareRenderingMode]) {
+            // Suppress all alerts in compare-rendering mode. macOS's
+            // NSPersistentUIRestorer may show a "unexpectedly quit while
+            // reopening windows" alert via -[NSAlert runModal] and we
+            // can't prevent it through public API.
+            Method m = class_getInstanceMethod([NSAlert class], @selector(runModal));
+            method_setImplementation(m, (IMP)iTermCompareRenderingRunModal);
+        }
         _untitledWindowStateMachine = [[iTermUntitledWindowStateMachine alloc] init];
         _untitledWindowStateMachine.delegate = self;
         if ([iTermAdvancedSettingsModel useRestorableStateController] &&
-            ![[NSApplication sharedApplication] isRunningUnitTests]) {
+            ![[NSApplication sharedApplication] isRunningUnitTests] &&
+            ![iTermApplicationDelegate isCompareRenderingMode]) {
             _restorableStateController = [iTermRestorableStateController sharedInstance];
             _restorableStateController.delegate = self;
         }
@@ -1072,6 +1100,10 @@ static BOOL hasBecomeActive = NO;
     // * NOTE *
     // ********
     // If you change this also change -restorableStateEncoderAppStateWithEncoder.
+    if ([iTermApplicationDelegate isCompareRenderingMode]) {
+        DLog(@"Skip encoding restorable state in compare-rendering mode");
+        return;
+    }
     if ([iTermAdvancedSettingsModel storeStateInSqlite]) {
         DLog(@"Using sqlite-based restoration so not saving anything.");
         return;
@@ -1099,6 +1131,10 @@ static BOOL hasBecomeActive = NO;
 
 - (void)application:(NSApplication *)app didDecodeRestorableState:(NSCoder *)coder {
     DLog(@"application:didDecodeRestorableState: starting");
+    if ([iTermApplicationDelegate isCompareRenderingMode]) {
+        DLog(@"Skip decoding restorable state in compare-rendering mode");
+        return;
+    }
     if ([iTermAdvancedSettingsModel storeStateInSqlite]) {
         DLog(@"Using sqlite-based restoration so not restoring anything.");
         return;
