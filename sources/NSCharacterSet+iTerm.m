@@ -1746,7 +1746,7 @@ unichar iTermMinimumDefaultEmojiPresentationCodePoint = 0x231a;
     static NSCharacterSet *cached;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        cached = [[NSCharacterSet characterSetWithCharactersInString:@" \0"] retain];
+        cached = [NSCharacterSet characterSetWithCharactersInString:@" \0"];
     });
     return cached;
 }

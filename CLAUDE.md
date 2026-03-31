@@ -21,3 +21,4 @@
 - Don't change defaults silently.
 - Use [iTermUserDefaults userDefaults] instead of [NSUserDefaults standardUserDefaults]
 - Use `make run` to build and run a debug build.
+- Do not use associated objects (objc_getAssociatedObject or objc_setAssociatedObject) without express written permission.
