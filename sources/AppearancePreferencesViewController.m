@@ -144,7 +144,6 @@ NSString *const iTermProcessTypeDidChangeNotification = @"iTermProcessTypeDidCha
     info.onChange = ^() {
         [[iTermApplication sharedApplication] updateAppearance];
         [weakSelf postRefreshNotification];
-        [weakSelf updateProxyIconEnabled];
     };
     info.hasDefaultValue = ^BOOL{
         return [weakSelf unsignedIntegerForKey:kPreferenceKeyTabStyle] == TAB_STYLE_AUTOMATIC;
@@ -409,12 +408,6 @@ NSString *const iTermProcessTypeDidChangeNotification = @"iTermProcessTypeDidCha
     if (@available(macOS 26, *)) {} else {
         _hideMenuItemIcons.enabled = NO;
     }
-    [self updateProxyIconEnabled];
-}
-
-- (void)updateProxyIconEnabled {
-    const iTermPreferencesTabStyle tabStyle = [self intForKey:kPreferenceKeyTabStyle];
-    _enableProxyIcon.enabled = (tabStyle != TAB_STYLE_MINIMAL);
 }
 
 - (void)dealloc {

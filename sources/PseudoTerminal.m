@@ -5065,11 +5065,13 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
     if (@available(macOS 26, *)) {
         stoplightButtonsWidth += 3;
     }
+    const CGFloat proxyIconWidth = [_contentView compactProxyIconWidthIncludingMargin];
     switch ([iTermPreferences intForKey:kPreferenceKeyTabPosition]) {
         case PSMTab_TopTab: {
             const CGFloat extraSpace = MAX(0, [iTermAdvancedSettingsModel extraSpaceBeforeCompactTopTabBar]);
             if ([self rootTerminalViewWindowNumberLabelShouldBeVisible]) {
                 const CGFloat leftInset = (stoplightButtonsWidth +
+                                           proxyIconWidth +
                                            iTermRootTerminalViewWindowNumberLabelMargin * 2 +
                                            iTermRootTerminalViewWindowNumberLabelWidth +
                                            extraSpace);
@@ -5079,7 +5081,8 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
                                         0);
             } else {
                 // Make room for stoplight buttons when there is no tab title.
-                return NSEdgeInsetsMake(0, stoplightButtonsWidth + extraSpace, 0, 0);
+                const CGFloat proxyIconExtraPadding = proxyIconWidth > 0 ? 4 : 0;
+                return NSEdgeInsetsMake(0, stoplightButtonsWidth + proxyIconWidth + proxyIconExtraPadding + extraSpace, 0, 0);
             }
         }
         case PSMTab_LeftTab:
@@ -6817,6 +6820,7 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
 - (void)updateProxyIcon {
     if (![self proxyIconIsAllowed]) {
         self.window.representedURL = nil;
+        [_contentView updateProxyIcon];
         return;
     }
     if (self.currentSession.preferredProxyIcon) {
@@ -10176,6 +10180,7 @@ typedef struct {
     } else {
         [self setWindowTitle];
     }
+    [self repositionWidgets];
 }
 
 static BOOL iTermApproximatelyEqualRects(NSRect lhs, NSRect rhs, double epsilon) {
@@ -10528,6 +10533,7 @@ static BOOL iTermApproximatelyEqualRects(NSRect lhs, NSRect rhs, double epsilon)
     const BOOL hideProxy = ([self proxyIconIsAllowed] &&
                             ![self proxyIconShouldBeVisible]);
     [[self.window standardWindowButton:NSWindowDocumentIconButton] setHidden:hideProxy];
+    [_contentView updateProxyIcon];
 }
 
 - (BOOL)rootTerminalViewShouldDrawStoplightButtons {
