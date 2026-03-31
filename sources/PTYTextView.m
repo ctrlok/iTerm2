@@ -154,10 +154,20 @@ const CGFloat PTYTextViewMarginClickGraceWidth = 2.0;
 
     // Last position that accessibility was read up to.
     int _lastAccessibilityCursorX;
-    int _lastAccessibiltyAbsoluteCursorY;
+    long long _lastAccessibiltyAbsoluteCursorY;
 
     // Stored cursor line for accessibility deletion detection.
     iTermLocatedString *_lastAccessibilityCursorLineLocatedString;
+
+    // Tracks cursor Y from the previous refresh cycle (updated every cycle)
+    // for detecting cursor-down movement that indicates new output.
+    long long _accessibilityPreviousRefreshAbsY;
+    // The absolute Y where output started (the cursor position before
+    // the first downward move). nil means no output is pending.
+    NSNumber *_accessibilityPendingOutputStartAbsY;
+    // The cursor line string at the time output was first detected,
+    // used to filter the command line from the announcement.
+    NSString *_accessibilityPendingOutputCursorLineString;
 
     // Detects three finger taps (as opposed to clicks).
     ThreeFingerTapGestureRecognizer *threeFingerTapGestureRecognizer_;
@@ -378,6 +388,9 @@ const CGFloat PTYTextViewMarginClickGraceWidth = 2.0;
 }
 
 - (void)dealloc {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                             selector:@selector(accessibilityAnnounceNewOutputAfterSettle)
+                                               object:nil];
     [_mouseHandler release];
     [_selection release];
     [_oldSelection release];
@@ -413,6 +426,8 @@ const CGFloat PTYTextViewMarginClickGraceWidth = 2.0;
     [_drawingHelper release];
     [_accessibilityHelper release];
     [_lastAccessibilityCursorLineLocatedString release];
+    [_accessibilityPendingOutputStartAbsY release];
+    [_accessibilityPendingOutputCursorLineString release];
     [_badgeLabel release];
     [_quickLookController close];
     [_quickLookController release];
@@ -2926,22 +2941,138 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
     NSAccessibilityPostNotification(self, NSAccessibilityRowCountChangedNotification);
 }
 
-// Announces deleted text to VoiceOver.
-- (void)accessibilityAnnounceDeletedText:(NSString *)text {
+// Posts a VoiceOver announcement with HIGH priority.
+// target controls whether VoiceOver associates the announcement with the text
+// view's cursor (self) or the application (NSApp). Deletion uses self; output
+// uses NSApp to avoid cursor-position interference.
+- (void)accessibilityAnnounce:(NSString *)text target:(id)target {
     NSString *trimmed = [text stringByTrimmingCharactersInSet:
-        [NSCharacterSet characterSetWithCharactersInString:@" \0"]];
+        [NSCharacterSet it_accessibilityTrimCharacterSet]];
     if (trimmed.length == 0) {
         return;
     }
-    AccLog(@"Announcing deleted text: %@", trimmed);
+    AccLog(@"Announcing: %@", trimmed);
     NSDictionary *info = @{
         NSAccessibilityAnnouncementKey: trimmed,
         NSAccessibilityPriorityKey: @(NSAccessibilityPriorityHigh)
     };
     NSAccessibilityPostNotificationWithUserInfo(
-        self,
+        target,
         NSAccessibilityAnnouncementRequestedNotification,
         info);
+}
+
+- (void)accessibilityAnnounceDeletedText:(NSString *)text {
+    [self accessibilityAnnounce:text target:self];
+}
+
+// Builds a string from a screen line where index i = cell i.
+// Complex chars use their first codepoint; nulls and private chars become spaces.
+- (NSString *)accessibilityStringForScreenLine:(const screen_char_t *)line
+                                        length:(int)length {
+    NSMutableString *result = [NSMutableString stringWithCapacity:length];
+    for (int i = 0; i < length; i++) {
+        if (line[i].image ||
+            line[i].code == 0 ||
+            (line[i].code >= ITERM2_PRIVATE_BEGIN && line[i].code <= ITERM2_PRIVATE_END)) {
+            [result appendString:@" "];
+        } else {
+            [result appendString:(ScreenCharToStr(&line[i]) ?: @" ")];
+        }
+    }
+    return result;
+}
+
+// Returns a trimmed string for the line at getLineAtIndex: index, or nil if out of bounds.
+- (NSString *)accessibilityTrimmedStringForLineAtIndex:(int)lineIndex {
+    if (lineIndex < 0 || lineIndex >= [_dataSource numberOfLines]) {
+        return nil;
+    }
+    ScreenCharArray *sca = [_dataSource screenCharArrayForLine:lineIndex];
+    NSString *result = [self accessibilityStringForScreenLine:sca.line length:sca.length];
+    return [result stringByTrimmingCharactersInSet:
+        [NSCharacterSet it_accessibilityTrimCharacterSet]];
+}
+
+- (void)accessibilityClearPendingOutputState {
+    [_accessibilityPendingOutputStartAbsY release];
+    _accessibilityPendingOutputStartAbsY = nil;
+    [_accessibilityPendingOutputCursorLineString release];
+    _accessibilityPendingOutputCursorLineString = nil;
+}
+
+- (void)accessibilityPostOutputLayoutChangedNotification {
+    NSDictionary *info = @{
+        NSAccessibilityUIElementsKey: @[ self ],
+        NSAccessibilityPriorityKey: @(NSAccessibilityPriorityLow)
+    };
+    NSAccessibilityPostNotificationWithUserInfo(
+        self,
+        NSAccessibilityLayoutChangedNotification,
+        info);
+}
+
++ (NSArray<NSString *> *)accessibilityAnnouncementLinesForTrimmedLines:(NSArray<NSString *> *)trimmedLines
+                                                     firstAbsoluteLine:(long long)firstAbsoluteLine
+                                                       oldAbsoluteCursorY:(long long)oldAbsoluteCursorY
+                                                     oldCursorLineString:(NSString *)oldCursorLineString {
+    NSString *oldTrimmed = [oldCursorLineString stringByTrimmingCharactersInSet:
+        [NSCharacterSet it_accessibilityTrimCharacterSet]];
+    // Remove the command line from the output if it appears at the expected position.
+    NSMutableArray<NSString *> *lines = [[trimmedLines mutableCopy] autorelease];
+    const long long cmdIndex = oldAbsoluteCursorY - firstAbsoluteLine;
+    if (cmdIndex >= 0 && cmdIndex < (long long)lines.count &&
+        oldTrimmed.length > 0 &&
+        [lines[cmdIndex] isEqualToString:oldTrimmed]) {
+        [lines replaceObjectAtIndex:cmdIndex withObject:@""];
+    }
+    return [lines mapWithBlock:^NSString *(NSString *line) {
+        return line.length > 0 ? line : nil;
+    }];
+}
+
+- (void)accessibilityAnnounceNewOutputAfterSettle {
+    AccLog(@"accessibilityAnnounceNewOutputAfterSettle called, pendingStartAbsY=%@", _accessibilityPendingOutputStartAbsY);
+    if (!_accessibilityPendingOutputStartAbsY) {
+        return;
+    }
+    const long long absCursorY = ([_dataSource cursorY] - 1 +
+                                  [_dataSource numberOfScrollbackLines] +
+                                  [_dataSource totalScrollbackOverflow]);
+    const long long oldAbsY = _accessibilityPendingOutputStartAbsY.longLongValue;
+    const long long overflow = [_dataSource totalScrollbackOverflow];
+
+    const long long firstAbsY = oldAbsY;
+    const long long lastAbsY = absCursorY - 1;
+
+    AccLog(@"Output settle: firstAbsY=%lld lastAbsY=%lld cursorAbsY=%lld overflow=%lld", firstAbsY, lastAbsY, absCursorY, overflow);
+
+    if (firstAbsY > lastAbsY) {
+        AccLog(@"No lines to announce (firstAbsY > lastAbsY)");
+        [self accessibilityClearPendingOutputState];
+        return;
+    }
+
+    NSMutableArray<NSString *> *trimmedLines = [NSMutableArray array];
+    for (long long absLine = firstAbsY; absLine <= lastAbsY; absLine++) {
+        int relativeIndex = (int)(absLine - overflow);
+        NSString *line = [self accessibilityTrimmedStringForLineAtIndex:relativeIndex] ?: @"";
+        AccLog(@"  line[%d] (abs %lld): \"%@\"", relativeIndex, absLine, line);
+        [trimmedLines addObject:line];
+    }
+
+    NSArray<NSString *> *outputLines =
+        [PTYTextView accessibilityAnnouncementLinesForTrimmedLines:trimmedLines
+                                                 firstAbsoluteLine:firstAbsY
+                                                   oldAbsoluteCursorY:oldAbsY
+                                                 oldCursorLineString:_accessibilityPendingOutputCursorLineString];
+    AccLog(@"Filtered %@ lines down to %@ (oldCursorLine=\"%@\")", @(trimmedLines.count), @(outputLines.count), _accessibilityPendingOutputCursorLineString);
+    if (outputLines.count > 0) {
+        [self accessibilityAnnounce:[outputLines componentsJoinedByString:@"\n"] target:NSApp];
+        [self accessibilityPostOutputLayoutChangedNotification];
+    }
+
+    [self accessibilityClearPendingOutputState];
 }
 
 // Update accessibility, to be called periodically.
@@ -2949,6 +3080,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
     const long long absCursorY = ([_dataSource cursorY] - 1 +
                                   [_dataSource numberOfScrollbackLines] +
                                   [_dataSource totalScrollbackOverflow]);
+    const long long oldAbsY = _lastAccessibiltyAbsoluteCursorY;
 
     // Detect text deletion and announce for VoiceOver.
     // This must run BEFORE posting NSAccessibilityValueChangedNotification,
@@ -2959,7 +3091,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
     iTermLocatedString *newLocatedString = nil;
 
     if (_lastAccessibilityCursorLineLocatedString &&
-        _lastAccessibiltyAbsoluteCursorY == absCursorY) {
+        oldAbsY == absCursorY) {
         newLocatedString = [self accessibilityLocatedStringForCursorLine];
         NSString *deletedText = [self accessibilityDetectDeletionWithOldCursorX:_lastAccessibilityCursorX
                                                                      newCursorX:newCursorX
@@ -2971,22 +3103,61 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
         }
     }
 
-    // Skip the generic value-changed notification when we announced deleted
-    // text, so VoiceOver doesn't override our announcement by reading the
-    // character at the cursor position.
-    if (!announcedDeletion) {
+    // Output often arrives across multiple rapid refresh cycles, so defer the
+    // read until the cursor has stopped moving down for a short period.
+    const BOOL cursorMovedDown = (!announcedDeletion &&
+                                  _accessibilityPreviousRefreshAbsY > 0 &&
+                                  absCursorY > _accessibilityPreviousRefreshAbsY);
+    BOOL outputAnnouncementPending = (_accessibilityPendingOutputStartAbsY != nil);
+
+    // If the cursor moved UP while output is pending, the user is likely
+    // reviewing history (Ctrl+L, clear, reverse-i-search) rather than
+    // reading fresh output. Cancel the pending announcement.
+    if (outputAnnouncementPending &&
+        _accessibilityPreviousRefreshAbsY > 0 &&
+        absCursorY < _accessibilityPreviousRefreshAbsY) {
+        [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                                 selector:@selector(accessibilityAnnounceNewOutputAfterSettle)
+                                                   object:nil];
+        [self accessibilityClearPendingOutputState];
+        outputAnnouncementPending = NO;
+    }
+
+    if (cursorMovedDown && oldAbsY > 0) {
+        if (!outputAnnouncementPending) {
+            [_accessibilityPendingOutputStartAbsY release];
+            _accessibilityPendingOutputStartAbsY = [@(oldAbsY) retain];
+            [_accessibilityPendingOutputCursorLineString release];
+            _accessibilityPendingOutputCursorLineString =
+                [_lastAccessibilityCursorLineLocatedString.string copy];
+        }
+        [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                                 selector:@selector(accessibilityAnnounceNewOutputAfterSettle)
+                                                   object:nil];
+        [self performSelector:@selector(accessibilityAnnounceNewOutputAfterSettle)
+                   withObject:nil
+                   afterDelay:0.15];
+        outputAnnouncementPending = YES;
+    }
+
+    // Skip generic value-changed and selected-text-changed notifications while
+    // output is pending or deletion was announced. Those are what cause
+    // VoiceOver to read the current prompt-space before the deferred output
+    // announcement.
+    if (!announcedDeletion && !outputAnnouncementPending) {
         AccLog(@"Post notification: value changed");
         NSAccessibilityPostNotification(self, NSAccessibilityValueChangedNotification);
     }
 
     if (newCursorX != _lastAccessibilityCursorX ||
-        absCursorY != _lastAccessibiltyAbsoluteCursorY) {
-        // Skip cursor-change notifications when we announced deleted text,
-        // because they cause VoiceOver to read the character at the new cursor
-        // position, overriding our deletion announcement.
+        absCursorY != oldAbsY) {
         if (!announcedDeletion) {
-            AccLog(@"Post notification: selected text changed (cursor is now at (%@,%@))", @(_dataSource.cursorX), @(_dataSource.cursorY));
-            NSAccessibilityPostNotification(self, NSAccessibilitySelectedTextChangedNotification);
+            if (!outputAnnouncementPending) {
+                AccLog(@"Post notification: selected text changed (cursor is now at (%@,%@))", @(_dataSource.cursorX), @(_dataSource.cursorY));
+                NSAccessibilityPostNotification(self, NSAccessibilitySelectedTextChangedNotification);
+            }
+            // Keep row/column notifications flowing so VoiceOver's cursor
+            // state stays current even while output is pending.
             AccLog(@"Post notification: selected row changed");
             NSAccessibilityPostNotification(self, NSAccessibilitySelectedRowsChangedNotification);
             AccLog(@"Post notification: selected columns changed");
@@ -3008,6 +3179,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
     }
     [_lastAccessibilityCursorLineLocatedString autorelease];
     _lastAccessibilityCursorLineLocatedString = [newLocatedString retain];
+    _accessibilityPreviousRefreshAbsY = absCursorY;
 }
 
 // This is called periodically. It updates the frame size, scrolls if needed, ensures selections

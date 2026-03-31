@@ -1739,4 +1739,16 @@ unichar iTermMinimumDefaultEmojiPresentationCodePoint = 0x231a;
     return cached;
 }
 
+// ============================================================================
+// Accessibility Trim Characters (spaces and nulls)
+// ============================================================================
++ (NSCharacterSet *)it_accessibilityTrimCharacterSet {
+    static NSCharacterSet *cached;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        cached = [[NSCharacterSet characterSetWithCharactersInString:@" \0"] retain];
+    });
+    return cached;
+}
+
 @end

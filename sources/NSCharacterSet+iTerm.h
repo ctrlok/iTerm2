@@ -22,5 +22,6 @@ extern unichar iTermMinimumDefaultEmojiPresentationCodePoint;
 + (NSCharacterSet *)it_unsafeForDisplayCharacters;
 + (NSCharacterSet *)it_base64Characters;
 + (NSCharacterSet *)it_urlSafeBase64Characters;
++ (NSCharacterSet *)it_accessibilityTrimCharacterSet;
 
 @end
