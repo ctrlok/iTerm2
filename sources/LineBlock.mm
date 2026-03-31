@@ -87,8 +87,8 @@ static NSString *LineBlockLocationDescription(LineBlockLocation location) {
 static LineBlockLocation LineBlockMakeLocation(int offset, int length, int index) {
     return (LineBlockLocation){
         .prev = offset,
-        .length = length,
-        .index = index
+        .index = index,
+        .length = length
     };
 }
 

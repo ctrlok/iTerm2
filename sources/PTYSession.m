@@ -7937,7 +7937,7 @@ extendResultsAcrossSoftBoundaries:(BOOL)extendResultsAcrossSoftBoundaries {
                                         8,
                                         1 * 4,
                                         [self metalColorSpace],
-                                        kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host);
+                                        CGBitmapInfoMake(kCGImageAlphaPremultipliedFirst, kCGImageComponentInteger, kCGImageByteOrder32Host, kCGImagePixelFormatPacked));
     }
     return context;
 }
@@ -7970,7 +7970,7 @@ extendResultsAcrossSoftBoundaries:(BOOL)extendResultsAcrossSoftBoundaries {
                                           8,
                                           scaledSize.width * 4,  // bytes per row
                                           [PTYSession metalColorSpace],
-                                          kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host);
+                                          CGBitmapInfoMake(kCGImageAlphaPremultipliedFirst, kCGImageComponentInteger, kCGImageByteOrder32Host, kCGImagePixelFormatPacked));
     // Initialize to transparent. Character sources will clear only the
     // area they draw into after copying pixels, keeping the context clean.
     CGContextClearRect(_metalContext, CGRectMake(0, 0, scaledSize.width, scaledSize.height));
