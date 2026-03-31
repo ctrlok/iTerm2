@@ -1235,7 +1235,8 @@ int decode_utf8_char(const unsigned char *datap,
     NSFont *aFont = [NSFont fontWithDescriptor:descriptor textTransform:nil];
     if (aFont == nil) {
         DLog(@"Failed to look up font named %@. Falling back to to user font", fontName);
-        return [NSFont userFixedPitchFontOfSize:0.0] ?: [NSFont systemFontOfSize:[NSFont systemFontSize]];
+        CGFloat fallbackSize = fontSize > 0 ? fontSize : 0.0;
+        return [NSFont userFixedPitchFontOfSize:fallbackSize] ?: [NSFont systemFontOfSize:fallbackSize ?: [NSFont systemFontSize]];
     }
     DLog(@"Font %@ is %@", fontName, aFont);
 
