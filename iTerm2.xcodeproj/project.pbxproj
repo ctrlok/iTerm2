@@ -4637,6 +4637,7 @@
 		A6E7AEB9214394F600DE9F3B /* graphic_ethereum.png in Resources */ = {isa = PBXBuildFile; fileRef = A6E7AEA2214394F600DE9F3B /* graphic_ethereum.png */; };
 		A6E7AEBA214394F600DE9F3B /* graphic_ethereum.png in Resources */ = {isa = PBXBuildFile; fileRef = A6E7AEA2214394F600DE9F3B /* graphic_ethereum.png */; };
 		A6E7E122286E41730067642D /* NSMenu+iTerm.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E7E121286E41730067642D /* NSMenu+iTerm.swift */; };
+		A6E7ED2F2F7CAFDD001349AE /* it2 in CopyFiles */ = {isa = PBXBuildFile; fileRef = A6E7ED2E2F7CAFDD001349AE /* it2 */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A6E8BA0419DBCB01005C79E8 /* iTermIntegerNumberFormatter.h in Headers */ = {isa = PBXBuildFile; fileRef = A6E8BA0219DBCB01005C79E8 /* iTermIntegerNumberFormatter.h */; };
 		A6E8BA0519DBCB01005C79E8 /* iTermIntegerNumberFormatter.h in Headers */ = {isa = PBXBuildFile; fileRef = A6E8BA0219DBCB01005C79E8 /* iTermIntegerNumberFormatter.h */; };
 		A6E8EA1E2DD2DDC1001143CF /* unordered_dense.h in Headers */ = {isa = PBXBuildFile; fileRef = A6E8EA1C2DD2DDC1001143CF /* unordered_dense.h */; };
@@ -5409,6 +5410,7 @@
 			dstPath = utilities;
 			dstSubfolderSpec = 7;
 			files = (
+				A6E7ED2F2F7CAFDD001349AE /* it2 in CopyFiles */,
 				A6CB24AF2C68155800005824 /* imgcat in CopyFiles */,
 				A6CB24B02C68155800005824 /* imgls in CopyFiles */,
 				A6CB24B12C68155800005824 /* it2api in CopyFiles */,
@@ -8780,6 +8782,8 @@
 		A6E7AEA1214394F600DE9F3B /* graphic_database@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = "graphic_database@2x.png"; path = "hyper-tab-icons-plus/png/graphic_database@2x.png"; sourceTree = "<group>"; };
 		A6E7AEA2214394F600DE9F3B /* graphic_ethereum.png */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = graphic_ethereum.png; path = "hyper-tab-icons-plus/png/graphic_ethereum.png"; sourceTree = "<group>"; };
 		A6E7E121286E41730067642D /* NSMenu+iTerm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSMenu+iTerm.swift"; sourceTree = "<group>"; };
+		A6E7ED2E2F7CAFDD001349AE /* it2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = it2; path = it2cli/bin/it2; sourceTree = "<group>"; };
+		A6E7F31B2F7DD5E9001349AE /* it2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = it2; path = it2cli/bin/it2; sourceTree = "<group>"; };
 		A6E8BA0219DBCB01005C79E8 /* iTermIntegerNumberFormatter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iTermIntegerNumberFormatter.h; sourceTree = "<group>"; };
 		A6E8BA0319DBCB01005C79E8 /* iTermIntegerNumberFormatter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = iTermIntegerNumberFormatter.m; sourceTree = "<group>"; };
 		A6E8EA1C2DD2DDC1001143CF /* unordered_dense.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = unordered_dense.h; sourceTree = "<group>"; };
@@ -9481,6 +9485,8 @@
 		0464AB0D006CD2EC7F000001 = {
 			isa = PBXGroup;
 			children = (
+				A6E7ED2E2F7CAFDD001349AE /* it2 */,
+				A6E7F31B2F7DD5E9001349AE /* it2 */,
 				A6B1C69D2DC15898008AD3CA /* ModernTests.xctestplan */,
 				A63F2A3A23FA5951008DDEA4 /* it2run */,
 				5370676121C9D2390088D0F3 /* SignedArchive */,
