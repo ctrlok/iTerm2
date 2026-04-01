@@ -709,7 +709,7 @@ final class PreconvertedStringTests: XCTestCase {
     func testNestedPushPopSGR() {
         // Push, set bold, push, set italic, pop → bold only, send string A
         // Pop → default, send string B
-        let bytes: [UInt8] = Array((
+        let combined =
             "\u{1b}[#{" +      // push (save default)
             "\u{1b}[1m" +      // set bold
             "\u{1b}[#{" +      // push (save bold)
@@ -718,7 +718,7 @@ final class PreconvertedStringTests: XCTestCase {
             "你好世界" +
             "\u{1b}[#}" +      // pop → restore default
             "漢字漢字"
-        ).utf8)
+        let bytes: [UInt8] = Array(combined.utf8)
         let parser = makeParser()
         parser.update(defaultConfig())
         let tokens = parse(bytes, parser: parser)
