@@ -805,7 +805,7 @@ const CGFloat PTYTextViewMarginClickGraceWidth = 2.0;
     int extra = 0;
     int curX = x;
     for (int i = 0; i < len; ++i) {
-        if (curX == 0 && ScreenCharIsDWC_RIGHT(buf[i])) {
+        if (curX == 0 && (ScreenCharIsDWC_RIGHT(buf[i]) || ScreenCharIsDWL_SPACER(buf[i]))) {
             ++extra;
             ++curX;
         }
@@ -3530,6 +3530,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
         }
         unichar code = line[result.start.x].code;
         BOOL trim = ((code == 0) ||
+                     code == DWL_SPACER ||
                      (trimSpaces && (code == ' ' || code == '\t' || code == TAB_FILLER)));
         if (trim) {
             result.start.x++;
@@ -3559,6 +3560,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
         }
         unichar code = line[x].code;
         BOOL trim = ((code == 0) ||
+                     code == DWL_SPACER ||
                      (trimSpaces && (code == ' ' || code == '\t' || code == TAB_FILLER)));
         if (trim) {
             result.end = VT100GridCoordMake(x, y);
@@ -3800,7 +3802,8 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
                         cappedAtSize:-1
                         truncateTail:YES
                    continuationChars:nil
-                              coords:nil];
+                              coords:nil
+                   deduplicateDECDHL:NO];
 }
 
 - (BOOL)liveSelectionRespectsSoftBoundaries {
@@ -4074,10 +4077,10 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
     return [self contentWithAttributes:NO timestamps:NO];
 }
 
-- (NSDictionary *(^)(screen_char_t, iTermExternalAttribute *))attributeProviderUsingProcessedColors:(BOOL)processed
+- (NSDictionary *(^)(screen_char_t, iTermExternalAttribute *, const iTermImmutableMetadata *))attributeProviderUsingProcessedColors:(BOOL)processed
                                                                         elideDefaultBackgroundColor:(BOOL)elideDefaultBackgroundColor {
-    return [[^NSDictionary *(screen_char_t theChar, iTermExternalAttribute *ea) {
-        return [self charAttributes:theChar externalAttributes:ea processed:processed elideDefaultBackgroundColor:elideDefaultBackgroundColor];
+    return [[^NSDictionary *(screen_char_t theChar, iTermExternalAttribute *ea, const iTermImmutableMetadata *metadata) {
+        return [self charAttributes:theChar externalAttributes:ea metadata:metadata processed:processed elideDefaultBackgroundColor:elideDefaultBackgroundColor];
     } copy] autorelease];
 }
 
@@ -4088,7 +4091,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
                                                            0,
                                                            [_dataSource width],
                                                            [_dataSource numberOfLines] - 1);
-    NSDictionary *(^attributeProvider)(screen_char_t, iTermExternalAttribute *) = nil;
+    NSDictionary *(^attributeProvider)(screen_char_t, iTermExternalAttribute *, const iTermImmutableMetadata *) = nil;
     if (attributes) {
         attributeProvider = [self attributeProviderUsingProcessedColors:NO elideDefaultBackgroundColor:NO];
     }
@@ -4101,7 +4104,8 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
                         cappedAtSize:-1
                         truncateTail:YES
                    continuationChars:nil
-                              coords:nil];
+                              coords:nil
+                   deduplicateDECDHL:YES];
 }
 
 // Save method
@@ -4364,9 +4368,13 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
          VT100GridCoordDescription(cursor), VT100GridCoordDescription(target));
     VT100Output *terminalOutput = [_dataSource terminalOutput];
     iTermTextExtractor *extractor = [iTermTextExtractor textExtractorWithDataSource:_dataSource];
+    // Snap target off DWL_SPACER/DWC_RIGHT — cursor should never land on either.
+    if ([extractor haveDoubleWidthExtensionAt:target]) {
+        target = [extractor predecessorOfCoord:VT100GridCoordMake(target.x + 1, target.y)];
+    }
     NSComparisonResult initialOrder = VT100GridCoordOrder(cursor, target);
     // Note that we could overshoot the destination because of double-width characters if the target
-    // is a DWC_RIGHT.
+    // is a DWC_RIGHT or DWL_SPACER.
     NSMutableString *stringToSend = [NSMutableString string];
     NSString *rightArrow = [[terminalOutput keyArrowRight:0] stringWithEncoding:NSISOLatin1StringEncoding];
     NSString *leftArrow = [[terminalOutput keyArrowLeft:0] stringWithEncoding:NSISOLatin1StringEncoding];
@@ -4886,8 +4894,8 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
                                                                      [_dataSource width],
                                                                      lineOffset + numLines - 1);
             [self printContent:[extractor contentInRange:VT100GridWindowedRangeMake(coordRange, 0, 0)
-                                       attributeProvider:^NSDictionary *(screen_char_t theChar, iTermExternalAttribute *ea) {
-                return [self charAttributes:theChar externalAttributes:ea processed:NO elideDefaultBackgroundColor:NO];
+                                       attributeProvider:^NSDictionary *(screen_char_t theChar, iTermExternalAttribute *ea, const iTermImmutableMetadata *metadata) {
+                return [self charAttributes:theChar externalAttributes:ea metadata:metadata processed:NO elideDefaultBackgroundColor:NO];
             }
                                               nullPolicy:kiTermTextExtractorNullPolicyTreatAsSpace
                                                      pad:NO
@@ -4896,7 +4904,8 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
                                             cappedAtSize:-1
                                             truncateTail:YES
                                        continuationChars:nil
-                                                  coords:nil]];
+                                                  coords:nil
+                                       deduplicateDECDHL:YES]];
             break;
         case 1: // text selection
             [self printContent:[self selectedAttributedTextWithPad:NO]];
@@ -5766,7 +5775,7 @@ extendResultsAcrossSoftBoundaries:(BOOL)extendResultsAcrossSoftBoundaries {
              }
 
             theLine = [_dataSource screenCharArrayForLine:coord.y].line;
-        } while (ScreenCharIsDWC_RIGHT(theLine[coord.x]));
+        } while (ScreenCharIsDWC_RIGHT(theLine[coord.x]) || ScreenCharIsDWL_SPACER(theLine[coord.x]));
         result = VT100GridAbsCoordFromCoord(coord, totalScrollbackOverflow);
     }];
     if (!ok) {
@@ -6995,7 +7004,8 @@ static NSString *iTermStringFromRange(NSRange range) {
                               cappedAtSize:-1
                               truncateTail:YES
                          continuationChars:nil
-                                    coords:nil];
+                                    coords:nil
+                         deduplicateDECDHL:YES];
     }
     if (string.length > 0) {
         [self copyString:string];
@@ -7180,7 +7190,8 @@ static NSString *iTermStringFromRange(NSRange range) {
                                                 cappedAtSize:-1
                                                 truncateTail:YES
                                            continuationChars:nil
-                                                      coords:nil];
+                                                      coords:nil
+                                           deduplicateDECDHL:NO];
                 NSURL *url = [NSURL URLWithString:string];
                 if (string.stringIsUrlLike &&
                     url != nil &&
