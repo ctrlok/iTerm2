@@ -3380,11 +3380,10 @@ willExecuteToken:(VT100Token *)token
     } name:@"execDidFail"];
 }
 
-- (void)terminalSetTabStatus:(VT100TabStatusUpdate)status {
-    DLog(@"begin %@", VT100TabStatusUpdateDescription(status));
+- (void)terminalSetTabStatus:(VT100TabStatusUpdate *)status {
+    DLog(@"begin %@", status);
     [self addDeferredSideEffect:^(id<VT100ScreenDelegate> delegate) {
-        VT100TabStatusUpdate copy = status;
-        [delegate screenSetTabStatus:copy];
+        [delegate screenSetTabStatus:status];
     } name:@"set tab status"];
 }
 

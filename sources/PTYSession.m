@@ -22748,8 +22748,8 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
     }
 }
 
-- (void)screenSetTabStatus:(VT100TabStatusUpdate)status {
-    DLog(@"screenSetTabStatus: %@", VT100TabStatusUpdateDescription(status));
+- (void)screenSetTabStatus:(VT100TabStatusUpdate *)status {
+    DLog(@"screenSetTabStatus: %@", status);
 }
 
 @end

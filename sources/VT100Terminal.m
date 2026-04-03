@@ -4401,7 +4401,7 @@ static NSString *VT100GetURLParamForKey(NSString *params, NSString *key) {
     }
 
     // Parse the payload into tokens split on unescaped semicolons.
-    VT100TabStatusUpdate status = {};
+    VT100TabStatusUpdate *status = [[VT100TabStatusUpdate alloc] init];
     NSMutableString *currentToken = [NSMutableString string];
     NSMutableArray<NSString *> *tokens = [NSMutableArray array];
     BOOL escaped = NO;
@@ -4444,11 +4444,8 @@ static NSString *VT100GetURLParamForKey(NSString *params, NSString *key) {
                 NSArray<NSNumber *> *components = [self xtermParseColorArgument:value];
                 if (components) {
                     status.indicatorPresence = VT100TabStatusUpdateFieldSet;
-                    status.indicator = (iTermSRGBColor){
-                        components[0].doubleValue,
-                        components[1].doubleValue,
-                        components[2].doubleValue
-                    };
+                    iTermSRGBColor c = { components[0].doubleValue, components[1].doubleValue, components[2].doubleValue };
+                    status.indicator = c;
                 }
             }
         } else if ([key isEqualToString:@"status"]) {
@@ -4465,11 +4462,8 @@ static NSString *VT100GetURLParamForKey(NSString *params, NSString *key) {
                 NSArray<NSNumber *> *components = [self xtermParseColorArgument:value];
                 if (components) {
                     status.statusColorPresence = VT100TabStatusUpdateFieldSet;
-                    status.statusColor = (iTermSRGBColor){
-                        components[0].doubleValue,
-                        components[1].doubleValue,
-                        components[2].doubleValue
-                    };
+                    iTermSRGBColor c = { components[0].doubleValue, components[1].doubleValue, components[2].doubleValue };
+                    status.statusColor = c;
                 }
             }
         }
