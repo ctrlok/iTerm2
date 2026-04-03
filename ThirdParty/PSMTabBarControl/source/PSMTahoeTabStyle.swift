@@ -383,10 +383,18 @@ class PSMTahoeTabStyle: NSObject, PSMTabStyle {
         let puaFontProvider = tabBar?.delegate?.tabView?(tabBar, valueOfOption: PSMTabBarControlOptionKey.puaFontProvider) as? PSMPUAFontProvider
         let color = textColor(for: cell)
 
+        var subtitleColor: NSColor
+        if let tab = (cell.representedObject as? NSTabViewItem)?.identifier as? PSMTabBarControlRepresentedObjectIdentifierProtocol,
+           let statusColor = tab.psmTabStatusSubtitleColor?() {
+            subtitleColor = statusColor
+        } else {
+            subtitleColor = color.withAlphaComponent(color.alphaComponent * 0.7)
+        }
+
         return PSMCachedTitleInputs(
             title: subtitle,
             truncationStyle: cell.truncationStyle,
-            color: color.withAlphaComponent(color.alphaComponent * 0.7),
+            color: subtitleColor,
             graphic: nil,
             orientation: _orientation,
             fontSize: subtitleFontSize,

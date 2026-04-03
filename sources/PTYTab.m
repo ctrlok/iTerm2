@@ -711,6 +711,14 @@ static void SetAgainstGrainDim(BOOL isVertical, NSSize *dest, CGFloat value) {
 
 - (NSString *)stringByAppendingSubtitleForActiveSession:(NSString *)title {
     NSString *subtitle = self.activeSession.subtitle;
+    NSString *statusText = _aggregatedTabStatus.statusText;
+    if (statusText.length > 0) {
+        if (subtitle.length > 0) {
+            subtitle = [NSString stringWithFormat:@"%@ \u2013 %@", statusText, subtitle];
+        } else {
+            subtitle = statusText;
+        }
+    }
     return [NSString stringWithFormat:@"%@\n%@", title, subtitle];
 }
 
@@ -1242,6 +1250,16 @@ static void SetAgainstGrainDim(BOOL isVertical, NSSize *dest, CGFloat value) {
 
 - (NSImage *)psmTabGraphic {
     return self.activeSession.tabGraphic;
+}
+
+- (NSColor *)psmTabStatusSubtitleColor {
+    if (!_aggregatedTabStatus.hasActiveStatus ||
+        !_aggregatedTabStatus.hasStatusTextColor ||
+        _aggregatedTabStatus.statusText.length == 0) {
+        return nil;
+    }
+    iTermSRGBColor c = _aggregatedTabStatus.statusTextColor;
+    return [NSColor colorWithSRGBRed:c.r green:c.g blue:c.b alpha:1];
 }
 
 - (int)objectCount {
