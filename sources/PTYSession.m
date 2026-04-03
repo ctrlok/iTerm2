@@ -22772,6 +22772,7 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
         return;
     }
     [_tabStatus clear];
+    [[iTermDockBadgeController sharedInstance] sessionDidLeaveWaiting:_guid];
     [_delegate sessionTabStatusDidChange:self];
 }
 

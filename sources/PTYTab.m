@@ -871,6 +871,7 @@ static void SetAgainstGrainDim(BOOL isVertical, NSSize *dest, CGFloat value) {
         _tabStatusWaitingProminent = NO;
         [self updateIcon];
     }
+    [[iTermDockBadgeController sharedInstance] tabWasSelected:self];
     for (PTYSession *session in self.sessions) {
         [session enclosingTabDidBecomeSelected];
     }
@@ -7245,6 +7246,12 @@ backgroundColor:(NSColor *)backgroundColor {
 
 - (void)sessionTabStatusDidChange:(PTYSession *)session {
     DLog(@"sessionTabStatusDidChange: %@", session);
+    iTermTabStatusPriority priority = iTermTabStatusPriorityForStatusText(session.tabStatus.statusText);
+    if (priority == iTermTabStatusPriorityWaiting) {
+        [[iTermDockBadgeController sharedInstance] sessionDidEnterWaiting:session.guid];
+    } else {
+        [[iTermDockBadgeController sharedInstance] sessionDidLeaveWaiting:session.guid];
+    }
     [self updateAggregatedTabStatus];
 }
 
