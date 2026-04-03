@@ -3462,6 +3462,8 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
         [weakSelf updateDisplayBecause:@"terminate session"];
     });
 
+    [self clearTabStatus];
+
     [[NSNotificationCenter defaultCenter] postNotificationName:iTermSessionWillTerminateNotification
                                                         object:self];
     [_delegate removeSession:self];
@@ -14703,6 +14705,7 @@ typedef NS_ENUM(NSUInteger, PTYSessionTmuxReport) {
 }
 
 - (void)screenPromptDidStartAtLine:(int)line {
+    [self clearTabStatus];
     [_pasteHelper unblock];
 }
 
