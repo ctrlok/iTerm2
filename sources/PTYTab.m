@@ -7148,6 +7148,11 @@ backgroundColor:(NSColor *)backgroundColor {
     [self _refreshLabels:nil];
 }
 
+- (void)sessionTabStatusDidChange:(PTYSession *)session {
+    DLog(@"sessionTabStatusDidChange: %@", session);
+    // TODO: Implement aggregation in task #3
+}
+
 - (void)session:(PTYSession *)session setFilter:(NSString *)filter {
     [self setFilter:filter inSession:session];
 }

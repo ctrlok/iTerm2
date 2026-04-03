@@ -564,6 +564,8 @@ typedef NS_ENUM(NSUInteger, PTYSessionTurdType) {
     iTermSwiftyString *_subtitleSwiftyString;
     iTermSwiftyString *_backgroundImageSwiftyString;
 
+    iTermSessionTabStatus *_tabStatus;
+
     iTermBackgroundDrawingHelper *_backgroundDrawingHelper;
     iTermMetaFrustrationDetector *_metaFrustrationDetector;
 
@@ -1061,6 +1063,7 @@ ITERM_WEAKLY_REFERENCEABLE
     [_badgeSwiftyString release];
     [_backgroundImageSwiftyString release];
     [_subtitleSwiftyString release];
+    [_tabStatus release];
     [_autoNameSwiftyString release];
     [_statusBarViewController release];
     [_backgroundDrawingHelper release];
@@ -22748,8 +22751,25 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
     }
 }
 
+- (iTermSessionTabStatus *)tabStatus {
+    if (!_tabStatus) {
+        _tabStatus = [[iTermSessionTabStatus alloc] init];
+    }
+    return _tabStatus;
+}
+
 - (void)screenSetTabStatus:(VT100TabStatusUpdate *)status {
     DLog(@"screenSetTabStatus: %@", status);
+    [self.tabStatus apply:status];
+    [_delegate sessionTabStatusDidChange:self];
+}
+
+- (void)clearTabStatus {
+    if (!_tabStatus || !_tabStatus.hasActiveStatus) {
+        return;
+    }
+    [_tabStatus clear];
+    [_delegate sessionTabStatusDidChange:self];
 }
 
 @end
