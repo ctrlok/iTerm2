@@ -12984,6 +12984,10 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
     }
 }
 
+- (void)tabDidChangeTabStatus:(PTYTab *)tab {
+    [_contentView.tabBarControl update:YES];
+}
+
 - (void)tab:(PTYTab *)tab didSetMetalEnabled:(BOOL)useMetal {
     [self updateContentViewExpectsMetal];
 }

@@ -116,6 +116,31 @@ static void SwapPoint(NSPoint* point) {
 //
 // <------grain----->
 
+typedef NS_ENUM(NSInteger, iTermTabStatusPriority) {
+    iTermTabStatusPriorityNone = 0,
+    iTermTabStatusPriorityUnknown = 1,
+    iTermTabStatusPriorityIdle = 2,
+    iTermTabStatusPriorityWorking = 3,
+    iTermTabStatusPriorityWaiting = 4,
+};
+
+static iTermTabStatusPriority iTermTabStatusPriorityForStatusText(NSString *text) {
+    if (!text) {
+        return iTermTabStatusPriorityNone;
+    }
+    NSString *lower = [text lowercaseString];
+    if ([lower hasPrefix:@"wait"]) {
+        return iTermTabStatusPriorityWaiting;
+    }
+    if ([lower hasPrefix:@"work"]) {
+        return iTermTabStatusPriorityWorking;
+    }
+    if ([lower hasPrefix:@"idle"]) {
+        return iTermTabStatusPriorityIdle;
+    }
+    return iTermTabStatusPriorityUnknown;
+}
+
 static CGFloat WithGrainDim(BOOL isVertical, NSSize size) {
     return isVertical ? size.width : size.height;
 }
@@ -169,6 +194,10 @@ static void SetAgainstGrainDim(BOOL isVertical, NSSize *dest, CGFloat value) {
 
     // Does any session have new output?
     BOOL newOutput_;
+
+    // Aggregated tab status from highest-priority session.
+    iTermSessionTabStatus *_aggregatedTabStatus;
+    BOOL _tabStatusWaitingProminent;
 
     // The root view of this tab. May be a SolidColorView for tmux tabs or the
     // same as root_ otherwise (the normal case).
@@ -786,6 +815,10 @@ static void SetAgainstGrainDim(BOOL isVertical, NSSize *dest, CGFloat value) {
 
 - (void)didSelectTab {
     DLog(@"didSelectTab %@", self);
+    if (_tabStatusWaitingProminent) {
+        _tabStatusWaitingProminent = NO;
+        [self updateIcon];
+    }
     for (PTYSession *session in self.sessions) {
         [session enclosingTabDidBecomeSelected];
     }
@@ -7150,7 +7183,65 @@ backgroundColor:(NSColor *)backgroundColor {
 
 - (void)sessionTabStatusDidChange:(PTYSession *)session {
     DLog(@"sessionTabStatusDidChange: %@", session);
-    // TODO: Implement aggregation in task #3
+    [self updateAggregatedTabStatus];
+}
+
+- (iTermSessionTabStatus *)aggregatedTabStatus {
+    return _aggregatedTabStatus;
+}
+
+- (BOOL)tabStatusWaitingProminent {
+    return _tabStatusWaitingProminent;
+}
+
+- (void)updateAggregatedTabStatus {
+    PTYSession *winner = nil;
+    iTermTabStatusPriority winnerPriority = iTermTabStatusPriorityNone;
+
+    for (PTYSession *session in [self sessions]) {
+        if (!session.tabStatus.hasActiveStatus) {
+            continue;
+        }
+        iTermTabStatusPriority priority = iTermTabStatusPriorityForStatusText(session.tabStatus.statusText);
+        if (priority == iTermTabStatusPriorityNone) {
+            priority = iTermTabStatusPriorityUnknown;
+        }
+        if (priority > winnerPriority ||
+            (priority == winnerPriority && session == self.activeSession)) {
+            winner = session;
+            winnerPriority = priority;
+        }
+    }
+
+    // If all sessions have unknown priority, prefer the active session.
+    if (winnerPriority == iTermTabStatusPriorityUnknown &&
+        self.activeSession.tabStatus.hasActiveStatus) {
+        winner = self.activeSession;
+    }
+
+    iTermTabStatusPriority oldPriority = iTermTabStatusPriorityForStatusText(_aggregatedTabStatus.statusText);
+    if (!_aggregatedTabStatus.hasActiveStatus) {
+        oldPriority = iTermTabStatusPriorityNone;
+    }
+
+    if (winner) {
+        _aggregatedTabStatus = [winner.tabStatus copyStatus];
+    } else {
+        [_aggregatedTabStatus clear];
+    }
+
+    // Update prominent flag
+    if (winnerPriority == iTermTabStatusPriorityWaiting) {
+        if (oldPriority != iTermTabStatusPriorityWaiting) {
+            _tabStatusWaitingProminent = YES;
+        }
+    } else {
+        _tabStatusWaitingProminent = NO;
+    }
+
+    [self updateIcon];
+    [self _refreshLabels:nil];
+    [_delegate tabDidChangeTabStatus:self];
 }
 
 - (void)session:(PTYSession *)session setFilter:(NSString *)filter {
