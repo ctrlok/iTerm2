@@ -22748,6 +22748,10 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
     }
 }
 
+- (void)screenSetTabStatus:(VT100TabStatusUpdate)status {
+    DLog(@"screenSetTabStatus: %@", VT100TabStatusUpdateDescription(status));
+}
+
 @end
 
 @implementation PTYSession(AppSwitching)

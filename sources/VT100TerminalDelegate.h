@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "NSColor+iTerm.h"
 #import "VT100InlineImageHelper.h"
 #import "VT100Token.h"
 #import "iTermPromise.h"
@@ -15,6 +16,66 @@
 @class VT100SavedColorsSlot;
 @class iTermKittyImageCommand;
 @class iTermTokenExecutorUnpauser;
+
+// Per-field presence for VT100TabStatusUpdate. Omitted fields should not be modified.
+typedef NS_ENUM(NSInteger, VT100TabStatusUpdateFieldPresence) {
+    VT100TabStatusUpdateFieldNotSet,   // Field was not in the sequence
+    VT100TabStatusUpdateFieldCleared,  // Field was explicitly cleared (empty value)
+    VT100TabStatusUpdateFieldSet       // Field has a value
+};
+
+// Tab status info from OSC 21337.
+typedef struct {
+    VT100TabStatusUpdateFieldPresence indicatorPresence;
+    iTermSRGBColor indicator;  // valid only when indicatorPresence == Set
+
+    VT100TabStatusUpdateFieldPresence statusPresence;
+    NSString * _Nullable status;  // non-nil only when statusPresence == Set
+
+    VT100TabStatusUpdateFieldPresence statusColorPresence;
+    iTermSRGBColor statusColor;  // valid only when statusColorPresence == Set
+} VT100TabStatusUpdate;
+
+static inline NSString *VT100TabStatusUpdateDescription(VT100TabStatusUpdate s) {
+    NSMutableArray *parts = [NSMutableArray array];
+    switch (s.indicatorPresence) {
+        case VT100TabStatusUpdateFieldNotSet: break;
+        case VT100TabStatusUpdateFieldCleared:
+            [parts addObject:@"indicator=cleared"];
+            break;
+        case VT100TabStatusUpdateFieldSet:
+            [parts addObject:[NSString stringWithFormat:@"indicator=#%02x%02x%02x",
+                              (int)(s.indicator.r * 255),
+                              (int)(s.indicator.g * 255),
+                              (int)(s.indicator.b * 255)]];
+            break;
+    }
+    switch (s.statusPresence) {
+        case VT100TabStatusUpdateFieldNotSet: break;
+        case VT100TabStatusUpdateFieldCleared:
+            [parts addObject:@"status=cleared"];
+            break;
+        case VT100TabStatusUpdateFieldSet:
+            [parts addObject:[NSString stringWithFormat:@"status=%@", s.status]];
+            break;
+    }
+    switch (s.statusColorPresence) {
+        case VT100TabStatusUpdateFieldNotSet: break;
+        case VT100TabStatusUpdateFieldCleared:
+            [parts addObject:@"status-color=cleared"];
+            break;
+        case VT100TabStatusUpdateFieldSet:
+            [parts addObject:[NSString stringWithFormat:@"status-color=#%02x%02x%02x",
+                              (int)(s.statusColor.r * 255),
+                              (int)(s.statusColor.g * 255),
+                              (int)(s.statusColor.b * 255)]];
+            break;
+    }
+    if (parts.count == 0) {
+        return @"VT100TabStatusUpdate{empty}";
+    }
+    return [NSString stringWithFormat:@"VT100TabStatusUpdate{%@}", [parts componentsJoinedByString:@", "]];
+}
 
 typedef NS_ENUM(NSInteger, MouseMode) {
     MOUSE_REPORTING_NONE = -1,
@@ -569,5 +630,7 @@ typedef NS_ENUM(NSUInteger, iTermUpdateBlockAction) {
 - (void)terminalStartWrappedCommand:(NSString *)command channel:(NSString *)uid;
 - (void)terminalExecDidFail;
 - (BOOL)terminalIsInDarkMode;
+
+- (void)terminalSetTabStatus:(VT100TabStatusUpdate)status;
 
 @end

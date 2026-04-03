@@ -3380,6 +3380,14 @@ willExecuteToken:(VT100Token *)token
     } name:@"execDidFail"];
 }
 
+- (void)terminalSetTabStatus:(VT100TabStatusUpdate)status {
+    DLog(@"begin %@", VT100TabStatusUpdateDescription(status));
+    [self addDeferredSideEffect:^(id<VT100ScreenDelegate> delegate) {
+        VT100TabStatusUpdate copy = status;
+        [delegate screenSetTabStatus:copy];
+    } name:@"set tab status"];
+}
+
 - (BOOL)terminalIsInDarkMode {
     // I honestly don't understand how reporting the OS's dark/light mode would be useful, but
     // for sure knowing the terminal's color scheme is so we'll do that instead.
