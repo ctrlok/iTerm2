@@ -277,12 +277,14 @@ static int gSignalsToList[] = {
         _outlineView.style = NSTableViewStyleInset;
     }
     _outlineView.backgroundColor = [NSColor clearColor];
-    if (@available(macOS 26, *)) {
-        NSGlassEffectView *glassView = [[NSGlassEffectView alloc] initWithFrame:_vev.frame];
-        glassView.autoresizingMask = _vev.autoresizingMask;
-        NSView *superview = _vev.superview;
-        [superview replaceSubview:_vev with:glassView];
-        _vev = glassView;
+    if (_useGlassEffectView) {
+        if (@available(macOS 26, *)) {
+            NSGlassEffectView *glassView = [[NSGlassEffectView alloc] initWithFrame:_vev.frame];
+            glassView.autoresizingMask = _vev.autoresizingMask;
+            NSView *superview = _vev.superview;
+            [superview replaceSubview:_vev with:glassView];
+            _vev = glassView;
+        }
     }
     [self updateKillButtonEnabled];
 }
