@@ -515,17 +515,24 @@ static int gSignalsToList[] = {
     NSRect frame = NSZeroRect;
     const NSSize fittingSize = [_outlineView fittingSize];
     const NSSize contentSize = [_outlineView.enclosingScrollView contentSize];
-    frame.size = NSMakeSize(MAX(fittingSize.width, contentSize.width),
+    frame.size = NSMakeSize(contentSize.width,
                             fittingSize.height);
     _outlineView.frame = frame;
 
-    // Figure out what the column widths need to sum to. I can't find a sane way to do this, so do it in a dumb way instead.
-    [_outlineView sizeLastColumnToFit];
-    const CGFloat totalWidth = _outlineView.tableColumns[0].width + _outlineView.tableColumns[1].width;
-
     const CGFloat pidWidth = [[[[self tableCellViewWithString:@"MMMMMM" image:nil isJob:NO] textField] cell] cellSizeForBounds:_outlineView.bounds].width;
     _outlineView.tableColumns.lastObject.width = pidWidth;
-    _outlineView.tableColumns.firstObject.width = totalWidth - pidWidth;
+    _outlineView.tableColumns.firstObject.width = MAX(_outlineView.tableColumns.firstObject.minWidth,
+                                                      contentSize.width - pidWidth - _outlineView.intercellSpacing.width);
+
+    // Setting column widths may cause the outline view to grow beyond contentSize
+    // because NSOutlineView reserves space for the disclosure triangle area outside
+    // of the column widths. Detect and compensate.
+    const CGFloat overflow = _outlineView.frame.size.width - contentSize.width;
+    if (overflow > 0) {
+        _outlineView.tableColumns.firstObject.width = MAX(_outlineView.tableColumns.firstObject.minWidth,
+                                                          _outlineView.tableColumns.firstObject.width - overflow);
+        _outlineView.frame = frame;
+    }
 
     const CGFloat toolbarHeight = NSMaxY(kill_.frame);
     _outlineView.enclosingScrollView.frame = NSMakeRect(0, toolbarHeight, self.view.frame.size.width, self.view.frame.size.height - toolbarHeight);
