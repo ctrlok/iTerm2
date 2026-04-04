@@ -26,9 +26,6 @@ class iTermDockBadgeController: NSObject {
         guard !NSApp.isActive else {
             return false
         }
-        guard bellCount < 999 else {
-            return false
-        }
         bellCount += 1
         updateBadge()
         return true
