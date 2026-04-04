@@ -1590,7 +1590,9 @@ class PSMTahoeTabStyle: NSObject, PSMTabStyle {
                 ImageLO(name: "Icon", image: icon, priority: Priority.required.rawValue, gravity: .left) { resolved in
                     var rect = resolved.frame
                     rect.size.height = kPSMTabBarIconWidth
-                    rect.origin.y = Self.centeredMinY(cell: cell, height: kPSMTabBarIconWidth) + orientationShift
+                    // Vertically center the icon in the cell, then shift down to
+                    // match the OS text rendering offset applied to all labels.
+                    rect.origin.y = cell.frame.origin.y + floor((cell.frame.size.height - kPSMTabBarIconWidth) / 2) + textShift
                     icon.draw(in: rect,
                               from: NSZeroRect,
                               operation: .sourceOver,
