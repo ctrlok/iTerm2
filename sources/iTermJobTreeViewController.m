@@ -255,6 +255,7 @@ static int gSignalsToList[] = {
     IBOutlet SignalPicker *signal_;  // TODO - use this
     IBOutlet NSButton *kill_;
     IBOutlet NSView *_vev;
+    IBOutlet NSView *_signalContainer;
     iTermGraphicSource *_graphicSource;
 }
 
@@ -287,6 +288,16 @@ static int gSignalsToList[] = {
         }
     }
     [self updateKillButtonEnabled];
+}
+
+- (void)viewDidLayout {
+    [super viewDidLayout];
+    NSView *superview = _signalContainer.superview;
+    const CGFloat scrollViewBottom = NSMinY(_outlineView.enclosingScrollView.frame);
+    NSRect frame = _signalContainer.frame;
+    frame.origin.x = round((NSWidth(superview.bounds) - NSWidth(frame)) / 2.0);
+    frame.origin.y = round(scrollViewBottom / 2.0 - NSHeight(frame) / 2.0);
+    _signalContainer.frame = frame;
 }
 
 - (void)viewDidAppear {
