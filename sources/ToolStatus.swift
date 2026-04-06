@@ -14,6 +14,10 @@ class ToolStatus: NSView {
     private var measuringCell: ToolStatusCellView?
     private var token: NotifyingDictionaryObserverToken!
     private var disableSelectionCount = 0
+    private var helpButton: PopoverHelpButton!
+    private var settingsButton: NSButton!
+    private static let buttonHeight: CGFloat = 23
+    private static let margin: CGFloat = 5
 
     private struct Status: Comparable {
         var tabStatus: iTermSessionTabStatus {
@@ -41,6 +45,25 @@ class ToolStatus: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
+
+        // Help button
+        helpButton = PopoverHelpButton(helpText: Self.helpMarkdown)
+        helpButton.controlSize = .small
+        helpButton.sizeToFit()
+        helpButton.autoresizingMask = [.minXMargin]
+        addSubview(helpButton)
+
+        // Settings button
+        settingsButton = NSButton(frame: NSRect(x: 0, y: 0, width: 22, height: 22))
+        settingsButton.bezelStyle = .regularSquare
+        settingsButton.isBordered = false
+        settingsButton.image = NSImage(systemSymbolName: "gearshape",
+                                       accessibilityDescription: "Settings")
+        settingsButton.imagePosition = .imageOnly
+        settingsButton.target = self
+        settingsButton.action = #selector(showSettings(_:))
+        settingsButton.autoresizingMask = []
+        addSubview(settingsButton)
 
         scrollView = NSScrollView.scrollViewWithTableViewForToolbelt(container: self,
                                                                      insets: NSEdgeInsets(),
@@ -75,6 +98,10 @@ class ToolStatus: NSView {
                        selector: #selector(needsShortcutReload(_:)),
                        name: .iTermTabDidChangePositionInWindow,
                        object: nil)
+        nc.addObserver(self,
+                       selector: #selector(prioritiesDidChange(_:)),
+                       name: StatusPrioritySettings.didChangeNotification,
+                       object: nil)
     }
 
     required init!(frame: NSRect, url: URL!, identifier: String!) {
@@ -103,8 +130,24 @@ extension ToolStatus: ToolbeltTool {
     }
 
     @objc func relayout() {
-        let bottomMargin = 4.0
-        scrollView!.frame = NSRect(x: 0.0, y: 0.0, width: frame.width, height: frame.height - bottomMargin)
+        let m = Self.margin
+        let bh = Self.buttonHeight
+
+        // Help button — bottom-right
+        helpButton.frame = NSRect(x: frame.width - helpButton.frame.width,
+                                  y: 2,
+                                  width: helpButton.frame.width,
+                                  height: helpButton.frame.height)
+
+        // Settings button — left of help
+        settingsButton.frame = NSRect(x: helpButton.frame.origin.x - settingsButton.frame.width - m,
+                                      y: 0,
+                                      width: settingsButton.frame.width,
+                                      height: settingsButton.frame.height)
+
+        // Scroll view — above buttons
+        let scrollY = bh + m
+        scrollView!.frame = NSRect(x: 0, y: scrollY, width: frame.width, height: frame.height - scrollY)
         let contentSize = self.contentSize()
         _tableView!.frame = NSRect(origin: .zero, size: contentSize)
     }
@@ -129,6 +172,54 @@ extension ToolStatus {
         _tableView?.reloadData()
         updateSelectionWithoutChangingFirstResponder()
     }
+}
+
+// MARK: - Actions
+extension ToolStatus {
+    @objc func showSettings(_ sender: Any?) {
+        StatusPrioritySettings.shared.showSettingsPopover(
+            relativeTo: settingsButton.bounds,
+            of: settingsButton,
+            preferredEdge: .maxY)
+    }
+
+    @objc func prioritiesDidChange(_ notification: Notification) {
+        // Re-sort all statuses and reload the table.
+        statuses.sort()
+        _tableView?.reloadData()
+        updateSelectionWithoutChangingFirstResponder()
+    }
+
+    static let helpMarkdown = """
+    ## Session Status
+
+    The **Session Status** tool shows the status of sessions across all tabs. Each entry displays the \
+    session name, a colored indicator dot, status text, and a keyboard shortcut to jump to that session.
+
+    ### Setting Status
+
+    **Triggers:** Add a **Set Tab Status** trigger in **Prefs > Profiles > Advanced > Triggers**. \
+    It lets you set the status text, dot color, and text color when a regex matches terminal output.
+
+    **Control Sequence (OSC 21337):** Programs can set tab status directly:
+
+    `printf '\\e]21337;status=Working;indicator=255/165/0\\a'`
+
+    Supported keys (separated by `;`):
+
+    * `status=TEXT` — Sets the status text (e.g., "Working", "Waiting").
+    * `indicator=R/G/B` — Sets the dot color (0–255 per component).
+    * `status-color=R/G/B` — Sets the status text color.
+
+    Set a key to empty to clear it: `status=` clears the status text.
+
+    **Clear all status:** `printf '\\e]21337;status=;indicator=\\a'`
+
+    ### Priority Sorting
+
+    Sessions are sorted by priority. Click the ⚙ button to configure which status \
+    keywords have the highest priority. The default order is: waiting, working, idle.
+    """
 }
 
 // MARK: - Private methods

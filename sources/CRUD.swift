@@ -39,6 +39,13 @@ protocol CRUDDataProvider {
     func delete(_ indexes: IndexSet)
     // Returns the index of the added item on success or nil if nothing was added.
     func makeNew(completion: @escaping (Int) -> ())
+
+    // Return true and implement reorder(from:to:) to enable drag-to-reorder.
+    var supportsReorder: Bool { get }
+    func reorder(from sourceIndex: Int, to destinationIndex: Int)
+
+    // Return true to enable Finder-style click-to-edit on text fields.
+    var supportsInlineEditing: Bool { get }
 }
 
 struct CRUDSchema {
@@ -98,7 +105,11 @@ class CompetentTableView: NSTableView {
 }
 
 
-class CRUDTableViewController<Delegate: CRUDTableViewControllerDelegate>: NSObject, CompetentTableViewDelegate, NSTableViewDataSource {
+class CRUDTableViewController<Delegate: CRUDTableViewControllerDelegate>: NSObject, CompetentTableViewDelegate, NSTableViewDataSource, NSTextFieldDelegate {
+    private static var reorderPasteboardType: NSPasteboard.PasteboardType {
+        NSPasteboard.PasteboardType("com.googlecode.iterm2.CRUDRowIndex")
+    }
+
     private let tableView: NSTableView
     private let addRemove: NSSegmentedControl
     private let schema: CRUDSchema
@@ -118,6 +129,11 @@ class CRUDTableViewController<Delegate: CRUDTableViewControllerDelegate>: NSObje
         addRemove.target = self
         addRemove.action = #selector(handleSegmentedControl(_:))
         updateEnabled()
+
+        if schema.dataProvider.supportsReorder {
+            tableView.registerForDraggedTypes([Self.reorderPasteboardType])
+            tableView.draggingDestinationFeedbackStyle = .gap
+        }
     }
 
     // MARK: - API
@@ -248,7 +264,22 @@ class CRUDTableViewController<Delegate: CRUDTableViewControllerDelegate>: NSObje
         delegate?.crudTableSelectionDidChange(self, selectedRows: tableView.selectedRowIndexes)
     }
 
-    // MARK: -- NSTableViewDataSource
+    // MARK: - NSTextFieldDelegate
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard let textField = obj.object as? NSTextField else {
+            return
+        }
+        let row = tableView.row(for: textField)
+        guard row >= 0 else {
+            return
+        }
+        let column = tableView.column(for: textField)
+        let col = max(0, column)
+        delegate?.crudTextFieldDidChange(self, row: row, column: col, newValue: textField.stringValue)
+    }
+
+    // MARK: -- NSTableViewDelegate
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard let tableColumn else {
@@ -264,8 +295,70 @@ class CRUDTableViewController<Delegate: CRUDTableViewControllerDelegate>: NSObje
                                                                font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
                                                                string: stringValue)
             cell.textField?.stringValue = stringValue
+            if schema.dataProvider.supportsInlineEditing {
+                cell.textField?.isEditable = true
+                cell.textField?.delegate = self
+            }
             return cell
         }
+    }
+
+    // MARK: - Drag-to-Reorder
+
+    func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> (any NSPasteboardWriting)? {
+        guard schema.dataProvider.supportsReorder else {
+            return nil
+        }
+        let item = NSPasteboardItem()
+        item.setString(String(row), forType: Self.reorderPasteboardType)
+        return item
+    }
+
+    func tableView(_ tableView: NSTableView,
+                   validateDrop info: any NSDraggingInfo,
+                   proposedRow row: Int,
+                   proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
+        guard schema.dataProvider.supportsReorder,
+              info.draggingSource as? NSTableView === tableView,
+              dropOperation == .above else {
+            return []
+        }
+        return .move
+    }
+
+    func tableView(_ tableView: NSTableView,
+                   acceptDrop info: any NSDraggingInfo,
+                   row: Int,
+                   dropOperation: NSTableView.DropOperation) -> Bool {
+        guard schema.dataProvider.supportsReorder else {
+            return false
+        }
+        var sourceRow: Int?
+        info.enumerateDraggingItems(
+            options: [],
+            for: tableView,
+            classes: [NSPasteboardItem.self],
+            searchOptions: [:]
+        ) { item, _, _ in
+            if let pbItem = item.item as? NSPasteboardItem,
+               let str = pbItem.string(forType: Self.reorderPasteboardType),
+               let idx = Int(str) {
+                sourceRow = idx
+            }
+        }
+        guard let sourceRow else {
+            return false
+        }
+        let dest = sourceRow < row ? row - 1 : row
+        if sourceRow == dest {
+            return false
+        }
+        undoable {
+            schema.dataProvider.reorder(from: sourceRow, to: dest)
+        }
+        tableView.reloadData()
+        tableView.selectRowIndexes(IndexSet(integer: dest), byExtendingSelection: false)
+        return true
     }
 }
 

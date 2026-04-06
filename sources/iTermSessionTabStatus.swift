@@ -68,19 +68,7 @@ class iTermSessionTabStatus: NSObject {
     }
 
     @objc var priority: Int {
-        guard let statusText else {
-            return 4
-        }
-        if statusText.lowercased().contains("wait") {
-            return 0
-        }
-        if statusText.lowercased().contains("work") {
-            return 1
-        }
-        if statusText.lowercased().contains("idle") {
-            return 2
-        }
-        return 3
+        StatusPrioritySettings.shared.priority(for: statusText)
     }
 
     @objc init(sessionID: String) {
