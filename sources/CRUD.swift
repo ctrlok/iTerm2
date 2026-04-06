@@ -19,10 +19,12 @@ import Foundation
 
 enum CRUDFormatted {
     case string(String)
+    case boolean(Bool)
 }
 
 enum CRUDType {
     case string
+    case boolean
 }
 
 struct CRUDColumn {
@@ -68,7 +70,19 @@ protocol CRUDTableViewControllerDelegate: AnyObject {
                          row: Int,
                          column: Int)
 
+    func crudCheckboxDidChange(_ sender: CRUDTableViewController<Self>,
+                               row: Int,
+                               column: Int,
+                               newValue: Bool)
+
     var crudState: CRUDState { get set }
+}
+
+extension CRUDTableViewControllerDelegate {
+    func crudCheckboxDidChange(_ sender: CRUDTableViewController<Self>,
+                               row: Int,
+                               column: Int,
+                               newValue: Bool) {}
 }
 
 protocol CompetentTableViewDelegate: NSTableViewDelegate {
@@ -253,6 +267,16 @@ class CRUDTableViewController<Delegate: CRUDTableViewControllerDelegate>: NSObje
         delegate?.crudDoubleClick(self, row: tableView.clickedRow, column: tableView.clickedColumn)
     }
 
+    @objc
+    func handleCheckbox(_ sender: Any) {
+        guard let button = sender as? NSButton else { return }
+        let row = button.tag
+        guard row >= 0, row < schema.dataProvider.count else { return }
+        let column = tableView.column(for: button.superview ?? button)
+        let col = max(0, column)
+        delegate?.crudCheckboxDidChange(self, row: row, column: col, newValue: button.state == .on)
+    }
+
     // MARK: - NSTableViewDataSource
 
     func numberOfRows(in tableView: NSTableView) -> Int {
@@ -298,6 +322,24 @@ class CRUDTableViewController<Delegate: CRUDTableViewControllerDelegate>: NSObje
             if schema.dataProvider.supportsInlineEditing {
                 cell.textField?.isEditable = true
                 cell.textField?.delegate = self
+            }
+            return cell
+        case .boolean(let boolValue):
+            let cellID = tableColumn.identifier.rawValue
+            let cell: NSTableCellView
+            if let reused = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(cellID), owner: nil) as? NSTableCellView {
+                cell = reused
+            } else {
+                cell = NSTableCellView()
+                cell.identifier = NSUserInterfaceItemIdentifier(cellID)
+                let checkbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(handleCheckbox(_:)))
+                cell.addSubview(checkbox)
+                checkbox.autoresizingMask = [.maxXMargin, .minYMargin, .maxYMargin]
+                checkbox.frame.origin.x = (tableColumn.width - checkbox.frame.width) / 2
+            }
+            if let checkbox = cell.subviews.first as? NSButton {
+                checkbox.state = boolValue ? .on : .off
+                checkbox.tag = row
             }
             return cell
         }

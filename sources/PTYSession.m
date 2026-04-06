@@ -22778,8 +22778,29 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
 
 - (void)screenSetTabStatus:(VT100TabStatusUpdate *)status {
     DLog(@"screenSetTabStatus: %@", status);
+    NSString *previousStatusText = self.tabStatus.statusText;
     [self.tabStatus apply:status];
+    [self maybePostTabStatusNotificationWithPreviousStatusText:previousStatusText];
     [_delegate sessionTabStatusDidChange:self];
+}
+
+- (void)maybePostTabStatusNotificationWithPreviousStatusText:(NSString *)previousStatusText {
+    NSString *newStatusText = self.tabStatus.statusText;
+    if (!newStatusText) {
+        return;
+    }
+    if ([newStatusText isEqualToString:previousStatusText ?: @""]) {
+        return;
+    }
+    if (![[iTermStatusPrioritySettings shared] shouldNotifyFor:newStatusText]) {
+        return;
+    }
+    [[iTermNotificationController sharedInstance]
+        notify:[NSString stringWithFormat:@"Session \u201c%@\u201d", [[self name] removingHTMLFromTabTitleIfNeeded]]
+        withDescription:[NSString stringWithFormat:@"Status changed to \u201c%@\u201d", newStatusText]
+        windowIndex:[self screenWindowIndex]
+        tabIndex:[self screenTabIndex]
+        viewIndex:[self screenViewIndex]];
 }
 
 - (void)clearTabStatus {

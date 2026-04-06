@@ -3,7 +3,7 @@
 @objc(VT100TabStatusUpdate)
 class VT100TabStatusUpdate: NSObject {
     @objc static var clear: VT100TabStatusUpdate {
-        var update = VT100TabStatusUpdate()
+        let update = VT100TabStatusUpdate()
         update.indicatorPresence = .cleared
         update.statusPresence = .cleared
         update.statusColorPresence = .cleared
