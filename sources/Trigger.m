@@ -149,6 +149,14 @@ NSString * const kTriggerEventParamsKey = @"eventParams";
     return NO;
 }
 
+- (nullable NSColor *)textColorInParam:(nullable id)param {
+    return nil;
+}
+
+- (nullable NSColor *)backgroundColorInParam:(nullable id)param {
+    return nil;
+}
+
 - (NSDictionary *)menuItemsForPoupupButton
 {
     return nil;

@@ -815,7 +815,7 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
                                                     0,
                                                     kWellWidth,
                                                     size.height),
-                                         trigger.textColor);
+                                         [trigger textColorInParam:value]);
         well.identifier = kTextColorWellIdentifier;
 
         [container addSubview:well];
@@ -829,7 +829,7 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
                                       0,
                                       kWellWidth,
                                       size.height),
-                           trigger.backgroundColor);
+                           [trigger backgroundColorInParam:value]);
         [container addSubview:well];
         well.identifier = kBackgroundColorWellIdentifier;
         return container;

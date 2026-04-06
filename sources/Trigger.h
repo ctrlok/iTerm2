@@ -157,6 +157,8 @@ extern NSString * const kTriggerEventParamsKey;
 - (BOOL)paramIsPopupButton;
 - (BOOL)paramIsTwoColorWells;
 - (BOOL)paramIsTwoStrings;
+- (nullable NSColor *)textColorInParam:(nullable id)param;
+- (nullable NSColor *)backgroundColorInParam:(nullable id)param;
 // Returns a map from id(tag/represented object) -> NSString(title)
 - (nullable NSDictionary *)menuItemsForPoupupButton;
 // Returns an array of NSDictionaries mapping NSNumber(tag) -> NSString(title)
