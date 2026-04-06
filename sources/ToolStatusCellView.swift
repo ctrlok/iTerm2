@@ -9,75 +9,160 @@ import Foundation
 
 class ToolStatusCellView: NSTableCellView {
     private let dotView = NSImageView()
-    private let nameLabel = NSTextField(labelWithString: "")
+    private var nameLabel = iTermSwiftyStringTextField(labelWithString: "")
+    private let shortcutLabel = NSTextField(labelWithString: "")
     private let statusLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(wrappingLabelWithString: "")
-    private let vStack: NSStackView
+
+    private let margin: CGFloat = 4
+    private let dotSize: CGFloat = 10
+    private let dotNameSpacing: CGFloat = 4
+    private let rowSpacing: CGFloat = 1
 
     override init(frame: NSRect) {
         let font = NSFont.it_toolbelt()
 
-        // Top row: dot + name
-        let topRow = NSStackView(views: [dotView, nameLabel])
-        topRow.orientation = .horizontal
-        topRow.spacing = 4
-        topRow.alignment = .centerY
-
-        vStack = NSStackView(views: [topRow, statusLabel, detailLabel])
-        vStack.orientation = .vertical
-        vStack.alignment = .leading
-        vStack.spacing = 1
-        vStack.translatesAutoresizingMaskIntoConstraints = false
-
         super.init(frame: frame)
 
-        dotView.translatesAutoresizingMaskIntoConstraints = false
         dotView.imageScaling = .scaleProportionallyDown
+        addSubview(dotView)
 
-        nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = font
         nameLabel.lineBreakMode = .byTruncatingTail
-        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        addSubview(nameLabel)
 
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        shortcutLabel.font = font
+        shortcutLabel.textColor = .tertiaryLabelColor
+        shortcutLabel.alignment = .right
+        shortcutLabel.lineBreakMode = .byClipping
+        addSubview(shortcutLabel)
+
         statusLabel.font = font
         statusLabel.lineBreakMode = .byTruncatingTail
-        statusLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        addSubview(statusLabel)
 
-        detailLabel.translatesAutoresizingMaskIntoConstraints = false
         detailLabel.font = font
         detailLabel.maximumNumberOfLines = 0
         detailLabel.lineBreakMode = .byWordWrapping
         detailLabel.usesSingleLineMode = false
-        detailLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         detailLabel.isHidden = true
-
-        addSubview(vStack)
-
-        let dotSize: CGFloat = 10
-        NSLayoutConstraint.activate([
-            dotView.widthAnchor.constraint(equalToConstant: dotSize),
-            dotView.heightAnchor.constraint(equalToConstant: dotSize),
-
-            vStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
-            vStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
-            vStack.topAnchor.constraint(equalTo: topAnchor, constant: 2),
-            vStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
-        ])
+        addSubview(detailLabel)
     }
 
     required init?(coder: NSCoder) {
         it_fatalError()
     }
 
-    func configure(sessionName: String,
+    var currentShortcut: String { shortcutLabel.stringValue }
+
+    override var isFlipped: Bool { true }
+
+    override var backgroundStyle: NSView.BackgroundStyle {
+        didSet {
+            updateShortcutColor()
+        }
+    }
+
+    private func updateShortcutColor() {
+        if backgroundStyle == .emphasized {
+            shortcutLabel.textColor = NSColor.white.withAlphaComponent(0.7)
+        } else {
+            shortcutLabel.textColor = .tertiaryLabelColor
+        }
+    }
+
+    private var textLeft: CGFloat {
+        let dotWidth = dotView.isHidden ? 0 : (dotSize + dotNameSpacing)
+        return margin + dotWidth
+    }
+
+    override func resizeSubviews(withOldSize oldSize: NSSize) {
+        super.resizeSubviews(withOldSize: oldSize)
+        layoutManually()
+    }
+
+    private func layoutManually() {
+        let width = bounds.width
+        let textX = textLeft
+        let textWidth = max(0, width - textX - margin)
+        var y: CGFloat = margin / 2
+
+        // Shortcut label — measure first so we can reserve space
+        var shortcutWidth: CGFloat = 0
+        if !shortcutLabel.isHidden {
+            shortcutLabel.sizeToFit()
+            shortcutWidth = shortcutLabel.frame.width
+        }
+
+        // Name label
+        let nameWidth = max(0, textWidth - (shortcutWidth > 0 ? shortcutWidth + dotNameSpacing : 0))
+        nameLabel.frame = NSRect(x: textX, y: y, width: nameWidth, height: 0)
+        nameLabel.sizeToFit()
+        nameLabel.frame = NSRect(x: textX, y: y,
+                                 width: nameWidth,
+                                 height: nameLabel.frame.height)
+
+        // Place shortcut label right-aligned on the name row
+        if !shortcutLabel.isHidden {
+            let shortcutX = width - margin - shortcutWidth
+            shortcutLabel.frame = NSRect(x: shortcutX, y: y,
+                                         width: shortcutWidth,
+                                         height: nameLabel.frame.height)
+        }
+
+        // Dot — vertically centered with name label
+        if !dotView.isHidden {
+            let dotY = y + (nameLabel.frame.height - dotSize) / 2
+            dotView.frame = NSRect(x: margin, y: dotY, width: dotSize, height: dotSize)
+        }
+
+        y += nameLabel.frame.height + rowSpacing
+
+        // Status label
+        if !statusLabel.isHidden {
+            statusLabel.frame = NSRect(x: textX, y: y, width: textWidth, height: 0)
+            statusLabel.sizeToFit()
+            statusLabel.frame = NSRect(x: textX, y: y,
+                                       width: textWidth,
+                                       height: statusLabel.frame.height)
+            y += statusLabel.frame.height + rowSpacing
+        }
+
+        // Detail label
+        if !detailLabel.isHidden {
+            detailLabel.preferredMaxLayoutWidth = textWidth
+            detailLabel.frame = NSRect(x: textX, y: y, width: textWidth, height: 0)
+            detailLabel.sizeToFit()
+            detailLabel.frame = NSRect(x: textX, y: y,
+                                       width: textWidth,
+                                       height: detailLabel.frame.height)
+        }
+    }
+
+    override var fittingSize: NSSize {
+        layoutManually()
+        var maxY: CGFloat = nameLabel.frame.maxY
+        if !statusLabel.isHidden {
+            maxY = statusLabel.frame.maxY
+        }
+        if !detailLabel.isHidden {
+            maxY = detailLabel.frame.maxY
+        }
+        return NSSize(width: bounds.width, height: maxY + margin / 2)
+    }
+
+    func configure(scope: iTermVariableScope,
                    dotImage: NSImage?,
+                   shortcut: String?,
                    statusText: String?,
                    statusColor: NSColor?,
                    detail: String?) {
-        nameLabel.stringValue = sessionName
-        self.dotView.image = dotImage
+        nameLabel.set(interpolatedString: #"\(iterm2.private.session_name(session: id))"#, scope: scope)
+        dotView.image = dotImage
         dotView.isHidden = dotImage == nil
+
+        shortcutLabel.stringValue = shortcut ?? ""
+        shortcutLabel.isHidden = (shortcut ?? "").isEmpty
 
         statusLabel.stringValue = statusText ?? ""
         if let statusColor {
@@ -94,5 +179,7 @@ class ToolStatusCellView: NSTableCellView {
             detailLabel.stringValue = ""
             detailLabel.isHidden = true
         }
+
+        layoutManually()
     }
 }

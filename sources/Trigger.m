@@ -149,12 +149,28 @@ NSString * const kTriggerEventParamsKey = @"eventParams";
     return NO;
 }
 
+- (BOOL)paramIsComboBoxAndTwoColorWells {
+    return NO;
+}
+
+- (NSArray<NSString *> *)comboBoxItems {
+    return nil;
+}
+
+- (NSString *)comboBoxValueInParam:(id)param {
+    return nil;
+}
+
 - (nullable NSColor *)textColorInParam:(nullable id)param {
     return nil;
 }
 
 - (nullable NSColor *)backgroundColorInParam:(nullable id)param {
     return nil;
+}
+
+- (id)paramByReplacingComboBoxValue:(NSString *)value inParam:(id)param {
+    return param;
 }
 
 - (NSDictionary *)menuItemsForPoupupButton
@@ -354,6 +370,18 @@ NSString * const kTriggerEventParamsKey = @"eventParams";
                                                                   scope:(id<iTermTriggerScopeProvider>)scopeProvider
                                                        useInterpolation:(BOOL)useInterpolation {
     NSString *p = [NSString castFrom:self.param] ?: @"";
+    return [self promisedValueOfInterpolatedString:p
+              withBackreferencesReplacedWithValues:stringArray
+                                           absLine:absLine
+                                             scope:scopeProvider
+                                  useInterpolation:useInterpolation];
+}
+
+- (iTermPromise<NSString *> *)promisedValueOfInterpolatedString:(NSString *)p
+                           withBackreferencesReplacedWithValues:(NSArray *)stringArray
+                                                        absLine:(long long)absLine
+                                                          scope:(id<iTermTriggerScopeProvider>)scopeProvider
+                                               useInterpolation:(BOOL)useInterpolation {
     if (useInterpolation && [p interpolatedStringContainsNonliteral]) {
         return [iTermPromise promise:^(id<iTermPromiseSeal>  _Nonnull seal) {
             [scopeProvider performBlockWithScope:^(iTermVariableScope * _Nonnull scope, id<iTermObject> _Nonnull object) {

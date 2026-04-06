@@ -53,6 +53,8 @@ class VT100TabStatusUpdate: NSObject {
 // Accumulated per-session tab status state from one or more VT100TabStatusUpdate messages.
 @objc(iTermSessionTabStatus)
 class iTermSessionTabStatus: NSObject {
+    let sessionID: String
+
     @objc var hasIndicator: Bool = false
     @objc var indicatorColor: iTermSRGBColor = iTermSRGBColor(r: 0, g: 0, b: 0)
 
@@ -63,6 +65,27 @@ class iTermSessionTabStatus: NSObject {
 
     @objc var hasActiveStatus: Bool {
         return hasIndicator || statusText != nil
+    }
+
+    @objc var priority: Int {
+        guard let statusText else {
+            return 4
+        }
+        if statusText.lowercased().contains("wait") {
+            return 0
+        }
+        if statusText.lowercased().contains("work") {
+            return 1
+        }
+        if statusText.lowercased().contains("idle") {
+            return 2
+        }
+        return 3
+    }
+
+    @objc init(sessionID: String) {
+        self.sessionID = sessionID
+        super.init()
     }
 
     @objc func apply(_ update: VT100TabStatusUpdate) {
@@ -102,6 +125,7 @@ class iTermSessionTabStatus: NSObject {
         @unknown default:
             break
         }
+        notify()
     }
 
     @objc func clear() {
@@ -110,15 +134,148 @@ class iTermSessionTabStatus: NSObject {
         statusText = nil
         hasStatusTextColor = false
         statusTextColor = iTermSRGBColor(r: 0, g: 0, b: 0)
+        notify()
+    }
+
+    @objc static let didChangeNotificationName = NSNotification.Name("iTermSessionTabStatusDidChange")
+
+    private func notify() {
+        NotificationCenter.default.post(name: Self.didChangeNotificationName, object: self)
+    }
+
+    /// Creates a colored dot image suitable for tab status indicators.
+    /// - Parameters:
+    ///   - color: The dot color.
+    ///   - size: The image size (square). Defaults to 16.
+    ///   - dotDiameter: The diameter of the dot. Defaults to 8.
+    ///   - prominent: Whether to draw a ring around the dot for unacknowledged status.
+    ///   - isDark: Whether the current appearance is dark (affects ring color).
+    @objc static func dotImage(color: NSColor,
+                               size: CGFloat = 16,
+                               dotDiameter: CGFloat = 8,
+                               prominent: Bool = false,
+                               isDark: Bool = false) -> NSImage {
+        return NSImage(size: NSSize(width: size, height: size), flipped: true) { _ in
+            let lightCenter = color.blended(withFraction: 0.3, of: .white) ?? color
+
+            let dotRect = NSRect(x: (size - dotDiameter) / 2,
+                                 y: (size - dotDiameter) / 2,
+                                 width: dotDiameter,
+                                 height: dotDiameter)
+
+            if prominent {
+                let ringDiameter = min(size, dotDiameter + 4)
+                let ringRect = NSRect(x: (size - ringDiameter) / 2,
+                                      y: (size - ringDiameter) / 2,
+                                      width: ringDiameter,
+                                      height: ringDiameter)
+                let ringColor: NSColor = isDark ? .white : .black
+                ringColor.setFill()
+                NSBezierPath(ovalIn: ringRect).fill()
+            }
+
+            if let gradient = NSGradient(starting: lightCenter, ending: color) {
+                let dotPath = NSBezierPath(ovalIn: dotRect)
+                gradient.draw(in: dotPath, relativeCenterPosition: .zero)
+            }
+
+            return true
+        }
+    }
+
+    private static let arrangementIndicatorColorKey = "Indicator Color"
+    private static let arrangementStatusTextKey = "Status Text"
+    private static let arrangementStatusTextColorKey = "Status Text Color"
+
+    @objc func arrangementDictionary() -> NSDictionary? {
+        guard hasActiveStatus else {
+            return nil
+        }
+        var dict = [String: Any]()
+        if hasIndicator {
+            dict[Self.arrangementIndicatorColorKey] = iTermSRGBColorToDictionary(indicatorColor)
+        }
+        if let statusText {
+            dict[Self.arrangementStatusTextKey] = statusText
+        }
+        if hasStatusTextColor {
+            dict[Self.arrangementStatusTextColorKey] = iTermSRGBColorToDictionary(statusTextColor)
+        }
+        return dict as NSDictionary
+    }
+
+    @objc static func fromArrangementDictionary(_ dict: NSDictionary, sessionID: String) -> iTermSessionTabStatus {
+        let status = iTermSessionTabStatus(sessionID: sessionID)
+        if let colorDict = dict[arrangementIndicatorColorKey] as? [AnyHashable: Any] {
+            var color = iTermSRGBColor()
+            if iTermSRGBColorFromDictionary(colorDict, &color) {
+                status.hasIndicator = true
+                status.indicatorColor = color
+            }
+        }
+        status.statusText = dict[arrangementStatusTextKey] as? String
+        if let colorDict = dict[arrangementStatusTextColorKey] as? [AnyHashable: Any] {
+            var color = iTermSRGBColor()
+            if iTermSRGBColorFromDictionary(colorDict, &color) {
+                status.hasStatusTextColor = true
+                status.statusTextColor = color
+            }
+        }
+        return status
     }
 
     @objc func copyStatus() -> iTermSessionTabStatus {
-        let copy = iTermSessionTabStatus()
+        let copy = iTermSessionTabStatus(sessionID: sessionID)
         copy.hasIndicator = hasIndicator
         copy.indicatorColor = indicatorColor
         copy.statusText = statusText
         copy.hasStatusTextColor = hasStatusTextColor
         copy.statusTextColor = statusTextColor
         return copy
+    }
+}
+
+@objc(iTermSessionStatusController)
+class SessionStatusController: NSObject {
+    @objc static let instance = SessionStatusController()
+    private(set) var statuses = NotifyingDictionary<String, iTermSessionTabStatus>()
+
+    override init() {
+        super.init()
+
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(sessionStatusDidChange(_:)),
+                                               name: iTermSessionTabStatus.didChangeNotificationName,
+                                               object: nil)
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(sessionWillTerminate(_:)),
+                                               name: NSNotification.Name.iTermSessionWillTerminate,
+                                               object: nil)
+    }
+
+    @objc
+    private func sessionStatusDidChange(_ notification: Notification) {
+        let status = notification.object as! iTermSessionTabStatus
+        if status.hasActiveStatus {
+            statuses[status.sessionID] = status
+        } else {
+            statuses.removeValue(forKey: status.sessionID)
+        }
+    }
+
+    @objc
+    private func sessionWillTerminate(_ notification: Notification) {
+        let session = notification.object as! PTYSession
+        statuses.removeValue(forKey: session.guid)
+    }
+
+    func addObserver(_ observer: @escaping NotifyingDictionaryObserver<String, iTermSessionTabStatus>) -> NotifyingDictionaryObserverToken {
+        return statuses.addObserver(observer)
+    }
+
+    @objc(tabStatusDidChange:)
+    func tabStatusDidChange(_ tabStatus: iTermSessionTabStatus) {
+        NotificationCenter.default.post(name: iTermSessionTabStatus.didChangeNotificationName,
+                                        object: tabStatus)
     }
 }

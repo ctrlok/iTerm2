@@ -12208,8 +12208,7 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
     return [dvr firstTimeStamp] + offset;
 }
 
-- (NSArray*)allSessions
-{
+- (NSArray<PTYSession *> *)allSessions {
     NSMutableArray* result = [NSMutableArray arrayWithCapacity:[_contentView.tabView numberOfTabViewItems]];
     for (NSTabViewItem* item in [_contentView.tabView tabViewItems]) {
         PTYTab *tab = [item identifier];
@@ -13195,6 +13194,12 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
 
 - (ProfileType)toolbeltProfileType {
     return self.currentSession.profile.profileType;
+}
+
+- (BOOL)toolbeltWindowContainsSessionWithGUID:(NSString *)guid {
+    return [self.allSessions anyWithBlock:^BOOL(PTYSession *session) {
+        return [session.guid isEqualToString:guid];
+    }];
 }
 
 #pragma mark - Quick Look panel support

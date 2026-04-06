@@ -1689,31 +1689,13 @@ static iTermKeyEventReplayer *gReplayer;
     [menuItem setState:newState];
 }
 
-- (void)revealSessionID:(NSString *)sessionID {
-    NSString *guid = [sessionID it_stringBySplittingOnFirstSubstring:@":"].secondObject;
-    for (PseudoTerminal *window in [[iTermController sharedInstance] terminals]) {
-        for (PTYSession *session in window.allSessions) {
-            if ([session.guid isEqualToString:guid]) {
-                [session reveal];
-                return;
-            }
-        }
-    }
-    for (PTYSession *session in [[iTermBuriedSessions sharedInstance] buriedSessions]) {
-        if ([session.guid isEqualToString:guid]) {
-            [session reveal];
-            return;
-        }
-    }
-}
-
 - (void)revealWithURL:(NSURL *)url {
     NSURLComponents *components = [[[NSURLComponents alloc] initWithURL:url resolvingAgainstBaseURL:NO] autorelease];
     NSURLQueryItem *item = [components.queryItems objectPassingTest:^BOOL(NSURLQueryItem *item, NSUInteger index, BOOL *stop) {
         return [item.name isEqualToString:@"sessionid"];
     }];
     if (item) {
-        [self revealSessionID:item.value];
+        [iTermController.sharedInstance revealSessionID:item.value];
         return;
     }
 }

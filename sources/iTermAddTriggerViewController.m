@@ -1614,7 +1614,7 @@ static const CGFloat kLabelWidth = 124;
     }
     
     // Set appropriate height based on view type
-    CGFloat height = popup ? 25 : 21;
+    CGFloat height = (popup || [trigger paramIsComboBoxAndTwoColorWells]) ? 25 : 21;
     [_paramContainerView addConstraint:[NSLayoutConstraint constraintWithItem:_paramContainerView
                                                                     attribute:NSLayoutAttributeHeight
                                                                     relatedBy:NSLayoutRelationEqual
@@ -1827,10 +1827,36 @@ static const CGFloat kLabelWidth = 124;
 #pragma mark - iTermTriggerParameterController
 
 - (void)parameterPopUpButtonDidChange:(id)sender {
+    if ([sender isKindOfClass:[NSComboBox class]]) {
+        NSComboBox *comboBox = sender;
+        // objectValueOfSelectedItem has the newly picked value;
+        // stringValue hasn't been updated yet at action-send time.
+        NSString *value = [comboBox objectValueOfSelectedItem] ?: comboBox.stringValue;
+        id updated = [_currentTrigger paramByReplacingComboBoxValue:value
+                                                            inParam:_currentTrigger.param];
+        [_currentTrigger setParam:updated];
+        if (_didChange) {
+            _didChange();
+        }
+        return;
+    }
     const NSUInteger i = [sender indexOfSelectedItem];
     [_currentTrigger setParam:[_currentTrigger objectAtIndex:i]];
     if (_didChange) {
         _didChange();
+    }
+}
+
+- (void)comboBoxSelectionDidChange:(NSNotification *)notification {
+    NSComboBox *comboBox = notification.object;
+    NSString *value = [comboBox objectValueOfSelectedItem];
+    if (value) {
+        id updated = [_currentTrigger paramByReplacingComboBoxValue:value
+                                                            inParam:_currentTrigger.param];
+        [_currentTrigger setParam:updated];
+        if (_didChange) {
+            _didChange();
+        }
     }
 }
 
@@ -1845,7 +1871,10 @@ static const CGFloat kLabelWidth = 124;
         _contentRegex = [[textField stringValue] copy];
         _contentRegexVisualizationViewController.regex = _contentRegex ?: @"";
     } else if (textField != _nameTextField) {
-        if ([textField.identifier isEqual:kTwoPraramNameColumnIdentifier]) {
+        if ([textField.identifier isEqual:kStatusTextComboBoxIdentifier]) {
+            param = [_currentTrigger paramByReplacingComboBoxValue:textField.stringValue
+                                                           inParam:param];
+        } else if ([textField.identifier isEqual:kTwoPraramNameColumnIdentifier]) {
             iTermTuple<NSString *, NSString *> *pair = [iTermTwoParameterTriggerCodec tupleFromString:[NSString castFrom:param]];
             pair.firstObject = textField.stringValue;
             param = [iTermTwoParameterTriggerCodec stringFromTuple:pair];

@@ -2260,6 +2260,10 @@ launchCoprocessWithCommand:(NSString *)command
     [self.delegate triggerSideEffectSetValue:value forVariableNamed:name];
 }
 
+- (void)triggerSession:(Trigger *)trigger setTabStatus:(VT100TabStatusUpdate *)status {
+    [self.delegate screenSetTabStatus:status];
+}
+
 - (void)triggerSession:(Trigger *)trigger
   showAlertWithMessage:(NSString *)message
              rateLimit:(iTermRateLimitedUpdate *)rateLimit

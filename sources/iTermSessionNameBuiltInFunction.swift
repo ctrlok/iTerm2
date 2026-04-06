@@ -15,6 +15,7 @@ class SessionNameBuiltInFunction: NSObject, iTermBuiltInFunctionProtocol {
     private static let argName = "name"
     private static let argProfileName = "profileName"
 
+    @objc(registerBuiltInFunction)
     static func register() {
         let builtInFunction = iTermBuiltInFunction(
             name: "session_name",

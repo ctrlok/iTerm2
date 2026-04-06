@@ -218,6 +218,7 @@
 #import "VT100ScreenMutableState+Resizing.h"
 #import "VT100ScreenMutableState+TerminalDelegate.h"
 #import "VT100Terminal.h"
+#import "VT100TerminalDelegate.h"
 #import "TmuxGateway.h"
 #import "TmuxController.h"
 #import "charmaps.h"

@@ -10,6 +10,7 @@
 @class ToolDirectoriesView;
 @class ToolJobs;
 @class ToolNamedMarks;
+@class ToolStatus;
 @class ToolbeltSplitView;
 
 extern NSString *const kActionsToolName;

@@ -58,7 +58,7 @@ class iTermDockBadgeController: NSObject {
 
     @objc func tabWasSelected(_ tab: PTYTab) {
         var changed = false
-        for case let session as PTYSession in tab.sessions() {
+        for case let session in tab.sessions() {
             if waitingSessionGUIDs.remove(session.guid) != nil {
                 changed = true
             }
@@ -72,14 +72,7 @@ class iTermDockBadgeController: NSObject {
 
     private func updateBadge() {
         let total = bellCount + waitingSessionGUIDs.count
-        let dockTile = NSApp.dockTile
-        if total > 0 {
-            dockTile.badgeLabel = "\(total)"
-            dockTile.showsApplicationBadge = true
-        } else {
-            dockTile.badgeLabel = ""
-            dockTile.showsApplicationBadge = false
-        }
+        NSApp.dockTile.badgeLabel = total > 0 ? "\(total)" : ""
     }
 
     @objc private func applicationDidBecomeActive() {

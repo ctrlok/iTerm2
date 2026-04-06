@@ -6612,6 +6612,12 @@ launchCoprocessWithCommand:(NSString *)command
     } name:@"trigger set variable"];
 }
 
+- (void)triggerSession:(Trigger *)trigger setTabStatus:(VT100TabStatusUpdate *)status {
+    [self addSideEffect:^(id<VT100ScreenDelegate>  _Nonnull delegate) {
+        [delegate screenSetTabStatus:status];
+    } name:@"trigger set tab status"];
+}
+
 - (BOOL)triggerSessionIsInAlternateScreen {
     return self.terminal.softAlternateScreenMode;
 }

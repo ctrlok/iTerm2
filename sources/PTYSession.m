@@ -321,6 +321,7 @@ static NSString *const SESSION_ARRANGEMENT_PENDING_JUMPS = @"Pending Jumps";  //
 static NSString *const SESSION_ARRANGEMENT_CHANNEL_ID = @"Channel ID";  // NSString
 static NSString *const SESSION_ARRANGEMENT_TIMESTAMP_BASELINE = @"Timestamp Baseline"; // NSNumber
 static NSString *const SESSION_ARRANGEMENT_BROWSER_TARGET = @"Browser Target";  // String
+static NSString *const SESSION_ARRANGEMENT_TAB_STATUS = @"Tab Status";  // NSDictionary
 
 // Keys for dictionary in SESSION_ARRANGEMENT_PROGRAM
 static NSString *const kProgramType = @"Type";  // Value will be one of the kProgramTypeXxx constants.
@@ -703,6 +704,7 @@ typedef NS_ENUM(NSUInteger, PTYSessionTurdType) {
 
 + (void)registerBuiltInFunctions {
     [iTermSessionTitleBuiltInFunction registerBuiltInFunction];
+    [iTermSessionNameBuiltInFunction registerBuiltInFunction];
 }
 
 + (void)registerSessionInArrangement:(NSDictionary *)arrangement {
@@ -1593,6 +1595,14 @@ ITERM_WEAKLY_REFERENCEABLE
         aSession->_sshState = [arrangement[SESSION_ARRANGEMENT_SSH_STATE] unsignedIntegerValue];
     }
     aSession.cursorTypeOverride = arrangement[SESSION_ARRANGEMENT_CURSOR_TYPE_OVERRIDE];
+    NSDictionary *tabStatusDict = arrangement[SESSION_ARRANGEMENT_TAB_STATUS];
+    if (tabStatusDict) {
+        aSession->_tabStatus = [[iTermSessionTabStatus fromArrangementDictionary:tabStatusDict
+                                                                       sessionID:aSession.guid] retain];
+        if (aSession->_tabStatus) {
+            [[iTermSessionStatusController instance] tabStatusDidChange:aSession->_tabStatus];
+        }
+    }
     if (didRestoreContents && attachedToServer) {
         if (arrangement[SESSION_ARRANGEMENT_ALERT_ON_NEXT_MARK]) {
             aSession->_alertOnNextMark = [arrangement[SESSION_ARRANGEMENT_ALERT_ON_NEXT_MARK] boolValue];
@@ -6449,6 +6459,11 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
 
     NSString *pwd = [self currentLocalWorkingDirectory];
     result[SESSION_ARRANGEMENT_WORKING_DIRECTORY] = pwd ? pwd : @"";
+
+    NSDictionary *tabStatusDict = [_tabStatus arrangementDictionary];
+    if (tabStatusDict) {
+        result[SESSION_ARRANGEMENT_TAB_STATUS] = tabStatusDict;
+    }
     return YES;
 }
 
@@ -22756,7 +22771,7 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
 
 - (iTermSessionTabStatus *)tabStatus {
     if (!_tabStatus) {
-        _tabStatus = [[iTermSessionTabStatus alloc] init];
+        _tabStatus = [[iTermSessionTabStatus alloc] initWithSessionID:self.guid];
     }
     return _tabStatus;
 }

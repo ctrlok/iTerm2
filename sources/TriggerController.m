@@ -57,6 +57,7 @@ NSString *const kTextColorWellIdentifier = @"kTextColorWellIdentifier";
 NSString *const kBackgroundColorWellIdentifier = @"kBackgroundColorWellIdentifier";
 NSString *const kTwoPraramNameColumnIdentifier = @"kTwoPraramNameColumnIdentifier";
 NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentifier";
+NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier";
 
 @protocol iTermTriggersPanelViewDelegate
 - (void)viewDidChangeEffectiveAppearance;
@@ -286,7 +287,8 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
             [iTermHyperlinkTrigger class],
             [SetDirectoryTrigger class],
             [SetHostnameTrigger class],
-            [StopTrigger class] ];
+            [StopTrigger class],
+            [iTermSetTabStatusTrigger class] ];
     } else {
         allClasses = @[ [ReaderModeBrowserTrigger class],
                         [HighlightBrowserTrigger class],
@@ -834,6 +836,51 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
         well.identifier = kBackgroundColorWellIdentifier;
         return container;
     }
+    if ([trigger paramIsComboBoxAndTwoColorWells]) {
+        NSView *container = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
+        CGFloat x = 4;
+
+        // Combo box for status text
+        NSComboBox *comboBox = [[NSComboBox alloc] initWithFrame:NSMakeRect(x, 0, 100, size.height)];
+        comboBox.usesDataSource = NO;
+        comboBox.completes = YES;
+        comboBox.editable = YES;
+        comboBox.identifier = kStatusTextComboBoxIdentifier;
+        for (NSString *item in [trigger comboBoxItems]) {
+            [comboBox addItemWithObjectValue:item];
+        }
+        NSString *comboValue = [trigger comboBoxValueInParam:value];
+        comboBox.stringValue = comboValue ?: @"";
+        comboBox.target = receiver;
+        comboBox.action = @selector(parameterPopUpButtonDidChange:);
+        comboBox.delegate = (id)receiver;
+        [container addSubview:comboBox];
+        x += 100 + 6;
+
+        // Dot color well
+        const CGFloat kWellWidth = 30;
+        NSTextField *label = [self labelWithString:@"Dot:" origin:NSMakePoint(x, 0)];
+        [container addSubview:label];
+        x += label.frame.size.width;
+
+        CPKColorWell *well = wellFactory(NSMakeRect(x, 0, kWellWidth, size.height),
+                                         [trigger textColorInParam:value]);
+        well.identifier = kTextColorWellIdentifier;
+        [container addSubview:well];
+        x += kWellWidth + 6;
+
+        // Status text color well
+        label = [self labelWithString:@"Text:" origin:NSMakePoint(x, 0)];
+        [container addSubview:label];
+        x += label.frame.size.width;
+
+        well = wellFactory(NSMakeRect(x, 0, kWellWidth, size.height),
+                           [trigger backgroundColorInParam:value]);
+        well.identifier = kBackgroundColorWellIdentifier;
+        [container addSubview:well];
+
+        return container;
+    }
     if ([trigger paramIsTwoStrings]) {
         const CGFloat margin = 5;
         const NSSize subsize = NSMakeSize((size.width - margin) / 2, size.height);
@@ -1259,7 +1306,27 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
     [self setTriggerDictionary:triggerDictionary forRow:rowIndex reloadData:NO];
 }
 
-- (void)parameterPopUpButtonDidChange:(NSPopUpButton *)sender {
+- (void)parameterPopUpButtonDidChange:(id)sender {
+    if ([sender isKindOfClass:[NSComboBox class]]) {
+        NSComboBox *comboBox = sender;
+        NSInteger rowIndex = [_tableView rowForView:comboBox];
+        if (rowIndex < 0) {
+            return;
+        }
+        NSMutableDictionary *triggerDictionary =
+            [[self triggerDictionariesForCurrentProfile][rowIndex] mutableCopy];
+        Trigger *triggerObj = [self triggerWithAction:triggerDictionary[kTriggerActionKey]];
+        NSString *value = [comboBox objectValueOfSelectedItem] ?: comboBox.stringValue;
+        id parameter = [triggerObj paramByReplacingComboBoxValue:value
+                                                        inParam:triggerDictionary[kTriggerParameterKey]];
+        if (parameter) {
+            triggerDictionary[kTriggerParameterKey] = parameter;
+        } else {
+            [triggerDictionary removeObjectForKey:kTriggerParameterKey];
+        }
+        [self setTriggerDictionary:triggerDictionary forRow:rowIndex reloadData:NO];
+        return;
+    }
     NSInteger rowIndex = [_tableView rowForView:sender];
     if (rowIndex < 0) {
         return;
@@ -1268,6 +1335,29 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
         [[self triggerDictionariesForCurrentProfile][rowIndex] mutableCopy];
     Trigger *triggerObj = [self triggerWithAction:triggerDictionary[kTriggerActionKey]];
     id parameter = [triggerObj objectAtIndex:[sender indexOfSelectedItem]];
+    if (parameter) {
+        triggerDictionary[kTriggerParameterKey] = parameter;
+    } else {
+        [triggerDictionary removeObjectForKey:kTriggerParameterKey];
+    }
+    [self setTriggerDictionary:triggerDictionary forRow:rowIndex reloadData:NO];
+}
+
+- (void)comboBoxSelectionDidChange:(NSNotification *)notification {
+    NSComboBox *comboBox = notification.object;
+    NSInteger rowIndex = [_tableView rowForView:comboBox];
+    if (rowIndex < 0) {
+        return;
+    }
+    NSString *value = [comboBox objectValueOfSelectedItem];
+    if (!value) {
+        return;
+    }
+    NSMutableDictionary *triggerDictionary =
+        [[self triggerDictionariesForCurrentProfile][rowIndex] mutableCopy];
+    Trigger *triggerObj = [self triggerWithAction:triggerDictionary[kTriggerActionKey]];
+    id parameter = [triggerObj paramByReplacingComboBoxValue:value
+                                                    inParam:triggerDictionary[kTriggerParameterKey]];
     if (parameter) {
         triggerDictionary[kTriggerParameterKey] = parameter;
     } else {

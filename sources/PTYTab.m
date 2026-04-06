@@ -768,45 +768,15 @@ static void SetAgainstGrainDim(BOOL isVertical, NSSize *dest, CGFloat value) {
 }
 
 - (NSImage *)tabStatusDotImage {
-    const CGFloat size = 16;
-    const CGFloat dotDiameter = 8;
-    NSImage *image = [NSImage imageWithSize:NSMakeSize(size, size)
-                                    flipped:YES
-                             drawingHandler:^BOOL(NSRect dstRect) {
-        iTermSRGBColor srgb = self->_aggregatedTabStatus.indicatorColor;
-        NSColor *dotColor = [NSColor colorWithSRGBRed:srgb.r green:srgb.g blue:srgb.b alpha:1];
-        NSColor *lightCenter = [dotColor blendedColorWithFraction:0.3 ofColor:[NSColor whiteColor]];
-
-        // Draw the dot centered in the image.
-        NSRect dotRect = NSMakeRect((size - dotDiameter) / 2,
-                                    (size - dotDiameter) / 2,
-                                    dotDiameter,
-                                    dotDiameter);
-
-        // Prominent ring for unacknowledged waiting status.
-        if (self->_tabStatusWaitingProminent) {
-            const CGFloat ringDiameter = 12;
-            NSRect ringRect = NSMakeRect((size - ringDiameter) / 2,
-                                         (size - ringDiameter) / 2,
-                                         ringDiameter,
-                                         ringDiameter);
-            // Pick white or black ring based on contrast with the appearance.
-            BOOL isDark = [self.realParentWindow.window.effectiveAppearance
-                           bestMatchFromAppearancesWithNames:@[NSAppearanceNameDarkAqua]] != nil;
-            NSColor *ringColor = isDark ? [NSColor whiteColor] : [NSColor blackColor];
-            [ringColor setFill];
-            [[NSBezierPath bezierPathWithOvalInRect:ringRect] fill];
-        }
-
-        // Radial gradient: lighter center → full color at edge.
-        NSGradient *gradient = [[NSGradient alloc] initWithStartingColor:lightCenter
-                                                             endingColor:dotColor];
-        NSBezierPath *dotPath = [NSBezierPath bezierPathWithOvalInRect:dotRect];
-        [gradient drawInBezierPath:dotPath relativeCenterPosition:NSMakePoint(0, 0)];
-
-        return YES;
-    }];
-    return image;
+    iTermSRGBColor srgb = _aggregatedTabStatus.indicatorColor;
+    NSColor *dotColor = [NSColor colorWithSRGBRed:srgb.r green:srgb.g blue:srgb.b alpha:1];
+    BOOL isDark = [self.realParentWindow.window.effectiveAppearance
+                   bestMatchFromAppearancesWithNames:@[NSAppearanceNameDarkAqua]] != nil;
+    return [iTermSessionTabStatus dotImageWithColor:dotColor
+                                               size:16
+                                        dotDiameter:8
+                                          prominent:_tabStatusWaitingProminent
+                                             isDark:isDark];
 }
 
 - (void)loadTitleFromSession {

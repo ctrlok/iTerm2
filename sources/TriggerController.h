@@ -18,6 +18,7 @@ extern NSString *const kTextColorWellIdentifier;
 extern NSString *const kBackgroundColorWellIdentifier;
 extern NSString *const kTwoPraramNameColumnIdentifier;
 extern NSString *const kTwoPraramValueColumnIdentifier;
+extern NSString *const kStatusTextComboBoxIdentifier;
 
 @protocol TriggerDelegate <NSObject>
 - (void)triggerChanged:(TriggerController *)controller newValue:(NSArray *)value;
