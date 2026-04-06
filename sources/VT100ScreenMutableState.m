@@ -1698,6 +1698,7 @@ void VT100ScreenEraseCell(screen_char_t *sct,
 - (void)finishResetting {
     [self invalidateCommandStartCoordWithoutSideEffects];
     [self addSideEffect:^(id<VT100ScreenDelegate>  _Nonnull delegate) {
+        [delegate screenSetTabStatus:[VT100TabStatusUpdate clear]];
         [delegate screenSetCursorVisible:YES];
     } name:@"finish resetting"];
     [self.currentGrid markCharDirty:YES at:self.currentGrid.cursor updateTimestamp:NO];

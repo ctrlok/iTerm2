@@ -2,6 +2,13 @@
 // cleared (empty value), or set to a value.
 @objc(VT100TabStatusUpdate)
 class VT100TabStatusUpdate: NSObject {
+    @objc static var clear: VT100TabStatusUpdate {
+        var update = VT100TabStatusUpdate()
+        update.indicatorPresence = .cleared
+        update.statusPresence = .cleared
+        update.statusColorPresence = .cleared
+        return update
+    }
     @objc var indicatorPresence: VT100TabStatusUpdateFieldPresence = .notSet
     @objc var indicator: iTermSRGBColor = iTermSRGBColor(r: 0, g: 0, b: 0)
 
