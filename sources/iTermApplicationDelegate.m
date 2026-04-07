@@ -757,6 +757,10 @@ static NSModalResponse iTermCompareRenderingRunModal(id self, SEL _cmd) {
         [[iTermController sharedInstance] importWindowArrangementAtPath:filename asTabsInTerminal:nil];
         return YES;
     }
+    if ([filename.pathExtension isEqualToString:@"it2triggers"]) {
+        [TriggerController importTriggersFromFile:filename];
+        return YES;
+    }
     NSLog(@"Quiet launch");
     quiet_ = YES;
     if ([filename isEqualToString:[[NSFileManager defaultManager] versionNumberFilename]]) {

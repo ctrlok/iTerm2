@@ -35,6 +35,8 @@
 #import "NSJSONSerialization+iTerm.h"
 #import "NSObject+iTerm.h"
 #import "NSWorkspace+iTerm.h"
+#import "iTermWarning.h"
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "PasswordTrigger.h"
 #import "ProfileModel.h"
 #import "ScriptTrigger.h"
@@ -558,6 +560,99 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
         }
         return [Trigger triggerFromUntrustedDict:dict];
     }];
+    if (!triggers.count) {
+        return;
+    }
+    NSArray<NSString *> *guids = [self guidsForProfilesToImportTriggersInto:triggers];
+    [guids enumerateObjectsUsingBlock:^(NSString *guid, NSUInteger idx, BOOL * _Nonnull stop) {
+        [self addTriggers:triggers toProfileWithGUID:guid];
+    }];
+    [[NSNotificationCenter defaultCenter] postNotificationName:kReloadAllProfiles object:nil];
+}
+
++ (NSArray<Trigger *> *)triggersFromFile:(NSString *)filename window:(NSWindow *)window {
+    NSError *error = nil;
+    NSString *content = [NSString stringWithContentsOfFile:filename
+                                                 encoding:NSUTF8StringEncoding
+                                                    error:&error];
+    if (!content || error) {
+        [iTermWarning showWarningWithTitle:[NSString stringWithFormat:@"While loading %@: %@",
+                                            filename, error.localizedDescription]
+                                   actions:@[ @"OK" ]
+                                 accessory:nil
+                                identifier:@"NoSyncImportTriggersFailed"
+                               silenceable:kiTermWarningTypePersistent
+                                   heading:@"Import Failed"
+                                    window:window];
+        return nil;
+    }
+
+    id root = [NSJSONSerialization it_objectForJsonString:content error:&error];
+    if (!root) {
+        [iTermWarning showWarningWithTitle:[NSString stringWithFormat:@"While parsing %@: %@",
+                                            filename, error.localizedDescription]
+                                   actions:@[ @"OK" ]
+                                 accessory:nil
+                                identifier:@"NoSyncImportTriggersFailed"
+                               silenceable:kiTermWarningTypePersistent
+                                   heading:@"Import Failed"
+                                    window:window];
+        return nil;
+    }
+
+    // Support both a single dict and an array of dicts.
+    NSArray *array;
+    NSDictionary *singleDict = [NSDictionary castFrom:root];
+    if (singleDict) {
+        array = @[ singleDict ];
+    } else {
+        array = [NSArray castFrom:root];
+    }
+    if (!array) {
+        [iTermWarning showWarningWithTitle:[NSString stringWithFormat:@"Malformed file at %@", filename]
+                                   actions:@[ @"OK" ]
+                                 accessory:nil
+                                identifier:@"NoSyncTriggerEncodingError"
+                               silenceable:kiTermWarningTypePersistent
+                                   heading:@"Import Failed"
+                                    window:window];
+        return nil;
+    }
+
+    NSMutableArray<Trigger *> *triggers = [NSMutableArray array];
+    for (id element in array) {
+        NSDictionary *dict = [NSDictionary castFrom:element];
+        if (!dict) {
+            [iTermWarning showWarningWithTitle:[NSString stringWithFormat:@"Malformed file at %@", filename]
+                                       actions:@[ @"OK" ]
+                                     accessory:nil
+                                    identifier:@"NoSyncTriggerEncodingError"
+                                   silenceable:kiTermWarningTypePersistent
+                                       heading:@"Import Failed"
+                                        window:window];
+            return nil;
+        }
+        Trigger *trigger = [Trigger triggerFromUntrustedDict:dict];
+        if (!trigger) {
+            [iTermWarning showWarningWithTitle:[NSString stringWithFormat:@"Malformed file at %@", filename]
+                                       actions:@[ @"OK" ]
+                                     accessory:nil
+                                    identifier:@"NoSyncTriggerEncodingError"
+                                   silenceable:kiTermWarningTypePersistent
+                                       heading:@"Import Failed"
+                                        window:window];
+            return nil;
+        }
+        [triggers addObject:trigger];
+    }
+    return triggers;
+}
+
++ (void)importTriggersFromFile:(NSString *)filename {
+    NSArray<Trigger *> *triggers = [self triggersFromFile:filename window:nil];
+    if (!triggers.count) {
+        return;
+    }
     NSArray<NSString *> *guids = [self guidsForProfilesToImportTriggersInto:triggers];
     [guids enumerateObjectsUsingBlock:^(NSString *guid, NSUInteger idx, BOOL * _Nonnull stop) {
         [self addTriggers:triggers toProfileWithGUID:guid];
@@ -574,9 +669,15 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
 
 + (NSArray<NSString *> *)guidsForProfilesToImportTriggersInto:(NSArray<Trigger *> *)triggers {
     NSAlert *alert = [[NSAlert alloc] init];
-    NSArray<NSString *> *descriptions = [triggers mapWithBlock:^id _Nullable(Trigger *trigger) {
+    const NSInteger maxShown = 10;
+    NSArray<Trigger *> *shown = triggers.count > maxShown ? [triggers subarrayWithRange:NSMakeRange(0, maxShown)] : triggers;
+    NSArray<NSString *> *descriptions = [shown mapWithBlock:^id _Nullable(Trigger *trigger) {
         return [@"• " stringByAppendingString:[self importDescriptionForTrigger:trigger]];
     }];
+    if (triggers.count > maxShown) {
+        descriptions = [descriptions arrayByAddingObject:[NSString stringWithFormat:@"…and %@ more",
+                                                          @(triggers.count - maxShown)]];
+    }
     NSString *joined = [descriptions componentsJoinedByString:@"\n"];
     NSString *message = [NSString stringWithFormat:@"Select the profiles into which these triggers should be imported:\n\n%@", joined];
     [alert setMessageText:message];
@@ -601,12 +702,19 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
     if (!profile) {
         return;
     }
-    MutableProfile *mutableProfile = [profile mutableCopy];
     NSArray *existing = profile[KEY_TRIGGERS] ?: @[];
-    NSArray *updated = [existing arrayByAddingObjectsFromArray:[triggers mapWithBlock:^id _Nullable(Trigger *trigger) {
-        return trigger.dictionaryValue;
-    }]];
-    mutableProfile[KEY_TRIGGERS] = updated;
+    NSArray *existingCanonical = [existing mapWithBlock:^id _Nullable(NSDictionary *dict) {
+        Trigger *t = [Trigger triggerFromUntrustedDict:dict];
+        return t ? t.dictionaryValue : nil;
+    }];
+    NSArray *newDicts = [triggers mapWithBlock:^id _Nullable(Trigger *trigger) {
+        NSDictionary *dict = trigger.dictionaryValue;
+        if ([existingCanonical containsObject:dict]) {
+            return nil;
+        }
+        return dict;
+    }];
+    NSArray *updated = [existing arrayByAddingObjectsFromArray:newDicts];
     [[ProfileModel sharedInstance] setObject:updated forKey:KEY_TRIGGERS inBookmark:profile];
 }
 
@@ -947,7 +1055,76 @@ NSString *const kTwoPraramValueColumnIdentifier = @"kTwoPraramValueColumnIdentif
                             topLeftScreenCoordinate:screenPoint
                                           pointSize:12];
     }];
+    [menu addItemWithTitle:@"Export to File" action:^{
+        [self exportSelectedTriggers];
+    }];
     [menu showInView:_tableView forEvent:[NSApp currentEvent]];
+}
+
+- (void)exportSelectedTriggers {
+    NSIndexSet *indexes = _tableView.selectedRowIndexes;
+    NSArray *allTriggers = [self triggerDictionariesForCurrentProfile];
+    NSMutableArray<NSDictionary *> *array = [NSMutableArray array];
+    [indexes enumerateIndexesUsingBlock:^(NSUInteger i, BOOL * _Nonnull stop) {
+        [array addObject:allTriggers[i]];
+    }];
+    iTermModernSavePanel *panel = [[iTermModernSavePanel alloc] init];
+    panel.allowedContentTypes = @[ [UTType typeWithFilenameExtension:@"it2triggers"] ];
+    panel.preferredSSHIdentity = SSHIdentity.localhost;
+    [panel beginWithFallbackWindow:self.window handler:^(NSModalResponse response, iTermSavePanelItem *item) {
+        if (response != NSModalResponseOK) {
+            return;
+        }
+        NSString *json = [NSJSONSerialization it_jsonStringForObject:array];
+        [json writeToSaveItem:item completionHandler:^(NSError *error) {
+            if (error) {
+                [iTermWarning showWarningWithTitle:[NSString stringWithFormat:@"Error saving to %@: %@",
+                                                    item.displayName, error.localizedDescription]
+                                           actions:@[ @"OK" ]
+                                         accessory:nil
+                                        identifier:@"NoSyncTriggerWritingError"
+                                       silenceable:kiTermWarningTypePersistent
+                                           heading:@"Export Failed"
+                                            window:self.window];
+            } else {
+                [item revealInFinderIfLocal];
+            }
+        }];
+    }];
+}
+
+- (IBAction)import:(id)sender {
+    iTermOpenPanel *panel = [[iTermOpenPanel alloc] init];
+    panel.allowedContentTypes = @[ [UTType typeWithFilenameExtension:@"it2triggers"] ];
+    panel.canChooseFiles = YES;
+    panel.canChooseDirectories = NO;
+    panel.allowsMultipleSelection = YES;
+    panel.preferredSSHIdentity = [SSHIdentity localhost];
+    [panel beginWithFallbackWindow:self.window handler:^(NSModalResponse response, NSArray<NSURL *> *urls) {
+        if (response != NSModalResponseOK) {
+            return;
+        }
+        for (NSURL *url in urls) {
+            [self importTriggersFromFileURL:url];
+        }
+    }];
+}
+
+- (void)importTriggersFromFileURL:(NSURL *)url {
+    NSArray<Trigger *> *triggers = [TriggerController triggersFromFile:url.path window:self.window];
+    if (!triggers.count) {
+        return;
+    }
+    NSSet<NSDictionary *> *existingCanonical = [NSSet setWithArray:[[self triggerDictionariesForCurrentProfile] mapWithBlock:^id _Nullable(NSDictionary *dict) {
+        Trigger *t = [Trigger triggerFromUntrustedDict:dict];
+        return t ? t.dictionaryValue : nil;
+    }]];
+    for (Trigger *trigger in triggers) {
+        NSDictionary *canonicalDict = trigger.dictionaryValue;
+        if (![existingCanonical containsObject:canonicalDict]) {
+            [self setTriggerDictionary:canonicalDict forRow:-1 reloadData:YES];
+        }
+    }
 }
 
 - (IBAction)addTrigger:(id)sender {

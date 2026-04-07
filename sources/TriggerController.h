@@ -51,6 +51,7 @@ extern NSString *const kTwoPraramValueColumnIdentifier;
                            delegateOut:(out id *)delegateOut
                            wellFactory:(CPKColorWell *(^ NS_NOESCAPE)(NSRect, NSColor *))wellFactory;
 + (void)importTriggersFromURL:(NSURL *)url;
++ (void)importTriggersFromFile:(NSString *)filename;
 
 - (void)windowWillOpen;
 - (void)profileDidChange;
