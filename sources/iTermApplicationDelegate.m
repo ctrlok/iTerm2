@@ -1551,6 +1551,7 @@ void TurnOnDebugLoggingAutomatically(void) {
     }
 
     [self registerMenuTips];
+    [iTermClaudeWatcher start];
 #if DEBUG
     NSMenu *appMenu = [[[[NSApp mainMenu] itemArray] firstObject] submenu];
     [appMenu addItem:[NSMenuItem separatorItem]];
@@ -2264,6 +2265,10 @@ static iTermKeyEventReplayer *gReplayer;
 
 - (IBAction)checkForUpdatesFromMenu:(id)sender {
     [suUpdater checkForUpdates:(sender)];
+}
+
+- (IBAction)installClaudeCodeIntegration:(id)sender {
+    [iTermClaudeCodeOnboarding show];
 }
 
 #pragma mark - Main Menu

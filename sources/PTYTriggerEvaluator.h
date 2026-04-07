@@ -71,6 +71,7 @@ extern NSString *const PTYSessionSlownessEventExecute;
 @property (atomic, copy, nullable) NSString *foregroundJob;
 @property (nonatomic, readonly) BOOL havePromptDetectingTrigger;
 @property (nonatomic, readonly) NSString *stats;
+@property (nonatomic, copy, nullable) NSString *sessionID;
 
 - (instancetype)initWithQueue:(dispatch_queue_t)queue NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;

@@ -42,6 +42,12 @@ NSString *const PTYSessionSlownessEventExecute = @"execute";
     return self;
 }
 
+- (NSString *)description {
+    return [NSString stringWithFormat:@"<%@: %p sessionID=%@ triggers=%@ expectations=%@>",
+            NSStringFromClass([self class]), self,
+            self.sessionID, @(_triggers.count), @(_expect.expectations.count)];
+}
+
 - (void)setExpect:(iTermExpect *)expect {
     const BOOL mayNeedReset = !_triggers.count && !_expect.maybeHasExpectations;
     _expect = expect;
@@ -156,7 +162,8 @@ NSString *const PTYSessionSlownessEventExecute = @"execute";
                               stringLine:(iTermStringLine *)stringLine
                               lineNumber:(long long)startAbsLineNumber
                       requireIdempotency:(BOOL)requireIdempotency {
-    DLog(@"reallyCheckTriggersOnPartialLine: begin with expectations %@, string %@", _expect.expectations, stringLine.stringValue);
+    DLog(@"%@: reallyCheckTriggersOnPartialLine: begin with expectations %@, string %@",
+         self, _expect.expectations, stringLine.stringValue);
     if (self.evaluating) {
         DLog(@"Already evaluating");
         return;

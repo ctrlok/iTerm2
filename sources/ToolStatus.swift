@@ -18,6 +18,7 @@ class ToolStatus: NSView {
     private var settingsButton: NSButton!
     private static let buttonHeight: CGFloat = 23
     private static let margin: CGFloat = 5
+    static let statusToolLastUseUserDefaultsKey = "NoSyncStatusToolLastUseDate"
 
     private struct Status: Comparable {
         var tabStatus: iTermSessionTabStatus {
@@ -150,6 +151,10 @@ extension ToolStatus: ToolbeltTool {
         scrollView!.frame = NSRect(x: 0, y: scrollY, width: frame.width, height: frame.height - scrollY)
         let contentSize = self.contentSize()
         _tableView!.frame = NSRect(origin: .zero, size: contentSize)
+        if it_isVisible {
+            iTermUserDefaults.userDefaults().set(Date.timeIntervalSinceReferenceDate,
+                                                 forKey: Self.statusToolLastUseUserDefaultsKey)
+        }
     }
 }
 
@@ -162,13 +167,17 @@ extension ToolStatus {
 
     override func viewDidMoveToWindow() {
         let delegate = toolWrapper()?.delegate?.delegate
+        DLog("ToolStatus viewDidMoveToWindow: window=\(window.d), delegate=\(delegate.d), statuses in controller=\(SessionStatusController.instance.statuses.keys.map { $0 })")
         statuses = SessionStatusController.instance.statuses.values.compactMap { status in
-            if delegate?.toolbeltWindowContainsSession(withGUID: status.sessionID) == true {
+            let contains = delegate?.toolbeltWindowContainsSession(withGUID: status.sessionID) == true
+            DLog("ToolStatus viewDidMoveToWindow: sessionID=\(status.sessionID) contains=\(contains) hasActive=\(status.hasActiveStatus)")
+            if contains {
                 return Status(tabStatus: status, sessionID: status.sessionID, detail: nil)
             } else {
                 return nil
             }
         }
+        DLog("ToolStatus viewDidMoveToWindow: populated \(statuses.count) statuses")
         _tableView?.reloadData()
         updateSelectionWithoutChangingFirstResponder()
     }
@@ -267,9 +276,12 @@ private extension ToolStatus {
     }
 
     func didChange(key: String, value: iTermSessionTabStatus?, change: NotifyingDictionaryChange) {
+        DLog("ToolStatus didChange: key=\(key) change=\(change) window=\(window.d)")
         switch change {
         case .added:
-            guard toolWrapper()?.delegate?.delegate?.toolbeltWindowContainsSession(withGUID: key) == true else {
+            let contains = toolWrapper()?.delegate?.delegate?.toolbeltWindowContainsSession(withGUID: key) == true
+            DLog("ToolStatus didChange .added: contains=\(contains)")
+            guard contains else {
                 return
             }
             let newValue = Status(tabStatus: value!, sessionID: key, detail: nil)
@@ -317,6 +329,20 @@ private extension ToolStatus {
                         _tableView?.moveRow(at: i, to: j)
                     }
                     _tableView?.reloadData(forRowIndexes: IndexSet(integer: j), columnIndexes: IndexSet(integer: 0))
+                    _tableView?.endUpdates()
+                }
+            } else {
+                // Session was added to the controller before this observer existed.
+                // Treat it as a new addition.
+                let newValue = Status(tabStatus: value!, sessionID: key, detail: nil)
+                var updated = statuses
+                updated.append(newValue)
+                updated.sort()
+                let j = updated.firstIndex { $0.sessionID == key }
+                if let j {
+                    statuses = updated
+                    _tableView?.beginUpdates()
+                    _tableView?.insertRows(at: IndexSet(integer: j))
                     _tableView?.endUpdates()
                 }
             }

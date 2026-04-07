@@ -70,6 +70,7 @@ extern NSString *const PTYSessionArrangementOptionsLargeContentProvider;
 @class iTermExpect;
 @class iTermImageWrapper;
 @class iTermKeyBindingAction;
+@class iTermNaggingController;
 @class iTermPathCompletionHelper;
 @class iTermRunningRemoteCommand;
 @class iTermSSHReconnectionInfo;
@@ -663,6 +664,8 @@ backgroundColor:(NSColor *)backgroundColor;
 @property(nonatomic, retain) iTermAutomaticProfileSwitcher *automaticProfileSwitcher;
 @property(nonatomic, readonly) iTermAutomaticProfileSwitchingSession *apsContext;
 
+@property(nonatomic, readonly, retain) iTermNaggingController *naggingController;
+
 #pragma mark - methods
 
 + (BOOL)arrangement:(NSDictionary *)arrangement
@@ -891,6 +894,9 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
 
 // Call refresh on the textview and schedule a timer if anything is blinking.
 - (void)refresh;
+
+// Force a jiggle (re-layout) of the session view so triggers have a chance to fire.
+- (void)setNeedsJiggle:(BOOL)needsJiggle;
 
 // Open the current selection with semantic history.
 - (void)openSelection;

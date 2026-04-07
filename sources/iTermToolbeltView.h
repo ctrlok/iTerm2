@@ -22,6 +22,7 @@ extern NSString *const kNotesToolName;
 extern NSString *const kPasteHistoryToolName;
 extern NSString *const kProfilesToolName;
 extern NSString *const kDynamicToolsDidChange;
+extern NSString *const kStatusToolName;
 
 extern NSString *const iTermToolbeltDidRegisterDynamicToolNotification;
 

@@ -53,6 +53,8 @@ extern NSString *const kStatusTextComboBoxIdentifier;
                            wellFactory:(CPKColorWell *(^ NS_NOESCAPE)(NSRect, NSColor *))wellFactory;
 + (void)importTriggersFromURL:(NSURL *)url;
 + (void)importTriggersFromFile:(NSString *)filename;
++ (NSArray<Trigger *> *)triggersFromFile:(NSString *)filename window:(NSWindow *)window;
++ (void)addTriggers:(NSArray<Trigger *> *)triggers toProfileWithGUID:(NSString *)guid;
 
 - (void)windowWillOpen;
 - (void)profileDidChange;

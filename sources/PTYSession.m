@@ -6707,9 +6707,10 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     [self.variablesScope setValue:@(processInfo.processID) forVariableNamed:iTermVariableKeySessionJobPid];
 
     // Update trigger evaluators with current foreground job for job-filtered triggers.
-    DLog(@"setCurrentForegroundJobProcessInfo: setting foreground job to %@ for trigger filtering", name);
-    [_screen setForegroundJobForTriggerFiltering:name];
-    _eventTriggerEvaluator.foregroundJob = name;
+    // Use processTitle (argv0) rather than name so it matches symlink names like "claude".
+    DLog(@"setCurrentForegroundJobProcessInfo: setting foreground job to %@ for trigger filtering", processTitle);
+    [_screen setForegroundJobForTriggerFiltering:processTitle];
+    _eventTriggerEvaluator.foregroundJob = processTitle;
 
     if ([name isEqualToString:@"sudo"]) {
         [self checkForSudoPasswordPromptToOfferTouchID];
@@ -22782,9 +22783,12 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
 }
 
 - (void)screenSetTabStatus:(VT100TabStatusUpdate *)status {
-    DLog(@"screenSetTabStatus: %@", status);
+    DLog(@"%@ screenSetTabStatus: %@", self, status);
     NSString *previousStatusText = self.tabStatus.statusText;
-    [self.tabStatus apply:status];
+    if (![self.tabStatus apply:status]) {
+        DLog(@"No change");
+        return;
+    }
     [self maybePostTabStatusNotificationWithPreviousStatusText:previousStatusText];
     [_delegate sessionTabStatusDidChange:self];
 }

@@ -57,18 +57,64 @@ class VT100TabStatusUpdate: NSObject {
     }
 }
 
+extension iTermSRGBColor: Equatable {
+    public static func == (lhs: iTermSRGBColor, rhs: iTermSRGBColor) -> Bool {
+        return lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b
+    }
+}
+
 // Accumulated per-session tab status state from one or more VT100TabStatusUpdate messages.
 @objc(iTermSessionTabStatus)
 class iTermSessionTabStatus: NSObject {
     let sessionID: String
-
-    @objc var hasIndicator: Bool = false
-    @objc var indicatorColor: iTermSRGBColor = iTermSRGBColor(r: 0, g: 0, b: 0)
-
-    @objc var statusText: String? = nil
-
-    @objc var hasStatusTextColor: Bool = false
-    @objc var statusTextColor: iTermSRGBColor = iTermSRGBColor(r: 0, g: 0, b: 0)
+    private struct State: Equatable {
+        var hasIndicator: Bool = false
+        var indicatorColor: iTermSRGBColor = iTermSRGBColor(r: 0, g: 0, b: 0)
+        var statusText: String? = nil
+        var hasStatusTextColor: Bool = false
+        var statusTextColor: iTermSRGBColor = iTermSRGBColor(r: 0, g: 0, b: 0)
+    }
+    private var state = State()
+    @objc var hasIndicator: Bool {
+        get {
+            state.hasIndicator
+        }
+        set {
+            state.hasIndicator = newValue
+        }
+    }
+    @objc var indicatorColor: iTermSRGBColor {
+        get {
+            state.indicatorColor
+        }
+        set {
+            state.indicatorColor = newValue
+        }
+    }
+    @objc var statusText: String? {
+        get {
+            state.statusText
+        }
+        set {
+            state.statusText = newValue
+        }
+    }
+    @objc var hasStatusTextColor: Bool {
+        get {
+            state.hasStatusTextColor
+        }
+        set {
+            state.hasStatusTextColor = newValue
+        }
+    }
+    @objc var statusTextColor: iTermSRGBColor {
+        get {
+            state.statusTextColor
+        }
+        set {
+            state.statusTextColor = newValue
+        }
+    }
 
     @objc var hasActiveStatus: Bool {
         return hasIndicator || statusText != nil
@@ -83,7 +129,8 @@ class iTermSessionTabStatus: NSObject {
         super.init()
     }
 
-    @objc func apply(_ update: VT100TabStatusUpdate) {
+    @objc func apply(_ update: VT100TabStatusUpdate) -> Bool {
+        let before = state
         switch update.indicatorPresence {
         case .notSet:
             break
@@ -120,7 +167,11 @@ class iTermSessionTabStatus: NSObject {
         @unknown default:
             break
         }
+        if state == before {
+            return false
+        }
         notify()
+        return true
     }
 
     @objc func clear() {
@@ -246,6 +297,14 @@ class SessionStatusController: NSObject {
                                                selector: #selector(sessionWillTerminate(_:)),
                                                name: NSNotification.Name.iTermSessionWillTerminate,
                                                object: nil)
+
+        // Pick up tab statuses that were set before this controller was created.
+        for session in iTermController.sharedInstance()?.allSessions() ?? [] {
+            guard let tabStatus = session.tabStatus, tabStatus.hasActiveStatus else {
+                continue
+            }
+            statuses[tabStatus.sessionID] = tabStatus
+        }
     }
 
     @objc

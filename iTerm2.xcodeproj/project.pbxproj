@@ -4519,6 +4519,10 @@
 		A6E632C723C31BD9008F60F0 /* iTermCLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = A6E632C623C31BD9008F60F0 /* iTermCLogging.h */; };
 		A6E701092F82C537001349AE /* ToolStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E701082F82C537001349AE /* ToolStatus.swift */; };
 		A6E702DF2F8327F2001349AE /* iTermSwiftyStringTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E702DE2F8327F2001349AE /* iTermSwiftyStringTextField.swift */; };
+		A6E70C202F84B6D5001349AE /* ClaudeWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E70C1F2F84B6D5001349AE /* ClaudeWatcher.swift */; };
+		A6E70C222F858463001349AE /* claude-code-status-triggers.json in Resources */ = {isa = PBXBuildFile; fileRef = A6E70C212F858463001349AE /* claude-code-status-triggers.json */; };
+		A6E70C232F858463001349AE /* claude-code-status-triggers.json in Resources */ = {isa = PBXBuildFile; fileRef = A6E70C212F858463001349AE /* claude-code-status-triggers.json */; };
+		A6E70C242F858463001349AE /* claude-code-status-triggers.json in Resources */ = {isa = PBXBuildFile; fileRef = A6E70C212F858463001349AE /* claude-code-status-triggers.json */; };
 		A6E7137A18F1D70E008D94DD /* GeneralPreferencesViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = A6E7137818F1D70D008D94DD /* GeneralPreferencesViewController.h */; };
 		A6E7138418F263BC008D94DD /* PreferenceInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = A6E7138218F263BC008D94DD /* PreferenceInfo.h */; };
 		A6E7138918F26445008D94DD /* iTermPreferencesBaseViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = A6E7138718F26445008D94DD /* iTermPreferencesBaseViewController.h */; };
@@ -5176,8 +5180,10 @@
 		A7538B418331D32A3C38281F /* FIFOQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20065710A2FC0BE95B224445 /* FIFOQueue.swift */; };
 		A785F516A64BC93AAF1474B8 /* RegexAtomIterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76421C2E762130B690D1ADC5 /* RegexAtomIterator.swift */; };
 		A7E25DCB1956D4A7FA738CB9 /* iTermStreamingPNGWriter.h in Sources */ = {isa = PBXBuildFile; fileRef = CB2F48F836C5732146BCEDD9 /* iTermStreamingPNGWriter.h */; };
+		AA190CE70997D5318EF50177 /* ClaudeCodeOnboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = E961A126DE6D9EFA0C6CC9AB /* ClaudeCodeOnboarding.swift */; };
 		B2CA85E23B4CCCC3391BA025 /* NotifyingDictionary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877B9444B69DE32D9CF87354 /* NotifyingDictionary.swift */; };
 		C48D7AA2E70B019313C401F3 /* WordSelectionAtom.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08AA4008946722C3F4C67C1 /* WordSelectionAtom.swift */; };
+		C5F394249CF581965B22B714 /* GlobalJobMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA34A6F29B10471D8FD572F6 /* GlobalJobMonitor.swift */; };
 		C6675EBC1C4FE96B0041173B /* iTermSelectorSwizzler.m in Sources */ = {isa = PBXBuildFile; fileRef = C6675EBB1C4FE96B0041173B /* iTermSelectorSwizzler.m */; };
 		C6CFF825AECC6B31CD732D23 /* iTermSessionNameBuiltInFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DE2C181D86B1F93619B375 /* iTermSessionNameBuiltInFunction.swift */; };
 		CC1EDD90C29B2AFC43831C81 /* VT100StringConversionConfig.h in Sources */ = {isa = PBXBuildFile; fileRef = 6F87CB3CBFBF0D0E8781513C /* VT100StringConversionConfig.h */; };
@@ -6279,7 +6285,7 @@
 		6373295DEB74E8DFC995A362 /* iTermAdapterSettingsRevealHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = iTermAdapterSettingsRevealHelper.swift; sourceTree = "<group>"; };
 		646F4870D9C453064E2DEA8F /* iTermCharacterSourceTestHelper.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = iTermCharacterSourceTestHelper.m; sourceTree = "<group>"; };
 		698B6ED16A3CD11D402C364B /* iTermUploadIndicator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = iTermUploadIndicator.swift; path = sources/iTermUploadIndicator.swift; sourceTree = SOURCE_ROOT; };
-		6BF8BACD33B295303BE246FB /* UnderlineComposite.metal */ = {isa = PBXFileReference; includeInIndex = 1; name = UnderlineComposite.metal; path = sources/Metal/Shaders/UnderlineComposite.metal; sourceTree = SOURCE_ROOT; };
+		6BF8BACD33B295303BE246FB /* UnderlineComposite.metal */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.metal; name = UnderlineComposite.metal; path = sources/Metal/Shaders/UnderlineComposite.metal; sourceTree = SOURCE_ROOT; };
 		6F87CB3CBFBF0D0E8781513C /* VT100StringConversionConfig.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = VT100StringConversionConfig.h; sourceTree = "<group>"; };
 		756C32AB2597AC2E0047B3A9 /* iTermImage+Sixel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "iTermImage+Sixel.h"; sourceTree = "<group>"; };
 		756C32AC2597AC2E0047B3A9 /* iTermImage+Sixel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "iTermImage+Sixel.m"; sourceTree = "<group>"; };
@@ -8714,6 +8720,8 @@
 		A6E632C623C31BD9008F60F0 /* iTermCLogging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iTermCLogging.h; sourceTree = "<group>"; };
 		A6E701082F82C537001349AE /* ToolStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolStatus.swift; sourceTree = "<group>"; };
 		A6E702DE2F8327F2001349AE /* iTermSwiftyStringTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iTermSwiftyStringTextField.swift; sourceTree = "<group>"; };
+		A6E70C1F2F84B6D5001349AE /* ClaudeWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeWatcher.swift; sourceTree = "<group>"; };
+		A6E70C212F858463001349AE /* claude-code-status-triggers.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "claude-code-status-triggers.json"; path = "OtherResources/claude-code-status-triggers.json"; sourceTree = "<group>"; };
 		A6E7137818F1D70D008D94DD /* GeneralPreferencesViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 4; lastKnownFileType = sourcecode.c.h; path = GeneralPreferencesViewController.h; sourceTree = "<group>"; tabWidth = 4; };
 		A6E7137918F1D70D008D94DD /* GeneralPreferencesViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; path = GeneralPreferencesViewController.m; sourceTree = "<group>"; tabWidth = 4; };
 		A6E7137D18F1DB1E008D94DD /* iTermPreferences.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 4; lastKnownFileType = sourcecode.c.h; path = iTermPreferences.h; sourceTree = "<group>"; tabWidth = 4; };
@@ -9224,6 +9232,7 @@
 		C6675EBB1C4FE96B0041173B /* iTermSelectorSwizzler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = iTermSelectorSwizzler.m; sourceTree = "<group>"; };
 		C80C997508DC4BF559F599EB /* UnderlineCompositeRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnderlineCompositeRenderer.swift; sourceTree = "<group>"; };
 		CA1C7B91071000DE37B9DA33 /* iTermSessionTabStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = iTermSessionTabStatus.swift; sourceTree = "<group>"; };
+		CA34A6F29B10471D8FD572F6 /* GlobalJobMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GlobalJobMonitor.swift; sourceTree = "<group>"; };
 		CB2F48F836C5732146BCEDD9 /* iTermStreamingPNGWriter.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = iTermStreamingPNGWriter.h; sourceTree = "<group>"; };
 		D3CE2D4C1A00936F0098ED99 /* PSMDarkTabStyle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PSMDarkTabStyle.h; sourceTree = "<group>"; };
 		D3CE2D4D1A00936F0098ED99 /* PSMDarkTabStyle.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PSMDarkTabStyle.m; sourceTree = "<group>"; };
@@ -9256,9 +9265,10 @@
 		E8CF7563026DDA6303A80106 /* VT100Terminal.m */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; path = VT100Terminal.m; sourceTree = "<group>"; tabWidth = 4; };
 		E8CF757F026DDAD703A80106 /* main.m */ = {isa = PBXFileReference; fileEncoding = 30; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; tabWidth = 4; };
 		E8E901A202743CA303A80106 /* NSStringITerm.m */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; path = NSStringITerm.m; sourceTree = "<group>"; tabWidth = 4; };
+		E961A126DE6D9EFA0C6CC9AB /* ClaudeCodeOnboarding.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClaudeCodeOnboarding.swift; sourceTree = "<group>"; };
 		ED49EE365D629DAE80503BFD /* iTermNonTextPasteHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = iTermNonTextPasteHelper.swift; path = sources/iTermNonTextPasteHelper.swift; sourceTree = SOURCE_ROOT; };
 		F10731A1F54B9BF72FBAC682 /* Box.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Box.swift; sourceTree = "<group>"; };
-		F287FABDFD3BECB9DCD3181D /* Underline.metal */ = {isa = PBXFileReference; includeInIndex = 1; name = Underline.metal; path = sources/Metal/Shaders/Underline.metal; sourceTree = SOURCE_ROOT; };
+		F287FABDFD3BECB9DCD3181D /* Underline.metal */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.metal; name = Underline.metal; path = sources/Metal/Shaders/Underline.metal; sourceTree = SOURCE_ROOT; };
 		F5145BCC5773DB25978071C5 /* iTermScreenshotLineRangeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = iTermScreenshotLineRangeView.swift; sourceTree = "<group>"; };
 		F52ED8DD037F0A7D01A8A066 /* PTYSession.m */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; lineEnding = 0; path = PTYSession.m; sourceTree = "<group>"; tabWidth = 4; xcLanguageSpecificationIdentifier = xcode.lang.objc; };
 		F56B230B03A1B36701A8A066 /* PTYWindow.m */ = {isa = PBXFileReference; fileEncoding = 30; indentWidth = 4; lastKnownFileType = sourcecode.c.objc; lineEnding = 0; path = PTYWindow.m; sourceTree = "<group>"; tabWidth = 4; xcLanguageSpecificationIdentifier = xcode.lang.objc; };
@@ -9605,8 +9615,8 @@
 				10914CB04BC4D2847EC8EB23 /* ToolStatusCellView.swift */,
 				877B9444B69DE32D9CF87354 /* NotifyingDictionary.swift */,
 				61DE2C181D86B1F93619B375 /* iTermSessionNameBuiltInFunction.swift */,
-				00885D5646181ED6CFE9A2DE /* SetTabStatusTrigger.swift */,
 				7AB44D00ABCD3E5DC090E2D2 /* StatusPrioritySettings.swift */,
+				E961A126DE6D9EFA0C6CC9AB /* ClaudeCodeOnboarding.swift */,
 			);
 			name = Classes;
 			path = sources/;
@@ -10041,6 +10051,7 @@
 		1D03D42719144C3B0049EB8F /* Other Assets */ = {
 			isa = PBXGroup;
 			children = (
+				A6E70C212F858463001349AE /* claude-code-status-triggers.json */,
 				A6CB248C2C68147B00005824 /* Utilities */,
 				A6B577D52C0A9520003FEB4F /* ai-plugin.sb */,
 				A6D3205629C492410088BBE1 /* nerd.itse */,
@@ -10655,6 +10666,7 @@
 				A6F1B3B42690DC3600546767 /* SetUserVariableTrigger.swift */,
 				B231EDB860248C368A511B42 /* iTermEventTriggerEvaluator.swift */,
 				DE7B0AE10E1598EDE1E01795 /* iTermEventTriggerParameterView.swift */,
+				00885D5646181ED6CFE9A2DE /* SetTabStatusTrigger.swift */,
 			);
 			name = Triggers;
 			sourceTree = "<group>";
@@ -13079,6 +13091,8 @@
 				A697CED22D9D8E540031583F /* VimKeyParser.swift */,
 				A63EB05A284DCAF300B2AB89 /* WeakBox.swift */,
 				C08AA4008946722C3F4C67C1 /* WordSelectionAtom.swift */,
+				CA34A6F29B10471D8FD572F6 /* GlobalJobMonitor.swift */,
+				A6E70C1F2F84B6D5001349AE /* ClaudeWatcher.swift */,
 			);
 			name = Helpers;
 			sourceTree = "<group>";
@@ -17026,6 +17040,7 @@
 				A6A3EDDA2E0D050700D711DA /* select-text.js in Resources */,
 				A6CBB7AE2E087DBF00B2CCCB /* notification-bridge.js in Resources */,
 				A6CBB7BE2E08BDD600B2CCCB /* geolocation-demo.html in Resources */,
+				A6E70C222F858463001349AE /* claude-code-status-triggers.json in Resources */,
 				A6109B662B969B4100D8E4E9 /* graphic_neovim@2x.png in Resources */,
 				A6C6822B2E40367B00B8B021 /* trigger-remove-highlighted-text.js in Resources */,
 				A6C838B22CB9ACF90062BE68 /* success-sound.mp3 in Resources */,
@@ -17237,6 +17252,7 @@
 				A6E7AEAD214394F600DE9F3B /* graphic_database.png in Resources */,
 				A67D0D5D1A2EE12A003A8B35 /* iTermEditKeyActionWindowController.xib in Resources */,
 				A60BB38A1EB54BD800D76C09 /* CopyMode@2x.png in Resources */,
+				A6E70C232F858463001349AE /* claude-code-status-triggers.json in Resources */,
 				A6E7AEB6214394F600DE9F3B /* graphic_database@2x.png in Resources */,
 				A697CEC92D98CEB00031583F /* OpenQuicklyMenuItem.png in Resources */,
 				A635F1E425076201008C3038 /* iTermActionsEditingViewController.xib in Resources */,
@@ -17965,6 +17981,7 @@
 				A68CB85B2E3FD510002531F5 /* triggers.js in Resources */,
 				A6BEE47A26E0A624009C0C2C /* FilterIndicator.png in Resources */,
 				A68E33351DE746F5003F1D8E /* Next Mark Touch Bar Icon.png in Resources */,
+				A6E70C242F858463001349AE /* claude-code-status-triggers.json in Resources */,
 				53FF981C20927F1E008688D7 /* template_pyenv_simple.py in Resources */,
 				A686A1151C86A6CB0024C2DE /* NewOutputForDarkTheme.png in Resources */,
 				A65D7CB121E1EBCA00E3D81C /* StopStatusIcon@2x.png in Resources */,
@@ -19065,6 +19082,7 @@
 				A6F7D4DD2E03E03B0065D09C /* iTermURLTextField.swift in Sources */,
 				A6A802EA226ED20800BC70DC /* iTermPrintGuard.m in Sources */,
 				A653F66C24CE7CE30062377E /* iTermGraphEncoder.m in Sources */,
+				A6E70C202F84B6D5001349AE /* ClaudeWatcher.swift in Sources */,
 				A6F7D4BB2E0373110065D09C /* iTermBrowserErrorHandler.swift in Sources */,
 				A66319872308C60000C502BD /* NSStringITerm.m in Sources */,
 				5370678A21C9D2780088D0F3 /* SIGKey.m in Sources */,
@@ -20233,6 +20251,8 @@
 				C6CFF825AECC6B31CD732D23 /* iTermSessionNameBuiltInFunction.swift in Sources */,
 				82C8876B3E6C833593501F97 /* SetTabStatusTrigger.swift in Sources */,
 				D456895D420CBEEDC331D5F7 /* StatusPrioritySettings.swift in Sources */,
+				C5F394249CF581965B22B714 /* GlobalJobMonitor.swift in Sources */,
+				AA190CE70997D5318EF50177 /* ClaudeCodeOnboarding.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
