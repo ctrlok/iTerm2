@@ -212,13 +212,15 @@ extension ToolStatus {
 
     **Control Sequence (OSC 21337):** Programs can set tab status directly:
 
-    `printf '\\e]21337;status=Working;indicator=255/165/0\\a'`
+    `printf '\\e]21337;status=Working;indicator=#ffa500\\a'`
 
     Supported keys (separated by `;`):
 
-    * `status=TEXT` — Sets the status text (e.g., "Working", "Waiting").
-    * `indicator=R/G/B` — Sets the dot color (0–255 per component).
-    * `status-color=R/G/B` — Sets the status text color.
+    * `status=TEXT` — Sets the status text (e.g., \u{201c}Working\u{201d}, \u{201c}Waiting\u{201d}).
+    * `indicator=COLOR` — Sets the dot color.
+    * `status-color=COLOR` — Sets the status text color.
+
+    Colors use xterm format: `rgb:RR/GG/BB` (hex, 1–4 digits per component) or `#RRGGBB`.
 
     Set a key to empty to clear it: `status=` clears the status text.
 

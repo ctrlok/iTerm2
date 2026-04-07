@@ -52,11 +52,19 @@ class StatusPrioritySettings: NSObject {
         super.init()
     }
 
+    /// Priority value for status text that doesn't match any pattern.
+    @objc var unmatchedPriority: Int { entries.count }
+
+    /// Returns true if the given status text matches the highest-priority pattern (index 0).
+    @objc func isHighestPriority(for statusText: String?) -> Bool {
+        return !entries.isEmpty && priority(for: statusText) == 0
+    }
+
     /// Returns priority for the given status text.
     /// Lower numbers = higher priority.
     /// nil statusText gets the lowest priority.
     @objc func priority(for statusText: String?) -> Int {
-        guard let statusText else {
+        guard let statusText, !entries.isEmpty else {
             return entries.count + 1
         }
         let lower = statusText.lowercased()

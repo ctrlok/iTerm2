@@ -116,30 +116,8 @@ static void SwapPoint(NSPoint* point) {
 //
 // <------grain----->
 
-typedef NS_ENUM(NSInteger, iTermTabStatusPriority) {
-    iTermTabStatusPriorityNone = 0,
-    iTermTabStatusPriorityUnknown = 1,
-    iTermTabStatusPriorityIdle = 2,
-    iTermTabStatusPriorityWorking = 3,
-    iTermTabStatusPriorityWaiting = 4,
-};
-
-static iTermTabStatusPriority iTermTabStatusPriorityForStatusText(NSString *text) {
-    if (!text) {
-        return iTermTabStatusPriorityNone;
-    }
-    NSString *lower = [text lowercaseString];
-    if ([lower hasPrefix:@"wait"]) {
-        return iTermTabStatusPriorityWaiting;
-    }
-    if ([lower hasPrefix:@"work"]) {
-        return iTermTabStatusPriorityWorking;
-    }
-    if ([lower hasPrefix:@"idle"]) {
-        return iTermTabStatusPriorityIdle;
-    }
-    return iTermTabStatusPriorityUnknown;
-}
+// Tab status priority is determined by StatusPrioritySettings.shared.
+// Lower values = higher priority. NSIntegerMax means no status.
 
 static CGFloat WithGrainDim(BOOL isVertical, NSSize size) {
     return isVertical ? size.width : size.height;
@@ -7216,8 +7194,7 @@ backgroundColor:(NSColor *)backgroundColor {
 
 - (void)sessionTabStatusDidChange:(PTYSession *)session {
     DLog(@"sessionTabStatusDidChange: %@", session);
-    iTermTabStatusPriority priority = iTermTabStatusPriorityForStatusText(session.tabStatus.statusText);
-    if (priority == iTermTabStatusPriorityWaiting) {
+    if ([[iTermStatusPrioritySettings shared] isHighestPriorityFor:session.tabStatus.statusText]) {
         [[iTermDockBadgeController sharedInstance] sessionDidEnterWaiting:session.guid];
     } else {
         [[iTermDockBadgeController sharedInstance] sessionDidLeaveWaiting:session.guid];
@@ -7234,33 +7211,32 @@ backgroundColor:(NSColor *)backgroundColor {
 }
 
 - (void)updateAggregatedTabStatus {
+    iTermStatusPrioritySettings *settings = [iTermStatusPrioritySettings shared];
     PTYSession *winner = nil;
-    iTermTabStatusPriority winnerPriority = iTermTabStatusPriorityNone;
+    // Lower priority value = higher priority. NSIntegerMax = no status.
+    NSInteger winnerPriority = NSIntegerMax;
 
     for (PTYSession *session in [self sessions]) {
         if (!session.tabStatus.hasActiveStatus) {
             continue;
         }
-        iTermTabStatusPriority priority = iTermTabStatusPriorityForStatusText(session.tabStatus.statusText);
-        if (priority == iTermTabStatusPriorityNone) {
-            priority = iTermTabStatusPriorityUnknown;
-        }
-        if (priority > winnerPriority ||
+        NSInteger priority = [settings priorityFor:session.tabStatus.statusText];
+        if (priority < winnerPriority ||
             (priority == winnerPriority && session == self.activeSession)) {
             winner = session;
             winnerPriority = priority;
         }
     }
 
-    // If all sessions have unknown priority, prefer the active session.
-    if (winnerPriority == iTermTabStatusPriorityUnknown &&
+    // If all sessions have unmatched priority, prefer the active session.
+    if (winnerPriority >= settings.unmatchedPriority &&
         self.activeSession.tabStatus.hasActiveStatus) {
         winner = self.activeSession;
     }
 
-    iTermTabStatusPriority oldPriority = iTermTabStatusPriorityForStatusText(_aggregatedTabStatus.statusText);
-    if (!_aggregatedTabStatus.hasActiveStatus) {
-        oldPriority = iTermTabStatusPriorityNone;
+    NSInteger oldPriority = NSIntegerMax;
+    if (_aggregatedTabStatus.hasActiveStatus) {
+        oldPriority = [settings priorityFor:_aggregatedTabStatus.statusText];
     }
 
     if (winner) {
@@ -7269,9 +7245,9 @@ backgroundColor:(NSColor *)backgroundColor {
         [_aggregatedTabStatus clear];
     }
 
-    // Update prominent flag
-    if (winnerPriority == iTermTabStatusPriorityWaiting) {
-        if (oldPriority != iTermTabStatusPriorityWaiting) {
+    // Update prominent flag — prominent when entering highest priority.
+    if (winnerPriority == 0) {
+        if (oldPriority != 0) {
             _tabStatusWaitingProminent = YES;
         }
     } else {
