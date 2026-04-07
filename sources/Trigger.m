@@ -28,6 +28,7 @@ NSString * const kTriggerDisabledKey = @"disabled";
 NSString * const kTriggerNameKey = @"name";
 NSString * const kTriggerPerformanceKey = @"performance";
 NSString * const kTriggerEventParamsKey = @"eventParams";
+NSString * const kTriggerJobKey = @"job";
 
 @interface Trigger()
 @end
@@ -80,6 +81,9 @@ NSString * const kTriggerEventParamsKey = @"eventParams";
     trigger.disabled = [[NSNumber coerceFrom:dict[kTriggerDisabledKey]] boolValue];
     trigger->_matchType = [[NSNumber coerceFrom:dict[kTriggerMatchTypeKey]] unsignedIntegerValue];
     trigger->_name = [NSString castFrom:dict[kTriggerNameKey]];
+    trigger->_job = [NSString castFrom:dict[kTriggerJobKey]];
+    DLog(@"triggerFromUntrustedDict: job key raw value=%@ (%@), castFrom result=%@, trigger->_job=%@",
+         dict[kTriggerJobKey], NSStringFromClass([dict[kTriggerJobKey] class]), [NSString castFrom:dict[kTriggerJobKey]], trigger->_job);
     trigger->_eventParams = [NSDictionary castFrom:dict[kTriggerEventParamsKey]];
     if ([NSDictionary castFrom:dict[kTriggerPerformanceKey]]) {
         iTermHistogram *histogram = [[iTermHistogram alloc] initWithDictionary:[NSDictionary castFrom:dict[kTriggerPerformanceKey]]];
@@ -511,6 +515,7 @@ NSString * const kTriggerEventParamsKey = @"eventParams";
                kTriggerPartialLineKey: @(self.partialLine),
                kTriggerDisabledKey: @(self.disabled),
                kTriggerNameKey: self.name ?: [NSNull null],
+               kTriggerJobKey: self.job ?: [NSNull null],
                kTriggerEventParamsKey: self.eventParams ?: [NSNull null] } dictionaryByRemovingNullValues];
 }
 
@@ -568,6 +573,11 @@ NSString * const kTriggerEventParamsKey = @"eventParams";
     }
     NSArray *lines = nil;
     NSString *instantEmoji = self.partialLine ? @"⚡︎ " : nil;
+    id jobAttributedString = [NSNull null];
+    if ([self.job stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].length > 0) {
+        jobAttributedString = [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"Job: %@", self.job]
+                                                              attributes:self.regularAttributes];
+    }
     if ([self.name stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].length > 0) {
         NSString *name = self.name;
         if (instantEmoji) {
@@ -576,7 +586,7 @@ NSString * const kTriggerEventParamsKey = @"eventParams";
         NSAttributedString *nameAttributedString = [[NSAttributedString alloc] initWithString:name
                                                                                    attributes:self.nameAttributes];
         NSAttributedString *functionAttributedString = [self functionAttributedString];
-        lines = @[nameAttributedString, matchInfoAttributedString, functionAttributedString];
+        lines = @[nameAttributedString, jobAttributedString, matchInfoAttributedString, functionAttributedString];
     } else {
         NSAttributedString *line2;
         if (instantEmoji) {
@@ -585,7 +595,7 @@ NSString * const kTriggerEventParamsKey = @"eventParams";
         } else {
             line2 = self.functionAttributedString;
         }
-        lines = @[matchInfoAttributedString, line2];
+        lines = @[jobAttributedString, matchInfoAttributedString, line2];
     }
     lines = [lines filteredArrayUsingBlock:^BOOL(id anObject) {
         return [anObject isKindOfClass:[NSAttributedString class]];

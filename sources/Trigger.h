@@ -40,6 +40,7 @@ extern NSString * const kTriggerPartialLineKey;
 extern NSString * const kTriggerDisabledKey;
 extern NSString * const kTriggerNameKey;
 extern NSString * const kTriggerEventParamsKey;
+extern NSString * const kTriggerJobKey;
 
 @protocol iTermTriggerDelegate<NSObject>
 - (void)triggerDidChangeParameterOptions:(Trigger *)trigger;
@@ -125,6 +126,7 @@ extern NSString * const kTriggerEventParamsKey;
 @property (nonatomic, copy) NSString *regex;
 @property (nonatomic, copy, readonly) NSString *contentRegex;
 @property (nonatomic, copy, readonly) NSString *name;
+@property (nonatomic, copy, readonly, nullable) NSString *job;
 @property (nonatomic, copy) NSString *action;
 @property (nullable, nonatomic, copy) id param;
 @property (nonatomic, assign) BOOL partialLine;

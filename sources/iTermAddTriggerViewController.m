@@ -34,6 +34,7 @@ static const CGFloat kLabelWidth = 124;
     NSTextField *_regexTextField;
     NSTextField *_contentRegexTextField;
     NSTextField *_nameTextField;
+    NSTextField *_jobTextField;
     NSTextField *_regexLabel;
     NSPopUpButton *_actionButton;
     NSView *_paramContainerView;
@@ -119,7 +120,7 @@ static const CGFloat kLabelWidth = 124;
     }
     
     // Set an explicit size for the content since we're using programmatic views
-    CGFloat height = browserMode ? 277 : 208;  // Extra 33 points for match type row + 36 points for content regex row
+    CGFloat height = browserMode ? 306 : 237;  // Extra 33 for match type row + 36 for content regex row + 29 for job row
     NSSize contentSize = NSMakeSize(480, height);
     NSRect contentRect = NSMakeRect(0, 0, contentSize.width, contentSize.height);
     
@@ -221,6 +222,7 @@ static const CGFloat kLabelWidth = 124;
     _regexTextField.stringValue = _regex;
     _contentRegexTextField.stringValue = _contentRegex ?: @"";
     _nameTextField.stringValue = trigger.name ?: @"";
+    _jobTextField.stringValue = trigger.job ?: @"";
     const NSInteger prototypeIndex = [_prototypes indexOfObjectPassingTest:^BOOL(Trigger * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
         return [obj isKindOfClass:trigger.class];
     }];
@@ -345,7 +347,11 @@ static const CGFloat kLabelWidth = 124;
     // Name row
     NSView *nameRow = [self createRowWithLabelText:@"Name:" hasVisualizationButton:NO];
     [stackView addArrangedSubview:nameRow];
-    
+
+    // Job row
+    NSView *jobRow = [self createRowWithLabelText:@"Job:" hasVisualizationButton:NO];
+    [stackView addArrangedSubview:jobRow];
+
     // Buttons row
     NSView *buttonsRow = [self createButtonsRow];
     [stackView addArrangedSubview:buttonsRow];
@@ -581,6 +587,9 @@ static const CGFloat kLabelWidth = 124;
         _regexLabel = label;
     } else if ([labelText isEqualToString:@"Name:"]) {
         _nameTextField = textField;
+    } else if ([labelText isEqualToString:@"Job:"]) {
+        _jobTextField = textField;
+        _jobTextField.placeholderString = @"Trigger enabled only for this job (e.g., emacs)";
     }
     
     // Add visualization button if needed
@@ -1546,7 +1555,8 @@ static const CGFloat kLabelWidth = 124;
                                                         kTriggerPartialLineKey: @(instant),
                                                         kTriggerDisabledKey: @NO,
                                                         kTriggerMatchTypeKey: @(_matchType),
-                                                        kTriggerNameKey: _nameTextField.stringValue ?: [NSNull null] } mutableCopy];
+                                                        kTriggerNameKey: _nameTextField.stringValue ?: [NSNull null],
+                                                        kTriggerJobKey: _jobTextField.stringValue.length > 0 ? _jobTextField.stringValue : [NSNull null] } mutableCopy];
 
     // Add event params for event triggers
     if (isEventTrigger && _eventParamView) {
@@ -1699,6 +1709,11 @@ static const CGFloat kLabelWidth = 124;
 
 - (NSString *)name {
     return _nameTextField.stringValue;
+}
+
+- (NSString *)job {
+    NSString *value = _jobTextField.stringValue;
+    return value.length > 0 ? value : nil;
 }
 
 - (iTermTriggerMatchType)matchType {
@@ -1870,7 +1885,7 @@ static const CGFloat kLabelWidth = 124;
     } else if (textField == _contentRegexTextField) {
         _contentRegex = [[textField stringValue] copy];
         _contentRegexVisualizationViewController.regex = _contentRegex ?: @"";
-    } else if (textField != _nameTextField) {
+    } else if (textField != _nameTextField && textField != _jobTextField) {
         if ([textField.identifier isEqual:kStatusTextComboBoxIdentifier]) {
             param = [_currentTrigger paramByReplacingComboBoxValue:textField.stringValue
                                                            inParam:param];

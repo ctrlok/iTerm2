@@ -6706,6 +6706,11 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     [self.variablesScope setValue:processInfo.commandLine forVariableNamed:iTermVariableKeySessionCommandLine];
     [self.variablesScope setValue:@(processInfo.processID) forVariableNamed:iTermVariableKeySessionJobPid];
 
+    // Update trigger evaluators with current foreground job for job-filtered triggers.
+    DLog(@"setCurrentForegroundJobProcessInfo: setting foreground job to %@ for trigger filtering", name);
+    [_screen setForegroundJobForTriggerFiltering:name];
+    _eventTriggerEvaluator.foregroundJob = name;
+
     if ([name isEqualToString:@"sudo"]) {
         [self checkForSudoPasswordPromptToOfferTouchID];
     } else {

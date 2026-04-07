@@ -1400,6 +1400,12 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
     if (_detailViewController.name) {
         triggerDictionary[kTriggerNameKey] = _detailViewController.name;
     }
+    DLog(@"detailViewControllerDidChange: job=%@", _detailViewController.job);
+    if (_detailViewController.job.length > 0) {
+        triggerDictionary[kTriggerJobKey] = _detailViewController.job;
+    } else {
+        [triggerDictionary removeObjectForKey:kTriggerJobKey];
+    }
     NSDictionary *eventParams = _detailViewController.eventParams;
     if (eventParams.count > 0) {
         triggerDictionary[kTriggerEventParamsKey] = eventParams;

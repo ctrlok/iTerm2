@@ -423,6 +423,10 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
 
 #pragma mark - Accessors
 
+- (void)setForegroundJobForTriggerFiltering:(NSString *)job {
+    _triggerEvaluator.foregroundJob = job;
+}
+
 - (void)setConfig:(VT100MutableScreenConfiguration *)config {
     DLog(@"%@ begin %@", self, config);
     assert(VT100ScreenMutableState.performingJoinedBlock);

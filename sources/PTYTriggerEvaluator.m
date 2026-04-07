@@ -176,12 +176,18 @@ NSString *const PTYSessionSlownessEventExecute = @"execute";
         }
 
         NSArray<Trigger *> *triggers = _triggers;
+        NSString *currentJob = self.foregroundJob;
 
         DLog(@"Start checking triggers");
         [_triggersSlownessDetector measureEvent:PTYSessionSlownessEventTriggers block:^{
             for (Trigger *trigger in triggers) {
                 DLog(@"Consider %@", trigger);
                 if (requireIdempotency && !trigger.isIdempotent) {
+                    continue;
+                }
+                DLog(@"Trigger %@ has job=%@ (length=%@), currentJob=%@", trigger, trigger.job, @(trigger.job.length), currentJob);
+                if (trigger.job.length > 0 && [trigger.job caseInsensitiveCompare:currentJob ?: @""] != NSOrderedSame) {
+                    DLog(@"Skip trigger %@ because job %@ doesn't match foreground job %@", trigger, trigger.job, currentJob);
                     continue;
                 }
                 BOOL stop = [trigger tryString:stringLine
@@ -256,7 +262,7 @@ NSString *const PTYSessionSlownessEventExecute = @"execute";
         return [trigger dictionaryValue];
     }] mutableCopy];
     _triggers = [[array mapWithBlock:^Trigger *(NSDictionary *profileDict) {
-        DLog(@"%@", profileDict);
+        DLog(@"loadFromProfileArray: profileDict=%@, job key=%@", profileDict, profileDict[kTriggerJobKey]);
         NSDictionary *dict = [Trigger triggerNormalizedDictionary:profileDict];
         NSArray<Trigger *> *triggers = table[dict];
         if (!triggers.count) {
