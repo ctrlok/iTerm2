@@ -1251,6 +1251,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
     } else {
         [triggerDictionary removeObjectForKey:kTriggerParameterKey];
     }
+    [triggerDictionary removeObjectForKey:kTriggerProvenanceKey];
     // Don't reload data. If this was called because another color picker was opening, reloading the
     // table will cause the presenting view to disappear. That prevents the new popover from
     // appearing correctly.
@@ -1268,6 +1269,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
     NSMutableDictionary *triggerDictionary =
         [[self triggerDictionariesForCurrentProfile][row] mutableCopy];
     triggerDictionary[kTriggerPartialLineKey] = newValue;
+    [triggerDictionary removeObjectForKey:kTriggerProvenanceKey];
     [self setTriggerDictionary:triggerDictionary forRow:row reloadData:NO];
 }
 
@@ -1282,6 +1284,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
     NSMutableDictionary *triggerDictionary =
         [[self triggerDictionariesForCurrentProfile][row] mutableCopy];
     triggerDictionary[kTriggerDisabledKey] = newValue;
+    [triggerDictionary removeObjectForKey:kTriggerProvenanceKey];
     [self setTriggerDictionary:triggerDictionary forRow:row reloadData:NO];
 }
 
@@ -1303,6 +1306,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
     } else if ([triggerObj triggerOptionalDefaultParameterValueWithInterpolation:_interpolatedStringParameters.state == NSControlStateValueOn]) {
         triggerDictionary[kTriggerParameterKey] = [triggerObj triggerOptionalDefaultParameterValueWithInterpolation:_interpolatedStringParameters.state == NSControlStateValueOn];
     }
+    [triggerDictionary removeObjectForKey:kTriggerProvenanceKey];
     [self setTriggerDictionary:triggerDictionary forRow:rowIndex reloadData:NO];
 }
 
@@ -1324,6 +1328,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
         } else {
             [triggerDictionary removeObjectForKey:kTriggerParameterKey];
         }
+        [triggerDictionary removeObjectForKey:kTriggerProvenanceKey];
         [self setTriggerDictionary:triggerDictionary forRow:rowIndex reloadData:NO];
         return;
     }
@@ -1340,6 +1345,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
     } else {
         [triggerDictionary removeObjectForKey:kTriggerParameterKey];
     }
+    [triggerDictionary removeObjectForKey:kTriggerProvenanceKey];
     [self setTriggerDictionary:triggerDictionary forRow:rowIndex reloadData:NO];
 }
 
@@ -1363,6 +1369,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
     } else {
         [triggerDictionary removeObjectForKey:kTriggerParameterKey];
     }
+    [triggerDictionary removeObjectForKey:kTriggerProvenanceKey];
     [self setTriggerDictionary:triggerDictionary forRow:rowIndex reloadData:NO];
 }
 
@@ -1400,6 +1407,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
     if (_detailViewController.name) {
         triggerDictionary[kTriggerNameKey] = _detailViewController.name;
     }
+    [triggerDictionary removeObjectForKey:kTriggerProvenanceKey];
     DLog(@"detailViewControllerDidChange: job=%@", _detailViewController.job);
     if (_detailViewController.job.length > 0) {
         triggerDictionary[kTriggerJobKey] = _detailViewController.job;

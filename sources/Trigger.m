@@ -29,6 +29,7 @@ NSString * const kTriggerNameKey = @"name";
 NSString * const kTriggerPerformanceKey = @"performance";
 NSString * const kTriggerEventParamsKey = @"eventParams";
 NSString * const kTriggerJobKey = @"job";
+NSString * const kTriggerProvenanceKey = @"provenance";
 
 @interface Trigger()
 @end
@@ -82,6 +83,7 @@ NSString * const kTriggerJobKey = @"job";
     trigger->_matchType = [[NSNumber coerceFrom:dict[kTriggerMatchTypeKey]] unsignedIntegerValue];
     trigger->_name = [NSString castFrom:dict[kTriggerNameKey]];
     trigger->_job = [NSString castFrom:dict[kTriggerJobKey]];
+    trigger->_provenance = [NSString castFrom:dict[kTriggerProvenanceKey]];
     DLog(@"triggerFromUntrustedDict: job key raw value=%@ (%@), castFrom result=%@, trigger->_job=%@",
          dict[kTriggerJobKey], NSStringFromClass([dict[kTriggerJobKey] class]), [NSString castFrom:dict[kTriggerJobKey]], trigger->_job);
     trigger->_eventParams = [NSDictionary castFrom:dict[kTriggerEventParamsKey]];
@@ -516,6 +518,7 @@ NSString * const kTriggerJobKey = @"job";
                kTriggerDisabledKey: @(self.disabled),
                kTriggerNameKey: self.name ?: [NSNull null],
                kTriggerJobKey: self.job ?: [NSNull null],
+               kTriggerProvenanceKey: self.provenance ?: [NSNull null],
                kTriggerEventParamsKey: self.eventParams ?: [NSNull null] } dictionaryByRemovingNullValues];
 }
 
