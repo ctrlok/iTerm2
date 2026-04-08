@@ -237,3 +237,4 @@
 #import "iTermCharacterSourceTestHelper.h"
 #import "iTermImageComparison.h"
 #import "iTermUnderlineSpanTestHelper.h"
+#import <CoreParse/CoreParse.h>
