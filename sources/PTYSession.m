@@ -15568,72 +15568,125 @@ typedef NS_ENUM(NSUInteger, PTYSessionTmuxReport) {
     [self setTabColor:color fromEscapeSequence:NO];
 }
 
+// Returns all appearance-variant keys for a tab color base key.
+// When separate colors mode is enabled, returns both the light and dark
+// variants so that tab colors are written to both modes and survive
+// appearance switches. When separate mode is off, returns just the base key.
+- (NSArray<NSString *> *)allTabColorKeysForBaseKey:(NSString *)baseKey {
+    const BOOL separate = [iTermProfilePreferences boolForKey:KEY_USE_SEPARATE_COLORS_FOR_LIGHT_AND_DARK_MODE
+                                                    inProfile:self.profile];
+    if (!separate) {
+        return @[ baseKey ];
+    }
+    return @[ baseKey,
+              iTermAmendedColorKey2(baseKey, YES, YES),
+              iTermAmendedColorKey2(baseKey, YES, NO) ];
+}
+
+- (NSDictionary<NSString *, id> *)tabColorSettings {
+    NSArray<NSString *> *useTabColorKeys = [self allTabColorKeysForBaseKey:KEY_USE_TAB_COLOR];
+    NSArray<NSString *> *tabColorKeys = [self allTabColorKeysForBaseKey:KEY_TAB_COLOR];
+
+    NSMutableDictionary *settings = [NSMutableDictionary dictionary];
+
+    // Retain baselines since setSessionSpecificProfileValues will remove them from
+    // _preEscapeSequenceColors, potentially deallocating them.
+    for (NSString *key in useTabColorKeys) {
+        id baseline = [[_preEscapeSequenceColors[key] retain] autorelease] ?: @([iTermProfilePreferences boolForKey:key inProfile:_profile]);
+        settings[key] = baseline;
+    }
+
+    for (NSString *key in tabColorKeys) {
+        id baseline = [[_preEscapeSequenceColors[key] retain] autorelease] ?: _profile[key];
+        if (baseline) {
+            settings[key] = baseline;
+        }
+    }
+
+    return settings;
+}
+
+- (void)clearTabColorByEscapeSequence {
+    NSArray<NSString *> *useTabColorKeys = [self allTabColorKeysForBaseKey:KEY_USE_TAB_COLOR];
+    NSArray<NSString *> *tabColorKeys = [self allTabColorKeysForBaseKey:KEY_TAB_COLOR];
+
+    NSDictionary<NSString *, id> *savedBaselines = [self tabColorSettings];
+    NSMutableDictionary *valuesToRestore = [NSMutableDictionary dictionary];
+    for (NSString *key in useTabColorKeys) {
+        if (savedBaselines[key]) {
+            valuesToRestore[key] = savedBaselines[key];
+            [_preEscapeSequenceColors removeObjectForKey:key];
+        }
+    }
+    for (NSString *key in tabColorKeys) {
+        if (savedBaselines[key]) {
+            valuesToRestore[key] = savedBaselines[key];
+            [_preEscapeSequenceColors removeObjectForKey:key];
+        }
+    }
+    if (valuesToRestore.count > 0) {
+        [self setSessionSpecificProfileValues:valuesToRestore];
+    }
+}
+
+- (void)setTabColorFromEscapeSequence:(NSColor *)color {
+    NSArray<NSString *> *useTabColorKeys = [self allTabColorKeysForBaseKey:KEY_USE_TAB_COLOR];
+    NSArray<NSString *> *tabColorKeys = [self allTabColorKeysForBaseKey:KEY_TAB_COLOR];
+
+    NSDictionary<NSString *, id> *savedBaselines = [self tabColorSettings];
+    // Setting a new color - write to all appearance variants.
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    NSDictionary *encoded = [ITAddressBookMgr encodeColor:color];
+    for (NSString *key in useTabColorKeys) {
+        dict[key] = @YES;
+    }
+    for (NSString *key in tabColorKeys) {
+        dict[key] = encoded;
+    }
+    [self setSessionSpecificProfileValues:dict];
+
+    // Restore baselines after setSessionSpecificProfileValues clears them.
+    if (!_preEscapeSequenceColors) {
+        _preEscapeSequenceColors = [[NSMutableDictionary alloc] init];
+    }
+    [_preEscapeSequenceColors addEntriesFromDictionary:savedBaselines];
+}
+
 - (void)setTabColor:(NSColor *)color fromEscapeSequence:(BOOL)fromEscapeSequence {
-    NSString *useTabColorKey = [self amendedColorKey:KEY_USE_TAB_COLOR];
-    NSString *tabColorKey = [self amendedColorKey:KEY_TAB_COLOR];
-
     if (fromEscapeSequence) {
-        // Save baselines before modifying, if not already saved.
-        if (!_preEscapeSequenceColors) {
-            _preEscapeSequenceColors = [[NSMutableDictionary alloc] init];
-        }
-
-        // Retain baselines since setSessionSpecificProfileValues will remove them from
-        // _preEscapeSequenceColors, potentially deallocating them.
-        id useTabColorBaseline = [[_preEscapeSequenceColors[useTabColorKey] retain] autorelease];
-        id tabColorBaseline = [[_preEscapeSequenceColors[tabColorKey] retain] autorelease];
-
-        if (!useTabColorBaseline) {
-            useTabColorBaseline = @([iTermProfilePreferences boolForKey:useTabColorKey inProfile:_profile]);
-        }
-        if (!tabColorBaseline) {
-            tabColorBaseline = _profile[tabColorKey];
-        }
-
-        // If this is a reset (color == nil) and we have baselines, restore them.
-        if (!color && (useTabColorBaseline || tabColorBaseline)) {
-            NSMutableDictionary *valuesToRestore = [NSMutableDictionary dictionary];
-            if (useTabColorBaseline) {
-                valuesToRestore[useTabColorKey] = useTabColorBaseline;
-                [_preEscapeSequenceColors removeObjectForKey:useTabColorKey];
-            }
-            if (tabColorBaseline) {
-                valuesToRestore[tabColorKey] = tabColorBaseline;
-                [_preEscapeSequenceColors removeObjectForKey:tabColorKey];
-            }
-            [self setSessionSpecificProfileValues:valuesToRestore];
-            return;
-        }
-
-        // Setting a new color - apply the change
-        NSDictionary *dict;
         if (color) {
-            dict = @{ useTabColorKey: @YES,
-                      tabColorKey: [ITAddressBookMgr encodeColor:color] };
+            [self setTabColorFromEscapeSequence:color];
         } else {
-            dict = @{ useTabColorKey: @NO };
+            [self clearTabColorByEscapeSequence];
         }
-        [self setSessionSpecificProfileValues:dict];
 
-        // Restore baselines after setSessionSpecificProfileValues clears them.
-        if (useTabColorBaseline) {
-            _preEscapeSequenceColors[useTabColorKey] = useTabColorBaseline;
+
+    } else {
+        [self setTabColorByUI:color];
+    }
+}
+
+- (void)setTabColorByUI:(NSColor *)color {
+    NSArray<NSString *> *useTabColorKeys = [self allTabColorKeysForBaseKey:KEY_USE_TAB_COLOR];
+    NSArray<NSString *> *tabColorKeys = [self allTabColorKeysForBaseKey:KEY_TAB_COLOR];
+
+    // Not from escape sequence (Edit Session, View menu, etc.)
+    // setSessionSpecificProfileValues will clear any baselines.
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    if (color) {
+        NSDictionary *encoded = [ITAddressBookMgr encodeColor:color];
+        for (NSString *key in useTabColorKeys) {
+            dict[key] = @YES;
         }
-        if (tabColorBaseline) {
-            _preEscapeSequenceColors[tabColorKey] = tabColorBaseline;
+        for (NSString *key in tabColorKeys) {
+            dict[key] = encoded;
         }
     } else {
-        // Not from escape sequence (Edit Session) - just apply the change.
-        // setSessionSpecificProfileValues will clear any baselines.
-        NSDictionary *dict;
-        if (color) {
-            dict = @{ useTabColorKey: @YES,
-                      tabColorKey: [ITAddressBookMgr encodeColor:color] };
-        } else {
-            dict = @{ useTabColorKey: @NO };
+        for (NSString *key in useTabColorKeys) {
+            dict[key] = @NO;
         }
-        [self setSessionSpecificProfileValues:dict];
     }
+    [self setSessionSpecificProfileValues:dict];
 }
 
 - (void)screenSetTabColorRedComponentTo:(CGFloat)color {
