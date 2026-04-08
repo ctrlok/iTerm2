@@ -18350,20 +18350,70 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
 - (void)automaticProfileSwitcherLoadProfile:(iTermSavedProfile *)savedProfile {
     Profile *underlyingProfile = [[ProfileModel sharedInstance] bookmarkWithGuid:savedProfile.originalProfile[KEY_GUID]];
     Profile *replacementProfile = underlyingProfile ?: savedProfile.originalProfile;
+    DLog(@"APS load profile: target=%@ isDivorced=%@ currentFont=%@ originalProfileGuid=%@",
+         underlyingProfile[KEY_NAME], @(savedProfile.isDivorced),
+         _textview.fontTable.asciiFont.font, _originalProfile[KEY_GUID]);
+
+    // Compute the font zoom delta before switching profiles so we can preserve it.
+    // Use _originalProfile to get the base (unzoomed) font size, since _originalProfile
+    // always reflects the underlying shared profile and is not modified by Cmd+/- zoom.
+    CGFloat fontZoomDelta = 0;
+    if ([iTermAdvancedSettingsModel preserveFontSizeOnAutomaticProfileSwitch]) {
+        iTermFontTable *originalFontTable = [iTermFontTable fontTableForProfile:_originalProfile];
+        CGFloat currentPointSize = _textview.fontTable.asciiFont.font.pointSize;
+        CGFloat originalPointSize = originalFontTable.asciiFont.font.pointSize;
+        fontZoomDelta = currentPointSize - originalPointSize;
+        DLog(@"APS zoom: currentPointSize=%@ originalPointSize=%@ fontZoomDelta=%@",
+             @(currentPointSize), @(originalPointSize), @(fontZoomDelta));
+    }
+
     if (![self setProfile:replacementProfile preservingName:NO adjustWindow:NO]) {
+        DLog(@"APS setProfile failed");
         [_view showUnobtrusiveMessage:[NSString stringWithFormat:@"Can’t switch to profile “%@”—wrong profile type.", underlyingProfile[KEY_NAME]]];
         return;
     }
     if (savedProfile.isDivorced) {
+        // When preserving font zoom, exclude font keys from the overrides
+        // since the zoom delta will handle the font. The saved overrides may
+        // have a stale font if the user zoomed after a previous APS round-trip.
+        NSSet *fontKeys = nil;
+        if (fontZoomDelta != 0) {
+            fontKeys = [NSSet setWithObjects:KEY_NORMAL_FONT, KEY_NON_ASCII_FONT,
+                        KEY_FONT_CONFIG, KEY_BROWSER_ZOOM, nil];
+            DLog(@"APS excluding font keys from divorced overrides because fontZoomDelta=%@", @(fontZoomDelta));
+        }
+        DLog(@"APS restoring divorced overrides: %@", [savedProfile.overriddenFields allObjects]);
         NSMutableDictionary *overrides = [NSMutableDictionary dictionary];
         for (NSString *key in savedProfile.overriddenFields) {
             if ([key isEqualToString:KEY_GUID] || [key isEqualToString:KEY_ORIGINAL_GUID]) {
                 continue;
             }
+            if ([fontKeys containsObject:key]) {
+                continue;
+            }
             overrides[key] = savedProfile.profile[key];
         }
+        const BOOL saved = _windowAdjustmentDisabled;
+        _windowAdjustmentDisabled = YES;
         [self setSessionSpecificProfileValues:overrides];
+        _windowAdjustmentDisabled = saved;
     }
+
+    // Re-apply the font zoom delta after the profile switch.
+    if (fontZoomDelta != 0) {
+        DLog(@"APS applying zoom delta %@ to font %@", @(fontZoomDelta), _textview.fontTable.asciiFont.font);
+        const BOOL saved = _windowAdjustmentDisabled;
+        _windowAdjustmentDisabled = YES;
+        iTermFontTable *zoomedTable = [_textview.fontTable fontTableGrownBy:fontZoomDelta];
+        [self setFontTable:zoomedTable
+         horizontalSpacing:_textview.horizontalSpacing
+           verticalSpacing:_textview.verticalSpacing];
+        _windowAdjustmentDisabled = saved;
+        DLog(@"APS after zoom: font=%@", _textview.fontTable.asciiFont.font);
+    } else {
+        DLog(@"APS skipping zoom: delta=0");
+    }
+
     if ([iTermAdvancedSettingsModel showAutomaticProfileSwitchingBanner]) {
         [_view showUnobtrusiveMessage:[NSString stringWithFormat:@"Switched to profile “%@”.", underlyingProfile[KEY_NAME]]];
     }
