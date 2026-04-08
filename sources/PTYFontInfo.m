@@ -56,12 +56,14 @@
 - (NSInteger)it_ligatureLevel {
     if ([self it_fontIsOnLigatureBlacklist]) {
         return 0;
-    } else {
+    } else if ([iTermAdvancedSettingsModel enableContextualAlternates]) {
         // Use level 2 to enable contextual alternates (calt) in addition to
         // standard ligatures (liga). Many popular coding fonts such as
         // Monaspace, Iosevka, and Cascadia Code use calt for their coding
         // ligatures, which level 1 does not activate.
         return 2;
+    } else {
+        return 1;
     }
 }
 

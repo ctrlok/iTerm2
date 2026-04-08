@@ -544,6 +544,7 @@ DEFINE_BOOL(disableCustomBoxDrawing, NO, SECTION_DRAWING @"Use your typeface’s
 DEFINE_INT(minimumWeightDifferenceForBoldFont, 4, SECTION_DRAWING @"Minimum weight difference between regular and bold font.\nThis affects selection of the bold version of a font. Font weights go from 0 to 9. If no font can be found that has a high enough weight then the regular font will be double-struck with a small offset.");
 DEFINE_FLOAT(underlineCursorHeight, 2, SECTION_DRAWING @"Thickness of underline cursor.");
 DEFINE_BOOL(preferSpeedToFullLigatureSupport, YES, SECTION_DRAWING @"Improves drawing performance at the expense of disallowing alphanumeric characters to belong to ligatures.");
+DEFINE_BOOL(enableContextualAlternates, YES, SECTION_DRAWING @"Enable contextual alternates (calt) for ligature-capable fonts.\nWhen enabled, uses ligature level 2 which activates calt in addition to standard ligatures. Many coding fonts such as Monaspace, Iosevka, and Cascadia Code require this for their ligatures to work.");
 DEFINE_BOOL(forceAntialiasingOnRetina, NO, SECTION_DRAWING @"Force text to be anti-aliased on Retina displays.\nEnable this to use non-AA text on non-retina displays, which sometimes looks better.");
 DEFINE_BOOL(makeSomePowerlineSymbolsWide, YES, SECTION_DRAWING @"Draw certain Powerline symbols double-width?\nThis matches how most “nerd” fonts render them, but your favorite one might not do this. An example code point that is affected is U+E0B8.");
 

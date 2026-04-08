@@ -355,6 +355,7 @@ extern NSString *const iTermAdvancedSettingsDidChange;
 + (int)asyncPreconvertMaxOutstandingBytes;
 + (BOOL)logNonASCIIStringLengthHistogram;
 + (BOOL)preferSpeedToFullLigatureSupport;
++ (BOOL)enableContextualAlternates;
 + (NSString *)preferredBaseDir;
 + (const BOOL *)preventEscapeSequenceFromClearingHistory;
 + (BOOL)prioritizeSmartSelectionActions;
