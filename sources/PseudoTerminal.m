@@ -3081,7 +3081,8 @@ ITERM_WEAKLY_REFERENCEABLE
 }
 
 + (PseudoTerminal*)bareTerminalWithArrangement:(NSDictionary *)arrangement
-                      forceOpeningHotKeyWindow:(BOOL)force {
+                      forceOpeningHotKeyWindow:(BOOL)force
+                                     restoring:(BOOL)restoring {
     BOOL isHotkeyWindow = [arrangement[TERMINAL_ARRANGEMENT_IS_HOTKEY_WINDOW] boolValue];
     NSString *guid = arrangement[TERMINAL_ARRANGEMENT_PROFILE_GUID];
     if (isHotkeyWindow && !force) {
@@ -3138,7 +3139,9 @@ ITERM_WEAKLY_REFERENCEABLE
                                                      screen:screenIndex
                                            hotkeyWindowType:hotkeyWindowType
                                                     profile:arrangement[TERMINAL_ARRANGEMENT_INITIAL_PROFILE]] autorelease];
-        [term delayedEnterFullscreen];
+        if (!restoring) {
+            [term delayedEnterFullscreen];
+        }
     } else {
         // Support legacy edge-spanning flag by adjusting the
         // window type.
@@ -3257,7 +3260,8 @@ ITERM_WEAKLY_REFERENCEABLE
                                sessions:(NSArray *)sessions
                forceOpeningHotKeyWindow:(BOOL)force {
     PseudoTerminal *term = [PseudoTerminal bareTerminalWithArrangement:arrangement
-                                              forceOpeningHotKeyWindow:force];
+                                              forceOpeningHotKeyWindow:force
+                                                             restoring:NO];
     for (PTYSession *session in sessions) {
         assert([session revive]);  // TODO(georgen): This isn't guaranteed
     }
