@@ -116,6 +116,7 @@ static const CGFloat kMarginBetweenTitleAndBody = 8;
 - (void)awakeFromNib {
     _titleBox.delegate = self;
     _body.textColor = [iTermTipCardViewController tipTextColor];
+    _title.textColor = [NSColor whiteColor];
     _title.accessibilityElement = YES;
     _title.accessibilityLabel = @"Tip title";
 
