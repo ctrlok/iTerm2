@@ -47,8 +47,9 @@ NS_ASSUME_NONNULL_BEGIN
 // Specific to the mutable state. Not related to PTYSession's guid.
 @property (nonatomic, readonly) NSString *uniqueIdentifier;
 
-// Sets the foreground job name on the trigger evaluator (atomic, safe from any thread).
-- (void)setForegroundJobForTriggerFiltering:(nullable NSString *)job;
+// Sets the foreground job ancestor chain on the trigger evaluator (atomic, safe from any thread).
+// The array contains lowercased argv0 values ordered deepest-first.
+- (void)setForegroundJobAncestorsForTriggerFiltering:(nullable NSArray<NSString *> *)ancestors;
 
 #pragma mark - Internal
 

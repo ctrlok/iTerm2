@@ -6706,11 +6706,16 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     [self.variablesScope setValue:processInfo.commandLine forVariableNamed:iTermVariableKeySessionCommandLine];
     [self.variablesScope setValue:@(processInfo.processID) forVariableNamed:iTermVariableKeySessionJobPid];
 
-    // Update trigger evaluators with current foreground job for job-filtered triggers.
-    // Use processTitle (argv0) rather than name so it matches symlink names like "claude".
-    DLog(@"setCurrentForegroundJobProcessInfo: setting foreground job to %@ for trigger filtering", processTitle);
-    [_screen setForegroundJobForTriggerFiltering:processTitle];
-    _eventTriggerEvaluator.foregroundJob = processTitle;
+    // Collect argv0 values from the foreground process up through its ancestors (deepest first),
+    // stopping before the login shell. This lets triggers and monitors match on the user's command
+    // (e.g. "claude") even when a child process (e.g. caffeinate) is the deepest foreground job.
+    NSArray<NSString *> *ancestorNames = processInfo.foregroundJobAncestorNames;
+    [self.variablesScope setValue:[ancestorNames componentsJoinedByString:@"\n"]
+                forVariableNamed:iTermVariableKeySessionForegroundJobAncestors];
+
+    DLog(@"setCurrentForegroundJobProcessInfo: setting foreground job ancestors to %@ for trigger filtering", ancestorNames);
+    [_screen setForegroundJobAncestorsForTriggerFiltering:ancestorNames];
+    _eventTriggerEvaluator.foregroundJobAncestors = ancestorNames;
 
     if ([name isEqualToString:@"sudo"]) {
         [self checkForSudoPasswordPromptToOfferTouchID];

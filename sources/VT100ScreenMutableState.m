@@ -423,8 +423,8 @@ static const int64_t VT100ScreenMutableStateSideEffectFlagLineBufferDidDropLines
 
 #pragma mark - Accessors
 
-- (void)setForegroundJobForTriggerFiltering:(NSString *)job {
-    _triggerEvaluator.foregroundJob = job;
+- (void)setForegroundJobAncestorsForTriggerFiltering:(NSArray<NSString *> *)ancestors {
+    _triggerEvaluator.foregroundJobAncestors = ancestors;
 }
 
 - (void)setConfig:(VT100MutableScreenConfiguration *)config {

@@ -1748,8 +1748,8 @@ additionalWordCharacters:(NSString *)additionalWordCharacters
     return _state.lastPromptLine;
 }
 
-- (void)setForegroundJobForTriggerFiltering:(NSString *)job {
-    [self.mutableState setForegroundJobForTriggerFiltering:job];
+- (void)setForegroundJobAncestorsForTriggerFiltering:(NSArray<NSString *> *)ancestors {
+    [self.mutableState setForegroundJobAncestorsForTriggerFiltering:ancestors];
 }
 
 - (void)beginEchoProbeWithBackspace:(NSData *)backspace
