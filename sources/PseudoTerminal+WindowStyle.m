@@ -1110,6 +1110,14 @@ BOOL iTermWindowTypeIsCompact(iTermWindowType windowType) {
 
 - (void)safelySetStyleMask:(NSWindowStyleMask)styleMask {
     assert(!_settingStyleMask);
+    // During a fullscreen transition, AppKit may have already removed/added
+    // NSWindowStyleMaskFullScreen on the window while our ivars haven't caught up.
+    // Setting that bit on a window AppKit no longer considers fullscreen crashes on
+    // macOS 26 ("NSWindowStyleMaskFullScreen set on a window outside of a full screen
+    // transition").
+    if (togglingLionFullScreen_ || exitingLionFullscreen_) {
+        styleMask &= ~NSWindowStyleMaskFullScreen;
+    }
     _settingStyleMask = YES;
     self.window.styleMask = styleMask;
     _settingStyleMask = NO;
