@@ -28,6 +28,7 @@
 #import "ITAddressBookMgr.h"
 
 #import "DebugLogging.h"
+#import "NSDictionary+Profile.h"
 #import "NSColor+iTerm.h"
 #import "NSDictionary+iTerm.h"
 #import "NSFont+iTerm.h"
@@ -263,6 +264,19 @@ iTermPercentage iTermPercentageFromProfile(Profile *profile) {
                                               [self removeBonjourProfiles];
                                           }
                                       }];
+
+        // Migrate dynamic profiles that were saved with a "Dynamic" tag (the old
+        // method) but without the KEY_DYNAMIC_PROFILE boolean flag (the new method).
+        if (![iTermPreferences boolForKey:kPreferenceKeyMigratedDynamicProfileTagToFlag]) {
+            for (Profile *profile in [[[ProfileModel sharedInstance] bookmarks] copy]) {
+                if (!profile.profileIsDynamic && profile[KEY_DYNAMIC_PROFILE_FILENAME] != nil) {
+                    [[ProfileModel sharedInstance] setObject:@YES
+                                                     forKey:KEY_DYNAMIC_PROFILE
+                                                 inBookmark:profile];
+                }
+            }
+            [iTermPreferences setBool:YES forKey:kPreferenceKeyMigratedDynamicProfileTagToFlag];
+        }
 
         BOOL bookmarkWithDefaultGuidExisted =
             ([[ProfileModel sharedInstance] bookmarkWithGuid:originalDefaultGuid] != nil);
