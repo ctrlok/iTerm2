@@ -21844,6 +21844,11 @@ preferredOffsetFromTopDidChange:(CGFloat)offset {
 
 - (id<iTermSyntaxHighlighting>)composerManager:(iTermComposerManager *)composerManager
           syntaxHighlighterForAttributedString:(NSMutableAttributedString *)attributedString {
+    // fontTable is non-optional in Swift. If _textview is nil, ObjC nil messaging
+    // returns nil which would be stored as null in the Swift field, crashing later.
+    if (!_textview) {
+        return nil;
+    }
     return [[[iTermSyntaxHighlighter alloc] init:attributedString
                                         colorMap:_screen.colorMap
                                         fontTable:_textview.fontTable
