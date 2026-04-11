@@ -1020,6 +1020,11 @@ static NSString *kCommandTimestamp = @"timestamp";
 }
 
 - (void)detach {
+    // Keep self alive across the modal dialog that
+    // tmuxGatewayDidTimeOutDuringInitialization: may run, since the
+    // MRC caller doesn't retain us.
+    NS_VALID_UNTIL_END_OF_SCOPE TmuxGateway *selfRef = self;
+
     NSString *command = @"detach";
     if (detachSent_ && [self isTmuxUnresponsive]) {
         [delegate_ tmuxGatewayDidTimeOutDuringInitialization:NO];
@@ -1132,6 +1137,11 @@ static const NSTimeInterval TmuxUnresponsiveTimeout = 5;
      responseObject:(id)obj
               flags:(int)flags
 {
+    // Keep self alive across the modal dialog that enqueueCommandDict:
+    // may run via tmuxGatewayDidTimeOutDuringInitialization:, since the
+    // MRC caller doesn't retain us.
+    NS_VALID_UNTIL_END_OF_SCOPE TmuxGateway *selfRef = self;
+
     if (detachSent_ || disconnected_) {
         return;
     }
