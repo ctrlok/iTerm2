@@ -1236,6 +1236,13 @@ void TurnOnDebugLoggingAutomatically(void) {
 - (void)applicationWillFinishLaunching:(NSNotification *)aNotification {
     DLog(@"Begin");
     [[iTermApplication sharedApplication] updateAppearance];
+    [[iTermUserDefaults userDefaults] it_addObserverForKey:kPreferenceKeyTabStyle
+                                                     block:^(id _Nonnull newValue) {
+        [[iTermApplication sharedApplication] updateAppearance];
+        [[NSNotificationCenter defaultCenter] postNotificationName:kRefreshTerminalNotification
+                                                            object:nil
+                                                          userInfo:nil];
+    }];
     if ([iTermUserDefaults importPath]) {
         [iTerm2ImportExport finishImporting];
         assert(NO);
