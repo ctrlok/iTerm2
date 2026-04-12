@@ -306,9 +306,7 @@ extension PTYSession: iTermBrowserViewControllerDelegate {
             textViewMovePane()
 
         case .moveBrowserToTab:
-            if let window = view.window {
-                MovePaneController.sharedInstance().moveSession(self, toTabIn: window)
-            }
+            MovePaneController.sharedInstance().moveSession(toTab: self)
 
         case .moveBrowserToWindow:
             if let window = view.window {

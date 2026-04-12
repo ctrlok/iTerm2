@@ -248,6 +248,9 @@ extern NSString *const PTYTabArrangementOptionsPendingJumps;
 // Does any session in this tab require prompt on close?
 - (iTermPromptOnCloseReason *)promptOnCloseReason;
 
+- (NSArray<PTYSession *> *)sessions;
+- (void)removeSession:(PTYSession *)aSession;
+
 // Anyone changing the number of sessions must call this after the sessions
 // are "well formed".
 - (void)numberOfSessionsDidChange;
