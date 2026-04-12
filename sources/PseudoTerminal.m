@@ -2102,6 +2102,15 @@ ITERM_WEAKLY_REFERENCEABLE
 - (void)removeTab:(PTYTab *)aTab {
     DLog(@"Remove tab %@", aTab);
     if (![aTab isTmuxTab]) {
+        // Exit synthetic sessions (filter, instant replay, screenshot mode)
+        // so the restorable session captures live sessions that can be revived.
+        for (PTYSession *session in [aTab sessions]) {
+            if (session.liveSession) {
+                PTYSession *liveSession = session.liveSession;
+                [self showLiveSession:liveSession inPlaceOf:session];
+                [liveSession.view.findDriver setFilterWithoutSideEffects:@""];
+            }
+        }
         iTermRestorableSession *restorableSession = [[[iTermRestorableSession alloc] init] autorelease];
         restorableSession.sessions = [aTab sessions];
         restorableSession.terminalGuid = self.terminalGuid;
@@ -3262,12 +3271,17 @@ ITERM_WEAKLY_REFERENCEABLE
     PseudoTerminal *term = [PseudoTerminal bareTerminalWithArrangement:arrangement
                                               forceOpeningHotKeyWindow:force
                                                              restoring:NO];
+    NSMutableArray *revivedSessions = sessions ? [NSMutableArray array] : nil;
     for (PTYSession *session in sessions) {
-        assert([session revive]);  // TODO(georgen): This isn't guaranteed
+        if ([session revive]) {
+            [revivedSessions addObject:session];
+        } else {
+            DLog(@"Failed to revive session %@", session);
+        }
     }
     if ([term loadArrangement:arrangement
                         named:arrangementName
-                     sessions:sessions
+                     sessions:revivedSessions
            partialAttachments:nil
          largeContentProvider:nil]) {
         return term;
@@ -4340,6 +4354,22 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
     }
     [_windowPositioner saveFrame];
     [_windowPositioner saveWindowPosition];
+
+    // Exit synthetic sessions (filter, instant replay, screenshot mode) before
+    // creating the restorable session. Synthetic sessions are non-undoable so
+    // they go through hardStop during terminate, but hardStop can't remove the
+    // restorable session from _restorableSessions because it's still on the
+    // push stack. This leaves a non-revivable session in the committed
+    // restorable session, crashing on undo.
+    for (PTYTab *tab in [self tabs]) {
+        for (PTYSession *session in [tab sessions]) {
+            if (session.liveSession) {
+                PTYSession *liveSession = session.liveSession;
+                [self showLiveSession:liveSession inPlaceOf:session];
+                [liveSession.view.findDriver setFilterWithoutSideEffects:@""];
+            }
+        }
+    }
 
     if ([[self allSessions] count]) {
         // First close any tmux tabs because their closure is not undoable.
