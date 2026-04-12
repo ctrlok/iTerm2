@@ -64,6 +64,7 @@
 #import "iTermMetalBufferPool.h"
 #import "iTermMetalCellRenderer.h"
 #import "iTermMigrationHelper.h"
+#import "iTermMouseCursor.h"
 #import "iTermNaggingController.h"
 #import "iTermParsedExpression.h"
 #import "iTermPasteHelper.h"

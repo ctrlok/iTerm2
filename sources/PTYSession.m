@@ -322,6 +322,7 @@ static NSString *const SESSION_ARRANGEMENT_CHANNEL_ID = @"Channel ID";  // NSStr
 static NSString *const SESSION_ARRANGEMENT_TIMESTAMP_BASELINE = @"Timestamp Baseline"; // NSNumber
 static NSString *const SESSION_ARRANGEMENT_BROWSER_TARGET = @"Browser Target";  // String
 static NSString *const SESSION_ARRANGEMENT_TAB_STATUS = @"Tab Status";  // NSDictionary
+static NSString *const SESSION_ARRANGEMENT_SESSION_NOTE = @"Session Note";  // NSDictionary (graph-encoded)
 
 // Keys for dictionary in SESSION_ARRANGEMENT_PROGRAM
 static NSString *const kProgramType = @"Type";  // Value will be one of the kProgramTypeXxx constants.
@@ -1160,6 +1161,7 @@ ITERM_WEAKLY_REFERENCEABLE
     [_browserTarget release];
     [_bindings release];
     [_apsContext release];
+    [_sessionNoteModel release];
 
     [super dealloc];
 }
@@ -1603,6 +1605,10 @@ ITERM_WEAKLY_REFERENCEABLE
             [[iTermSessionStatusController instance] tabStatusDidChange:aSession->_tabStatus];
         }
     }
+    NSDictionary *sessionNoteDict = [NSDictionary castFrom:arrangement[SESSION_ARRANGEMENT_SESSION_NOTE]];
+    if (sessionNoteDict) {
+        aSession.sessionNoteModel = [iTermSessionNoteModel fromArrangement:sessionNoteDict];
+    }
     if (didRestoreContents && attachedToServer) {
         if (arrangement[SESSION_ARRANGEMENT_ALERT_ON_NEXT_MARK]) {
             aSession->_alertOnNextMark = [arrangement[SESSION_ARRANGEMENT_ALERT_ON_NEXT_MARK] boolValue];
@@ -1668,6 +1674,9 @@ ITERM_WEAKLY_REFERENCEABLE
 - (void)didFinishRestoration {
     if ([_foundingArrangement[SESSION_ARRANGEMENT_FILTER] length] > 0) {
         [self.delegate session:self setFilter:_foundingArrangement[SESSION_ARRANGEMENT_FILTER]];
+    }
+    if (_sessionNoteModel.hasContent) {
+        [_view restoreSessionNoteWithModel:_sessionNoteModel];
     }
 }
 
@@ -6463,6 +6472,15 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     NSDictionary *tabStatusDict = [_tabStatus arrangementDictionary];
     if (tabStatusDict) {
         result[SESSION_ARRANGEMENT_TAB_STATUS] = tabStatusDict;
+    }
+    if (_sessionNoteModel.hasContent) {
+        [result encodeChildWithKey:SESSION_ARRANGEMENT_SESSION_NOTE
+                        identifier:@"note"
+                        generation:_sessionNoteModel.generation
+                             block:^BOOL(id<iTermEncoderAdapter> encoder) {
+            [_sessionNoteModel encodeWithAdapter:encoder];
+            return YES;
+        }];
     }
     return YES;
 }

@@ -49,6 +49,7 @@
 @protocol iTermSearchResultsMinimapViewDelegate;
 @class iTermSearchResultsMinimapView;
 @class PTYSession;
+@class iTermSessionNoteModel;
 @class SplitSelectionView;
 @class SessionTitleView;
 @class WKWebViewConfiguration;
@@ -332,6 +333,13 @@ typedef NS_ENUM(NSUInteger, iTermSessionViewFindDriver) {
 
 // Uses the Metal debug offscreen rendering path to capture a frame as an NSImage.
 - (nullable NSImage *)drawMetalFrameToImage NS_AVAILABLE_MAC(10_11);
+
+// Session note
+- (void)showSessionNoteWithModel:(iTermSessionNoteModel *)model;
+- (void)restoreSessionNoteWithModel:(iTermSessionNoteModel *)model;
+- (void)hideSessionNote;
+- (void)hideSessionNoteIfEmpty;
+@property(nonatomic, readonly) BOOL isSessionNoteVisible;
 
 @end
 

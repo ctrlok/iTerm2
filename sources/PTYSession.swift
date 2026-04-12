@@ -1546,3 +1546,18 @@ extension PTYSession: AutomaticProfileSwitchingSessionDelegate {
                                              expressionValueProvider: apsContext)
     }
 }
+
+// MARK: - Session Note
+
+extension PTYSession {
+    @objc func textViewEditSessionNote() {
+        if view.isSessionNoteVisible {
+            view.hideSessionNote()
+        } else {
+            if sessionNoteModel == nil {
+                sessionNoteModel = SessionNoteModel()
+            }
+            view.showSessionNote(with: sessionNoteModel!)
+        }
+    }
+}

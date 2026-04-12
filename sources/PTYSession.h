@@ -102,6 +102,7 @@ extern NSString *const PTYSessionArrangementOptionsLargeContentProvider;
 @class iTermQuickLookController;
 @protocol iTermSessionScope;
 @class SessionView;
+@class iTermSessionNoteModel;
 @class TmuxHistory;
 @class WKWebViewConfiguration;
 
@@ -358,6 +359,8 @@ backgroundColor:(NSColor *)backgroundColor;
 @property(nonatomic, assign) BOOL alertOnNextMark;
 // Prevents the pane from being dragged or detached.
 @property(nonatomic, assign) BOOL locked;
+// Floating session note model.
+@property(nonatomic, retain) iTermSessionNoteModel *sessionNoteModel;
 // This comes from prefs and is kept up to date.
 @property(nonatomic, readonly) BOOL alertOnMarksinOffscreenSessions;
 @property(nonatomic, copy) NSColor *tabColor;

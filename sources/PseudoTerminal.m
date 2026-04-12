@@ -6558,6 +6558,10 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
     [self editSession:session makeKey:YES];
 }
 
+- (IBAction)editSessionNote:(id)sender {
+    [[self currentSession] textViewEditSessionNote];
+}
+
 - (void)editSession:(PTYSession *)session makeKey:(BOOL)makeKey {
     Profile* bookmark = [session profile];
     if (!bookmark) {
@@ -11657,6 +11661,10 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
         }
         [item setState:session.highlightCursorLine ? NSControlStateValueOn : NSControlStateValueOff];
         result = YES;
+    } else if ([item action] == @selector(editSessionNote:)) {
+        PTYSession *session = [self currentSession];
+        [item setState:session.view.isSessionNoteVisible ? NSControlStateValueOn : NSControlStateValueOff];
+        return session != nil;
     } else if ([item action] == @selector(toggleSelectionRespectsSoftBoundaries:)) {
         [item setState:[[iTermController sharedInstance] selectionRespectsSoftBoundaries] ? NSControlStateValueOn : NSControlStateValueOff];
         result = YES;
