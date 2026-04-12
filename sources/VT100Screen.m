@@ -1100,6 +1100,9 @@ additionalWordCharacters:(NSString *)additionalWordCharacters
         if (successor.lineStyle && !includeSucessorDivider) {
             range.end.y -= 1;
         }
+        if (range.end.y < range.start.y) {
+            range.end.y = range.start.y;
+        }
     } else {
         range.end = VT100GridAbsCoordMake(self.width - 1, self.numberOfLines + self.totalScrollbackOverflow);
     }
