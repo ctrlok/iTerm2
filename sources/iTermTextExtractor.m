@@ -1593,12 +1593,18 @@ trimTrailingWhitespace:(BOOL)trimSelectionTrailingSpaces
 - (BOOL)lineHasSoftEol:(int)y respectContinuations:(BOOL)respectContinuations {
     ScreenCharArray *sca = [_dataSource screenCharArrayForLine:y];
     const screen_char_t *theLine = sca.line;
+    if (!theLine) {
+        return NO;
+    }
     int width = [_dataSource width];
     int xLimit = [self xLimit];
 
     if ([self hasLogicalWindow]) {
         // If there are soft boundaries, it's impossible to detect soft line wraps so just
         // stop at whitespace.
+        if (xLimit < 1) {
+            return NO;
+        }
         if (theLine[xLimit - 1].complexChar) {
             return YES;
         }
@@ -1606,6 +1612,9 @@ trimTrailingWhitespace:(BOOL)trimSelectionTrailingSpaces
         return !(c == 0 || c == ' ');
     }
     if (respectContinuations) {
+        if (width < 1) {
+            return NO;
+        }
         return (sca.eol != EOL_HARD ||
                 (theLine[width - 1].code == '\\' && !theLine[width - 1].complexChar));
     } else {

@@ -81,7 +81,10 @@ public class SavedIntervalTreeObject: NSObject {
         }
 
         // Function to convert x, y into reflowable coordinates
-        init(x: Int32, y: Int, preprocessedState: PreprocessedState) {
+        init?(x: Int32, y: Int, preprocessedState: PreprocessedState) {
+            guard y >= 0, y < preprocessedState.hardNewlineCounts.count else {
+                return nil
+            }
             let hardNewlineCount = preprocessedState.hardNewlineCounts[y]
             var cellCountAfterLastHardNewline = preprocessedState.cellOffsets[y]
 
@@ -174,16 +177,16 @@ public class SavedIntervalTreeObject: NSObject {
         // absCoordRangeForWidth: normalizes x == width to (0, y+1). When an
         // ITO sits at the sentinel column on the boundary of the range this
         // can push a y index past the end of screenCharArrays. Skip it.
-        let count = preprocessedState.hardNewlineCounts.count
-        guard startY >= 0, startY < count, endY >= 0, endY < count else {
+        guard let startRC = ReflowableCoordinate(x: absCoordRange.start.x,
+                                                  y: startY,
+                                                  preprocessedState: preprocessedState),
+              let endRC = ReflowableCoordinate(x: absCoordRange.end.x,
+                                               y: endY,
+                                               preprocessedState: preprocessedState) else {
             return nil
         }
-        start = ReflowableCoordinate(x: absCoordRange.start.x,
-                                     y: startY,
-                                     preprocessedState: preprocessedState)
-        end = ReflowableCoordinate(x: absCoordRange.end.x,
-                                   y: endY,
-                                   preprocessedState: preprocessedState)
+        start = startRC
+        end = endRC
     }
 
     private func absLineForVerticalAdvance(baseLine: Int64,
