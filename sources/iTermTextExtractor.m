@@ -447,7 +447,7 @@ const NSInteger kLongMaximumWordLength = 100000;
     location = [self coordLockedToWindow:location];
     int targetOffset;
     const int numLines = [iTermAdvancedSettingsModel smartSelectionRadius];
-    NSMutableArray* coords = [NSMutableArray arrayWithCapacity:numLines * _logicalWindow.length];
+    NSMutableArray* coords = [NSMutableArray arrayWithCapacity:numLines * MAX(1, _logicalWindow.length)];
     NSString *textWindow = [self textAround:location
                                      radius:numLines
                                targetOffset:&targetOffset

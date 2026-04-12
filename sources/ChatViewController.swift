@@ -1093,7 +1093,8 @@ extension ChatViewController: NSTableViewDataSource, NSTableViewDelegate {
                     model?.terminalSessionGuid
                 }
                 if let guid,
-                   let session = iTermController.sharedInstance().session(withGUID: guid) {
+                   let controller = iTermController.sharedInstance(),
+                   let session = controller.session(withGUID: guid) {
                     if !session.isExecutingRemoteCommand {
                         enableButtons = false
                     }
@@ -1103,11 +1104,11 @@ extension ChatViewController: NSTableViewDataSource, NSTableViewDelegate {
             case .streamingChanged:
                 enableButtons = streaming
             case .offerLink(terminal: _, guid: let guid, name: _):
-                enableButtons = (iTermController.sharedInstance().session(withGUID: guid) != nil &&
+                enableButtons = (iTermController.sharedInstance()?.session(withGUID: guid) != nil &&
                                  terminalSessionGuid == nil &&
                                  browserSessionGuid == nil)
             case .permissions(terminal: _, guid: let guid):
-                enableButtons = (iTermController.sharedInstance().session(withGUID: guid) != nil)
+                enableButtons = (iTermController.sharedInstance()?.session(withGUID: guid) != nil)
             }
         default:
             break
