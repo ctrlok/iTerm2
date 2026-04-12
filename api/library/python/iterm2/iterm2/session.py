@@ -1054,7 +1054,7 @@ class Session:
         """
         iterm2.capabilities.check_supports_move_session_to_tab_or_window(
             self.connection)
-        args = {"session": self.session_id}
+        args: typing.Dict[str, typing.Any] = {"session": self.session_id}
         if window is not None:
             args["window_id"] = window.window_id
         if tab_index is not None:
