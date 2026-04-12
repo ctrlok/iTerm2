@@ -2839,6 +2839,11 @@ ITERM_WEAKLY_REFERENCEABLE
         env[@"ITERM2_COOKIE"] = self.cookie;
     }
 
+    NSString *suiteName = [iTermUserDefaults customSuiteName];
+    if (suiteName) {
+        env[@"IT2_SUITE"] = suiteName;
+    }
+
     if ([iTermAdvancedSettingsModel addUtilitiesToPATH]) {
         NSString *sshPath = [iTermPathToSSH() stringByDeletingLastPathComponent];
         if (sshPath) {
