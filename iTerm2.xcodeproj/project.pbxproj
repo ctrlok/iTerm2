@@ -967,7 +967,6 @@
 		874206490564169600CFC3F1 /* iTermApplicationDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 20D5CC6304E7AA0500000106 /* iTermApplicationDelegate.h */; };
 		874206530564169600CFC3F1 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0464AB2F006CD2EC7F000001 /* AppKit.framework */; };
 		8773EDCC5D6FB0E9C4CE2202 /* iTermScreenshotOnDemandPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28AF992AB875E6786421227B /* iTermScreenshotOnDemandPreview.swift */; };
-		8CAFB522627F0BFE6DB468F1 /* TerminalRendererTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D0262951786946EF976520B /* TerminalRendererTest.swift */; };
 		8E87A30F7C195E310321C9D9 /* iTermCharacterSourceTestHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 646F4870D9C453064E2DEA8F /* iTermCharacterSourceTestHelper.m */; };
 		8E9796208C12DD69744D3606 /* iTermLocatedString+ScreenCharArray.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E145AE29B68F8F2A69891A /* iTermLocatedString+ScreenCharArray.swift */; };
 		8EA9D682DE4199E114D920A5 /* iTermStreamingScreenshotEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9A9D7BB06953CE9297F1FC /* iTermStreamingScreenshotEncoder.swift */; };
@@ -5210,7 +5209,6 @@
 		F7C626F9C65F19A1BEE800DA /* iTermWordExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BF1E9C79C30008CC546F987 /* iTermWordExtractor.swift */; };
 		F7E9577EBDD47ED18CBD569F /* iTermImageComparison.h in Sources */ = {isa = PBXBuildFile; fileRef = 516BF83D01B179D961D3EDB6 /* iTermImageComparison.h */; };
 		FB4CEC973C7E9235362E3F26 /* iTermRemotePreferences.h in Headers */ = {isa = PBXBuildFile; fileRef = FB4CECF4AC4392B21E87A07B /* iTermRemotePreferences.h */; };
-		FC992CB03FDB6F68E76CBBC7 /* TerminalRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0F7E9B034221DCA29222383 /* TerminalRenderer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -9321,28 +9319,8 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		9C0F690213C696BCC28C2EDF /* PerformanceTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = PerformanceTests;
-			sourceTree = "<group>";
-		};
-		A6A723AF2DC04C2200A8115D /* ModernTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = ModernTests;
-			sourceTree = "<group>";
-		};
+		9C0F690213C696BCC28C2EDF /* PerformanceTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PerformanceTests; sourceTree = "<group>"; };
+		A6A723AF2DC04C2200A8115D /* ModernTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ModernTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -9519,7 +9497,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0464AB0D006CD2EC7F000001 = {
+		0464AB0D006CD2EC7F000001 /* JTerminal */ = {
 			isa = PBXGroup;
 			children = (
 				A6E7ED2E2F7CAFDD001349AE /* it2 */,
@@ -16601,7 +16579,7 @@
 				en,
 				Base,
 			);
-			mainGroup = 0464AB0D006CD2EC7F000001;
+			mainGroup = 0464AB0D006CD2EC7F000001 /* JTerminal */;
 			packageReferences = (
 				A62E3BC62E1CC674002DF8C3 /* XCLocalSwiftPackageReference "WebExtensionsFramework" */,
 			);
@@ -20338,8 +20316,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FC992CB03FDB6F68E76CBBC7 /* TerminalRenderer.swift in Sources */,
-				8CAFB522627F0BFE6DB468F1 /* TerminalRendererTest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

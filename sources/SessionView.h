@@ -53,6 +53,8 @@
 @class SessionTitleView;
 @class WKWebViewConfiguration;
 
+NS_ASSUME_NONNULL_BEGIN
+
 extern NSString *const SessionViewWasSelectedForInspectionNotification;
 
 @protocol iTermSessionViewDelegate<iTermFindDriverDelegate, iTermLegacyViewDelegate, NSObject>
@@ -89,7 +91,7 @@ extern NSString *const SessionViewWasSelectedForInspectionNotification;
 - (BOOL)sessionViewPerformDragOperation:(id<NSDraggingInfo>)sender;
 
 // Gives the title to show in the per-pane title bar.
-- (NSString *)sessionViewTitle;
+- (nullable NSString *)sessionViewTitle;
 
 // Size of one cell of text.
 - (NSSize)sessionViewCellSize;
@@ -100,19 +102,19 @@ extern NSString *const SessionViewWasSelectedForInspectionNotification;
 // Is this session's text view the first responder?
 - (BOOL)sessionViewTerminalIsFirstResponder;
 - (BOOL)sessionViewShouldDimOnlyText;
-- (NSColor *)sessionViewBackgroundColor;
+- (nullable NSColor *)sessionViewBackgroundColor;
 
 // Gives the tab color for this session.
-- (NSColor *)sessionViewTabColor;
+- (nullable NSColor *)sessionViewTabColor;
 
 // Active pane border settings for browser sessions.
 - (BOOL)sessionViewUseActivePaneBorder;
-- (NSColor *)sessionViewActivePaneBorderColor;
+- (nullable NSColor *)sessionViewActivePaneBorderColor;
 - (BOOL)sessionViewIsActiveSession;
 - (BOOL)sessionViewIsInTraditionalFullScreen;
 
 // Gives the hamburger menu.
-- (NSMenu *)sessionViewContextMenu;
+- (nullable NSMenu *)sessionViewContextMenu;
 
 // Close this session, optionally confirming with the user.
 - (void)sessionViewConfirmAndClose;
@@ -150,7 +152,7 @@ extern NSString *const SessionViewWasSelectedForInspectionNotification;
 // Please stop using metal and then start again.
 - (void)sessionViewRecreateMetalView;
 
-- (iTermStatusBarViewController *)sessionViewStatusBarViewController;
+- (nullable iTermStatusBarViewController *)sessionViewStatusBarViewController;
 
 - (iTermVariableScope *)sessionViewScope;
 
@@ -182,33 +184,33 @@ typedef NS_ENUM(NSUInteger, iTermSessionViewFindDriver) {
 
 // If a modifier+digit switches panes, this is the value of digit. Used to show in title bar.
 @property(nonatomic, assign) int ordinal;
-@property(nonatomic, readonly) iTermAnnouncementViewController *currentAnnouncement;
-@property(nonatomic, weak) id<iTermSessionViewDelegate> delegate;
-@property(nonatomic, readonly) iTermSearchResultsMinimapView *searchResultsMinimap NS_AVAILABLE_MAC(10_14);
-@property(nonatomic, readonly) iTermIncrementalMinimapView *marksMinimap NS_AVAILABLE_MAC(10_14);
+@property(nonatomic, readonly, nullable) iTermAnnouncementViewController *currentAnnouncement;
+@property(nonatomic, weak, nullable) id<iTermSessionViewDelegate> delegate;
+@property(nonatomic, readonly, nullable) iTermSearchResultsMinimapView *searchResultsMinimap NS_AVAILABLE_MAC(10_14);
+@property(nonatomic, readonly, nullable) iTermIncrementalMinimapView *marksMinimap NS_AVAILABLE_MAC(10_14);
 @property(nonatomic, readonly) PTYScrollView *scrollview;
-@property(nonatomic, readonly) PTYScroller *verticalScroller;
-@property(nonatomic, readonly) iTermMetalDriver *driver NS_AVAILABLE_MAC(10_11);
-@property(nonatomic, readonly) iTermMTKView *metalView NS_AVAILABLE_MAC(10_11);
+@property(nonatomic, readonly, nullable) PTYScroller *verticalScroller;
+@property(nonatomic, readonly, nullable) iTermMetalDriver *driver NS_AVAILABLE_MAC(10_11);
+@property(nonatomic, readonly, nullable) iTermMTKView *metalView NS_AVAILABLE_MAC(10_11);
 @property(nonatomic, readonly) BOOL useMetal NS_AVAILABLE_MAC(10_11);
 
 @property(nonatomic, readonly) BOOL isDropDownSearchVisible;
-@property(nonatomic, weak) id<iTermFindDriverDelegate> findDriverDelegate;
+@property(nonatomic, weak, nullable) id<iTermFindDriverDelegate> findDriverDelegate;
 @property(nonatomic, readonly) BOOL findViewIsHidden;
 @property(nonatomic, readonly) BOOL findViewHasKeyboardFocus;
-@property(nonatomic, readonly) iTermFindDriver *findDriver;
-@property(nonatomic, readonly) iTermFindDriver *findDriverCreatingIfNeeded;
+@property(nonatomic, readonly, nullable) iTermFindDriver *findDriver;
+@property(nonatomic, readonly, nullable) iTermFindDriver *findDriverCreatingIfNeeded;
 @property(nonatomic, readonly) NSSize internalDecorationSize;
 @property(nonatomic, readonly) iTermSessionViewFindDriver findDriverType;
-@property(nonatomic, weak) id<iTermSearchResultsMinimapViewDelegate> searchResultsMinimapViewDelegate NS_AVAILABLE_MAC(10_14);
-@property(nonatomic, strong) iTermImageWrapper *image;
+@property(nonatomic, weak, nullable) id<iTermSearchResultsMinimapViewDelegate> searchResultsMinimapViewDelegate NS_AVAILABLE_MAC(10_14);
+@property(nonatomic, strong, nullable) iTermImageWrapper *image;
 @property(nonatomic) iTermBackgroundImageMode imageMode;
 @property(nonatomic, readonly) BOOL statusBarIsInPaneTitleBar;
 @property(nonatomic, readonly) double adjustedDimmingAmount;
 @property(nonatomic, readonly) iTermLegacyView *legacyView;
 
 @property(nonatomic) CGFloat composerHeight;
-@property(nonatomic, strong) NSNumber *preferredWidth;
+@property(nonatomic, strong, nullable) NSNumber *preferredWidth;
 @property(nonatomic, readonly) CGFloat desiredRightExtra;
 
 // For macOS 10.14+ when subpixel AA is OFF, this draws the default background color. When there's
@@ -227,15 +229,15 @@ typedef NS_ENUM(NSUInteger, iTermSessionViewFindDriver) {
 @property (nonatomic) BOOL enableProgressBars;
 @property (nonatomic) BOOL showInlineProgressBar;
 @property (nonatomic) CGFloat progressBarHeight;
-@property (nonatomic, copy) NSString *progressBarColorScheme;
-@property (nonatomic, readonly) SessionTitleView *title;
+@property (nonatomic, copy, nullable) NSString *progressBarColorScheme;
+@property (nonatomic, readonly, nullable) SessionTitleView *title;
 @property (nonatomic) NSSize savedSize;
 
 - (void)setBrowserViewController:(iTermBrowserViewController *)browserViewController
-                      initialURL:(NSString *)initialURL
-                 restorableState:(NSDictionary *)restorableState NS_AVAILABLE_MAC(11_0);
+                      initialURL:(nullable NSString *)initialURL
+                 restorableState:(nullable NSDictionary *)restorableState NS_AVAILABLE_MAC(11_0);
 
-- (void)setTerminalBackgroundColor:(NSColor *)color;
+- (void)setTerminalBackgroundColor:(nullable NSColor *)color;
 
 - (void)showFindUI;
 - (void)createFindDriverIfNeeded;
@@ -261,14 +263,14 @@ typedef NS_ENUM(NSUInteger, iTermSessionViewFindDriver) {
 - (void)updateActivePaneBorder;
 - (void)saveFrameSize;
 - (void)restoreFrameSize;
-- (void)setSplitSelectionMode:(SplitSelectionMode)mode move:(BOOL)move session:(id)session;
+- (void)setSplitSelectionMode:(SplitSelectionMode)mode move:(BOOL)move session:(nullable id)session;
 - (BOOL)setShowTitle:(BOOL)value adjustScrollView:(BOOL)adjustScrollView;
 - (BOOL)showTitle;
 
 - (BOOL)setShowBottomStatusBar:(BOOL)value adjustScrollView:(BOOL)adjustScrollView;
 - (BOOL)showBottomStatusBar;
 
-- (void)setTitle:(NSString *)title;
+- (void)setTitle:(nullable NSString *)title;
 // For tmux sessions, autoresizing is turned off so the title must be moved
 // manually. This repositions the title view and the find view.
 - (void)updateTitleFrame;
@@ -300,7 +302,7 @@ typedef NS_ENUM(NSUInteger, iTermSessionViewFindDriver) {
 - (void)createSplitSelectionView;
 - (SplitSessionHalf)removeSplitSelectionView;
 
-- (BOOL)setHoverURL:(NSString *)url anchorFrame:(NSRect)anchorFrame;
+- (BOOL)setHoverURL:(nullable NSString *)url anchorFrame:(NSRect)anchorFrame;
 - (BOOL)hasHoverURL;
 - (void)reallyUpdateMetalViewFrame;
 - (void)invalidateStatusBar;
@@ -332,3 +334,5 @@ typedef NS_ENUM(NSUInteger, iTermSessionViewFindDriver) {
 - (nullable NSImage *)drawMetalFrameToImage NS_AVAILABLE_MAC(10_11);
 
 @end
+
+NS_ASSUME_NONNULL_END

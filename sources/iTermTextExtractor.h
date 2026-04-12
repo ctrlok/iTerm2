@@ -271,6 +271,8 @@ typedef NS_ENUM(NSUInteger, iTermTextExtractorTrimTrailingWhitespace) {
                 additionalWordCharacters:(NSString * _Nullable)additionalWordCharacters
                            regexPatterns:(NSArray<NSString *> * _Nullable)regexPatterns;
 
+- (BOOL)haveDoubleWidthExtensionAt:(VT100GridCoord)coord;
+
 #pragma mark - For tests
 
 - (NSInteger)indexInSortedArray:(NSArray<NSNumber *> *)indexes

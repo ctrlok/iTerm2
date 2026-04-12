@@ -1904,7 +1904,7 @@ static iTermKeyEventReplayer *gReplayer;
         return;
     }
     PTYSession *session = [[iTermController sharedInstance] sessionWithGUID:guid];
-    if (!session) {
+    if (!session || !markID) {
         return;
     }
     [session revealPromptMarkWithID:markID];

@@ -648,7 +648,7 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
     NSDictionary *knobs = @{ iTermStatusBarPriorityKey: @(INFINITY),
                              iTermStatusBarFilterComponent.isTemporaryKey: @YES };
     NSDictionary *configuration = @{ iTermStatusBarComponentConfigurationKeyKnobValues: knobs,
-                                     iTermStatusBarComponentConfigurationKeyLayoutAdvancedConfigurationDictionaryValue: self.delegate.sessionViewStatusBarAdvancedConfigurationDictionary};
+                                     iTermStatusBarComponentConfigurationKeyLayoutAdvancedConfigurationDictionaryValue: self.delegate.sessionViewStatusBarAdvancedConfigurationDictionary ?: @{}};
     iTermStatusBarFilterComponent *component =
     [[iTermStatusBarFilterComponent alloc] initWithConfiguration:configuration
                                                            scope:self.delegate.sessionViewScope];
@@ -2837,7 +2837,7 @@ extendResultsAcrossSoftBoundaries:(BOOL)extendResultsAcrossSoftBoundaries {
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     CGContextRef ctx = CGBitmapContextCreate(
         storage.mutableBytes, width, height, 8, bytesPerRow, colorSpace,
-        kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+        (CGBitmapInfo)kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
     CGColorSpaceRelease(colorSpace);
     if (!ctx) {
         return NULL;

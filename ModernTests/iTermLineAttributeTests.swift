@@ -198,7 +198,7 @@ final class iTermLineAttributeTests: XCTestCase {
         original.timestamp = 789.0
 
         let data = iTermMetadataEncodeToData(original)
-        var decoded = iTermMetadataDecodedFromData(data)
+        let decoded = iTermMetadataDecodedFromData(data)
         XCTAssertEqual(decoded.lineAttribute, iTermLineAttribute.doubleHeightTop)
         XCTAssertEqual(decoded.timestamp, 789.0, accuracy: 0.001)
         iTermMetadataRelease(decoded)
@@ -216,7 +216,7 @@ final class iTermLineAttributeTests: XCTestCase {
             var original = iTermMetadataDefault()
             original.lineAttribute = attr
             let data = iTermMetadataEncodeToData(original)
-            var decoded = iTermMetadataDecodedFromData(data)
+            let decoded = iTermMetadataDecodedFromData(data)
             XCTAssertEqual(decoded.lineAttribute, attr,
                            "Binary round-trip failed for lineAttribute \(attr.rawValue)")
             iTermMetadataRelease(decoded)
@@ -236,7 +236,7 @@ final class iTermLineAttributeTests: XCTestCase {
         // for lineAttribute. Strip it to get the old format.
         let legacyData = fullData.subdata(in: 0..<(fullData.count - MemoryLayout<Int32>.size))
 
-        var decoded = iTermMetadataDecodedFromData(legacyData)
+        let decoded = iTermMetadataDecodedFromData(legacyData)
         XCTAssertEqual(decoded.lineAttribute, iTermLineAttribute.singleWidth)
         XCTAssertEqual(decoded.timestamp, 42.0, accuracy: 0.001)
         XCTAssertTrue(decoded.rtlFound.boolValue)
@@ -265,7 +265,7 @@ final class iTermLineAttributeTests: XCTestCase {
         let immutable = iTermMetadataMakeImmutable(mutable)
         let data = iTermImmutableMetadataEncodeToData(immutable)
 
-        var decoded = iTermMetadataDecodedFromData(data)
+        let decoded = iTermMetadataDecodedFromData(data)
         XCTAssertEqual(decoded.lineAttribute, iTermLineAttribute.doubleWidth)
         iTermMetadataRelease(decoded)
     }
@@ -576,9 +576,9 @@ final class iTermLineAttributeTests: XCTestCase {
         session.screen = screen
         screen.delegate = session
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState?.terminalEnabled = true
-            mutableState?.terminal?.termType = "xterm"
-            mutableState?.terminal?.encoding = String.Encoding.utf8.rawValue
+            mutableState.terminalEnabled = true
+            mutableState.terminal?.termType = "xterm"
+            mutableState.terminal?.encoding = String.Encoding.utf8.rawValue
             screen.destructivelySetScreenWidth(Int32(width),
                                                 height: Int32(height),
                                                 mutableState: mutableState)
@@ -588,20 +588,20 @@ final class iTermLineAttributeTests: XCTestCase {
 
     private func setLineAttribute(_ screen: VT100Screen, attr: iTermLineAttribute) {
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState?.terminalSetLineAttribute(attr)
+            mutableState.terminalSetLineAttribute(attr)
         })
     }
 
     private func moveCursor(_ screen: VT100Screen, toLine line: Int) {
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState?.currentGrid.cursorY = Int32(line)
+            mutableState.currentGrid.cursorY = Int32(line)
         })
     }
 
     private func lineAttribute(_ screen: VT100Screen, line: Int) -> iTermLineAttribute {
         var result = iTermLineAttribute.singleWidth
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             result = grid.lineInfo(atLineNumber: Int32(line)).metadata.lineAttribute
         })
         return result
@@ -652,7 +652,7 @@ final class iTermLineAttributeTests: XCTestCase {
     private func lineCodes(_ screen: VT100Screen, line: Int, count: Int) -> [unichar] {
         var codes = [unichar]()
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             let chars = grid.immutableScreenChars(atLineNumber: Int32(line))!
             for i in 0..<count {
                 codes.append(chars[i].code)
@@ -666,8 +666,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testExpandContentOnDoubleWidth() {
         let screen = makeScreen(width: 10, height: 4)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDE")
-            mutableState!.currentGrid.cursorX = 0
+            mutableState.appendString(atCursor: "ABCDE")
+            mutableState.currentGrid.cursorX = 0
         })
         setLineAttribute(screen, attr: .doubleWidth)
         // Line should now be: A,DWL,B,DWL,C,DWL,D,DWL,E,DWL
@@ -688,8 +688,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testExpandContentTruncatesExcess() {
         let screen = makeScreen(width: 10, height: 4)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDEFGHIJ")  // fills all 10 cells
-            mutableState!.currentGrid.cursorX = 0
+            mutableState.appendString(atCursor: "ABCDEFGHIJ")  // fills all 10 cells
+            mutableState.currentGrid.cursorX = 0
         })
         setLineAttribute(screen, attr: .doubleWidth)
         // Only first 5 chars fit: A,DWL,B,DWL,C,DWL,D,DWL,E,DWL
@@ -704,8 +704,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testCompactContentOnSingleWidth() {
         let screen = makeScreen(width: 10, height: 4)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDE")
-            mutableState!.currentGrid.cursorX = 0
+            mutableState.appendString(atCursor: "ABCDE")
+            mutableState.currentGrid.cursorX = 0
         })
         setLineAttribute(screen, attr: .doubleWidth)
         setLineAttribute(screen, attr: .singleWidth)
@@ -723,8 +723,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testSwitchBetweenDoubleVariantsKeepsContent() {
         let screen = makeScreen(width: 10, height: 4)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABC")
-            mutableState!.currentGrid.cursorX = 0
+            mutableState.appendString(atCursor: "ABC")
+            mutableState.currentGrid.cursorX = 0
         })
         setLineAttribute(screen, attr: .doubleWidth)
         let codesBefore = lineCodes(screen, line: 0, count: 10)
@@ -750,8 +750,8 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             // Write a DWC character (Ｌ = fullwidth L, U+FF2C) followed by 'x'
-            mutableState!.appendString(atCursor: "\u{FF2C}x")
-            mutableState!.currentGrid.cursorX = 0
+            mutableState.appendString(atCursor: "\u{FF2C}x")
+            mutableState.currentGrid.cursorX = 0
         })
         // Before expansion: [Ｌ][DWC_RIGHT][x][0][0]...
         setLineAttribute(screen, attr: .doubleWidth)
@@ -773,7 +773,7 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
         let codes = lineCodes(screen, line: 0, count: 6)
         XCTAssertEqual(codes[0], unichar(UnicodeScalar("A").value))
@@ -788,7 +788,7 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "\u{FF2C}")  // fullwidth L
+            mutableState.appendString(atCursor: "\u{FF2C}")  // fullwidth L
         })
         let codes = lineCodes(screen, line: 0, count: 6)
         XCTAssertEqual(codes[0], unichar(0xFF2C))
@@ -803,7 +803,7 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDE")  // 5 chars = width/2
+            mutableState.appendString(atCursor: "ABCDE")  // 5 chars = width/2
         })
         let codes = lineCodes(screen, line: 0, count: 10)
         XCTAssertEqual(codes[0], unichar(UnicodeScalar("A").value))
@@ -818,7 +818,7 @@ final class iTermLineAttributeTests: XCTestCase {
     private func compactDump(_ screen: VT100Screen) -> String {
         var result = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            result = mutableState!.currentGrid.compactLineDump()
+            result = mutableState.currentGrid.compactLineDump()
         })
         return result
     }
@@ -828,7 +828,7 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
         let dump = compactDump(screen)
         // A|B|......  (| = DWL_SPACER, . = null)
@@ -841,11 +841,11 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABC")
+            mutableState.appendString(atCursor: "ABC")
         })
         var length: Int32 = 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            length = mutableState!.currentGrid.length(ofLineNumber: 0)
+            length = mutableState.currentGrid.length(ofLineNumber: 0)
         })
         // 3 chars * 2 (char + spacer) = 6 physical cells
         XCTAssertEqual(length, 6)
@@ -856,14 +856,14 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
         // Grid: A|B|......
         // coordinateBefore position 2 ('B') should go to position 0 ('A'), skipping the spacer at 1.
         var coord = VT100GridCoord()
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             var dwc: ObjCBool = false
-            coord = mutableState!.currentGrid.coordinate(before: VT100GridCoordMake(2, 0),
+            coord = mutableState.currentGrid.coordinate(before: VT100GridCoordMake(2, 0),
                                                         movedBackOverDoubleWidth: &dwc)
         })
         XCTAssertEqual(coord.x, 0)
@@ -876,14 +876,14 @@ final class iTermLineAttributeTests: XCTestCase {
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             // Write fullwidth L followed by 'x'
-            mutableState!.appendString(atCursor: "\u{FF2C}x")
+            mutableState.appendString(atCursor: "\u{FF2C}x")
         })
         // Grid: ?|–|x|....   (? = Ｌ, | = DWL_SPACER, – = DWC_RIGHT)
         // coordinateBefore position 4 ('x') should go to position 0 (Ｌ), skipping DWC_RIGHT and spacers.
         var coord = VT100GridCoord()
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             var dwc: ObjCBool = false
-            coord = mutableState!.currentGrid.coordinate(before: VT100GridCoordMake(4, 0),
+            coord = mutableState.currentGrid.coordinate(before: VT100GridCoordMake(4, 0),
                                                          movedBackOverDoubleWidth: &dwc)
             XCTAssertTrue(dwc.boolValue)
         })
@@ -897,7 +897,7 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "\u{FF2C}x")
+            mutableState.appendString(atCursor: "\u{FF2C}x")
         })
         // Grid: [Ｌ][DWL][DWC_R][DWL][x][DWL]...
         //        0    1     2      3   4   5
@@ -906,7 +906,7 @@ final class iTermLineAttributeTests: XCTestCase {
         var wasDWC = false
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             var dwc: ObjCBool = false
-            coord = mutableState!.currentGrid.coordinate(before: VT100GridCoordMake(4, 0),
+            coord = mutableState.currentGrid.coordinate(before: VT100GridCoordMake(4, 0),
                                                          movedBackOverDoubleWidth: &dwc)
             wasDWC = dwc.boolValue
         })
@@ -924,13 +924,13 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         // Put content on line 0, leave lines 1-3 empty
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "A")
+            mutableState.appendString(atCursor: "A")
         })
         setLineAttribute(screen, attr: .doubleWidth)
         // Line 0: A|........
         var count: Int32 = 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            count = mutableState!.currentGrid.numberOfNonEmptyLinesIncludingWhitespace(asEmpty: true)
+            count = mutableState.currentGrid.numberOfNonEmptyLinesIncludingWhitespace(asEmpty: true)
         })
         // Should be 1 (only line 0 has content)
         XCTAssertEqual(count, 1)
@@ -944,12 +944,12 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
         // Line: A|B|......  — successor of (0,0) should be (2,0) ('B'), skipping DWL_SPACER at 1
         var coord = VT100GridCoord()
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            coord = mutableState!.currentGrid.successor(of: VT100GridCoordMake(0, 0))
+            coord = mutableState.currentGrid.successor(of: VT100GridCoordMake(0, 0))
         })
         XCTAssertEqual(coord.x, 2)
         XCTAssertEqual(coord.y, 0)
@@ -965,13 +965,13 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "\u{FF2C}")  // fullwidth L → [Ｌ][DWL][DWC_RIGHT][DWL]
+            mutableState.appendString(atCursor: "\u{FF2C}")  // fullwidth L → [Ｌ][DWL][DWC_RIGHT][DWL]
         })
         // Erase the DWC at position 0
         var erased = false
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let blank = mutableState!.currentGrid.defaultChar
-            erased = mutableState!.currentGrid.erasePossibleDoubleWidthChar(inLineNumber: 0,
+            let blank = mutableState.currentGrid.defaultChar
+            erased = mutableState.currentGrid.erasePossibleDoubleWidthChar(inLineNumber: 0,
                                                                             startingAtOffset: 0,
                                                                             with: blank)
         })
@@ -986,11 +986,11 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
         var debugStr = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            debugStr = mutableState!.currentGrid.debugString()
+            debugStr = mutableState.currentGrid.debugString()
         })
         // Should not crash and should contain something for each cell
         XCTAssertFalse(debugStr.isEmpty)
@@ -1003,12 +1003,12 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "Hello")
+            mutableState.appendString(atCursor: "Hello")
         })
         // Grid: H|e|l|l|o|  — DWL_SPACERs should not appear in extracted text.
         var extracted = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             var cont = screen_char_t()
             cont.code = unichar(EOL_HARD)
             let sca = ScreenCharArray(
@@ -1025,14 +1025,14 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
         // successor(0,0) = (2,0), successor(2,0) = (4,0)
         var coord1 = VT100GridCoord()
         var coord2 = VT100GridCoord()
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            coord1 = mutableState!.currentGrid.successor(of: VT100GridCoordMake(0, 0))
-            coord2 = mutableState!.currentGrid.successor(of: coord1)
+            coord1 = mutableState.currentGrid.successor(of: VT100GridCoordMake(0, 0))
+            coord2 = mutableState.currentGrid.successor(of: coord1)
         })
         XCTAssertEqual(coord1.x, 2)  // Skipped DWL_SPACER at 1
         XCTAssertEqual(coord2.x, 4)  // Skipped DWL_SPACER at 3
@@ -1044,12 +1044,12 @@ final class iTermLineAttributeTests: XCTestCase {
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             // Write fullwidth L then 'x': [Ｌ][DWL][DWC_R][DWL][x][DWL]
-            mutableState!.appendString(atCursor: "\u{FF2C}x")
+            mutableState.appendString(atCursor: "\u{FF2C}x")
         })
         // successor(0,0) should skip positions 1(DWL), 2(DWC_R), 3(DWL) → land on 4(x)
         var coord = VT100GridCoord()
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            coord = mutableState!.currentGrid.successor(of: VT100GridCoordMake(0, 0))
+            coord = mutableState.currentGrid.successor(of: VT100GridCoordMake(0, 0))
         })
         XCTAssertEqual(coord.x, 4)
     }
@@ -1062,12 +1062,12 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.appendString(atCursor: "ABCDE")
         })
         // Grid: A|B|C|D|E|..........  (10 physical cells of content)
         var parts: [(ScreenCharArray, Int)] = []
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             var cont = screen_char_t()
             cont.code = unichar(EOL_HARD)
             let sca = ScreenCharArray(
@@ -1091,7 +1091,7 @@ final class iTermLineAttributeTests: XCTestCase {
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             // Write 'A' then fullwidth L: A|Ｌ|-|
-            mutableState!.appendString(atCursor: "A\u{FF2C}")
+            mutableState.appendString(atCursor: "A\u{FF2C}")
         })
         // Grid: [A][DWL][Ｌ][DWL][DWC_R][DWL][0]...
         //        0   1    2   3     4      5   6
@@ -1109,7 +1109,7 @@ final class iTermLineAttributeTests: XCTestCase {
         var length4: Int32 = 0
         var length5: Int32 = 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             var cont = screen_char_t()
             cont.code = unichar(EOL_HARD)
             let sca = ScreenCharArray(
@@ -1133,19 +1133,19 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "Hi")
+            mutableState.appendString(atCursor: "Hi")
         })
 
         // Scroll the line into history by filling the screen
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "\r\n")
-            mutableState!.appendString(atCursor: "\r\n")
+            mutableState.appendString(atCursor: "\r\n")
+            mutableState.appendString(atCursor: "\r\n")
         })
 
         // Read the line attribute from the scrollback line (absolute line 0)
         var attr: iTermLineAttribute = .singleWidth
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let sca = mutableState!.screenCharArray(forLine: 0)
+            let sca = mutableState.screenCharArray(forLine: 0)
             attr = sca.metadata.lineAttribute
         })
         XCTAssertEqual(attr, .doubleWidth,
@@ -1156,12 +1156,12 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
         // Scroll into history
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "\r\n")
-            mutableState!.appendString(atCursor: "\r\n")
+            mutableState.appendString(atCursor: "\r\n")
+            mutableState.appendString(atCursor: "\r\n")
         })
 
         // Check that the scrollback line has doubleWidth metadata (derived
@@ -1169,7 +1169,7 @@ final class iTermLineAttributeTests: XCTestCase {
         var attr: iTermLineAttribute = .singleWidth
         var charCount: Int32 = 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let sca = mutableState!.screenCharArray(forLine: 0)
+            let sca = mutableState.screenCharArray(forLine: 0)
             charCount = sca.length
             attr = sca.metadata.lineAttribute
         })
@@ -1184,20 +1184,20 @@ final class iTermLineAttributeTests: XCTestCase {
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             // Fill the DWL line to wrap: 10 logical chars = 20 physical cells
-            mutableState!.appendString(atCursor: "ABCDEFGHIJ")
+            mutableState.appendString(atCursor: "ABCDEFGHIJ")
         })
         // The line wraps. Set the continuation to single-width.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             // Cursor is now on line 1. Set it to single-width and type.
             let lineInfo = grid.lineInfo(atLineNumber: 1)
             lineInfo?.metadata.lineAttribute = .singleWidth
-            mutableState!.appendString(atCursor: "xyz")
+            mutableState.appendString(atCursor: "xyz")
         })
 
         // Scroll everything into history
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "\r\n\r\n\r\n")
+            mutableState.appendString(atCursor: "\r\n\r\n\r\n")
         })
 
         // Now resize to width 10 and check: the first wrapped line from
@@ -1205,7 +1205,7 @@ final class iTermLineAttributeTests: XCTestCase {
         // DWL spacers with non-DWL characters should be singleWidth.
         var firstAttr: iTermLineAttribute = .singleWidth
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let sca = mutableState!.screenCharArray(forLine: 0)
+            let sca = mutableState.screenCharArray(forLine: 0)
             firstAttr = sca.metadata.lineAttribute
         })
         // The first screen line in scrollback was fully DWL
@@ -1216,15 +1216,15 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 2)
         setLineAttribute(screen, attr: .doubleHeightTop)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "Top")
+            mutableState.appendString(atCursor: "Top")
         })
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "\r\n\r\n")
+            mutableState.appendString(atCursor: "\r\n\r\n")
         })
 
         var attr: iTermLineAttribute = .singleWidth
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let sca = mutableState!.screenCharArray(forLine: 0)
+            let sca = mutableState.screenCharArray(forLine: 0)
             attr = sca.metadata.lineAttribute
         })
         XCTAssertEqual(attr, .doubleHeightTop,
@@ -1239,10 +1239,10 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 2)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "Hello")
+            mutableState.appendString(atCursor: "Hello")
         })
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "\r\n\r\n")
+            mutableState.appendString(atCursor: "\r\n\r\n")
         })
 
         // Access the scrollback line multiple times with explicit autorelease
@@ -1252,7 +1252,7 @@ final class iTermLineAttributeTests: XCTestCase {
             var attr: iTermLineAttribute = .singleWidth
             screen.performBlock(joinedThreads: { _, mutableState, _ in
                 autoreleasepool {
-                    let sca = mutableState!.screenCharArray(forLine: 0)
+                    let sca = mutableState.screenCharArray(forLine: 0)
                     attr = sca.metadata.lineAttribute
                 }
             })
@@ -1276,8 +1276,8 @@ final class iTermLineAttributeTests: XCTestCase {
 
         // Step 1: write 25 chars to force a soft wrap at column 20.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDEFGHIJKLMNOPQRST")  // fills line 0
-            mutableState!.appendString(atCursor: "UVWXY")                 // wraps to line 1
+            mutableState.appendString(atCursor: "ABCDEFGHIJKLMNOPQRST")  // fills line 0
+            mutableState.appendString(atCursor: "UVWXY")                 // wraps to line 1
         })
 
         // Step 2: cursor is on line 1. Set it to doubleHeightTop.
@@ -1288,14 +1288,14 @@ final class iTermLineAttributeTests: XCTestCase {
 
         // Step 3: widen by 1 column — line still wraps but at different position.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(21, 5),
-                                  delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(21, 5),
+                                  delegate: screen.delegate!)
         })
 
         // Step 4: narrow back to original width.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(20, 5),
-                                  delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(20, 5),
+                                  delegate: screen.delegate!)
         })
 
         // Find the line with the DWL content. After reflow, it may be on
@@ -1306,10 +1306,10 @@ final class iTermLineAttributeTests: XCTestCase {
             // The logical line has 25 chars. At width=20, line 0 has 20
             // (singleWidth), line 1 has 5 (doubleHeightTop). The absolute
             // line number depends on how many lines are in scrollback.
-            let numScrollback = mutableState!.numberOfScrollbackLines()
+            let numScrollback = mutableState.numberOfScrollbackLines()
             // Check each visible line for the DWL attribute.
             for i in 0..<5 {
-                let sca = mutableState!.screenCharArray(forLine: Int32(numScrollback) + Int32(i))
+                let sca = mutableState.screenCharArray(forLine: Int32(numScrollback) + Int32(i))
                 if sca.metadata.lineAttribute == .doubleHeightTop {
                     foundAttr = .doubleHeightTop
                     break
@@ -1333,8 +1333,8 @@ final class iTermLineAttributeTests: XCTestCase {
 
         // Write 25 chars — wraps at column 20.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDEFGHIJKLMNOPQRST") // line 0
-            mutableState!.appendString(atCursor: "UVWXY")                // line 1
+            mutableState.appendString(atCursor: "ABCDEFGHIJKLMNOPQRST") // line 0
+            mutableState.appendString(atCursor: "UVWXY")                // line 1
         })
 
         // Set a URL on line 1 (the wrapped portion), columns 0-4.
@@ -1342,7 +1342,7 @@ final class iTermLineAttributeTests: XCTestCase {
                                identifier: nil,
                                target: nil)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             grid.setURL(testURL,
                         inRectFrom: VT100GridCoordMake(0, 1),
                         to: VT100GridCoordMake(4, 1))
@@ -1351,7 +1351,7 @@ final class iTermLineAttributeTests: XCTestCase {
         // Verify URL is on line 1 before resize.
         var urlBeforeResize: iTermURL? = nil
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             let eaIndex = grid.lineInfo(atLineNumber: 1).externalAttributesCreatingIfNeeded(false)
             urlBeforeResize = eaIndex?.attributes[NSNumber(value: 0)]?.url
         })
@@ -1359,19 +1359,19 @@ final class iTermLineAttributeTests: XCTestCase {
 
         // Resize: widen to 21, then narrow back to 20.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(21, 5),
-                                  delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(21, 5),
+                                  delegate: screen.delegate!)
         })
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(20, 5),
-                                  delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(20, 5),
+                                  delegate: screen.delegate!)
         })
 
         // The URL should still be on line 1, not line 0.
         var urlOnLine0: iTermURL? = nil
         var urlOnLine1: iTermURL? = nil
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             let ea0 = grid.lineInfo(atLineNumber: 0).externalAttributesCreatingIfNeeded(false)
             let ea1 = grid.lineInfo(atLineNumber: 1).externalAttributesCreatingIfNeeded(false)
             urlOnLine0 = ea0?.attributes[NSNumber(value: 0)]?.url
@@ -1387,8 +1387,8 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 5)
 
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDEFGHIJKLMNOPQRST")
-            mutableState!.appendString(atCursor: "UVWXY")
+            mutableState.appendString(atCursor: "ABCDEFGHIJKLMNOPQRST")
+            mutableState.appendString(atCursor: "UVWXY")
         })
 
         // Set URL on line 0 (the remaining portion), columns 0-4.
@@ -1396,24 +1396,24 @@ final class iTermLineAttributeTests: XCTestCase {
                                identifier: nil,
                                target: nil)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.currentGrid.setURL(testURL,
+            mutableState.currentGrid.setURL(testURL,
                                               inRectFrom: VT100GridCoordMake(0, 0),
                                               to: VT100GridCoordMake(4, 0))
         })
 
         // Resize: widen then narrow.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(21, 5), delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(21, 5), delegate: screen.delegate!)
         })
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(20, 5), delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(20, 5), delegate: screen.delegate!)
         })
 
         // URL should still be on line 0, NOT on line 1.
         var urlOnLine0: iTermURL? = nil
         var urlOnLine1: iTermURL? = nil
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             urlOnLine0 = grid.lineInfo(atLineNumber: 0).externalAttributesCreatingIfNeeded(false)?.attributes[NSNumber(value: 0)]?.url
             urlOnLine1 = grid.lineInfo(atLineNumber: 1).externalAttributesCreatingIfNeeded(false)?.attributes[NSNumber(value: 0)]?.url
         })
@@ -1427,8 +1427,8 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 5)
 
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDEFGHIJKLMNOPQRST")
-            mutableState!.appendString(atCursor: "UVWXY")
+            mutableState.appendString(atCursor: "ABCDEFGHIJKLMNOPQRST")
+            mutableState.appendString(atCursor: "UVWXY")
         })
 
         // Set URL spanning the wrap: columns 15-24 (line 0 cols 15-19 + line 1 cols 0-4).
@@ -1436,7 +1436,7 @@ final class iTermLineAttributeTests: XCTestCase {
                                identifier: nil,
                                target: nil)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             grid.setURL(testURL,
                         inRectFrom: VT100GridCoordMake(15, 0),
                         to: VT100GridCoordMake(19, 0))
@@ -1447,17 +1447,17 @@ final class iTermLineAttributeTests: XCTestCase {
 
         // Resize: widen then narrow.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(21, 5), delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(21, 5), delegate: screen.delegate!)
         })
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(20, 5), delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(20, 5), delegate: screen.delegate!)
         })
 
         // Both lines should still have URLs.
         var urlOnLine0: iTermURL? = nil
         var urlOnLine1: iTermURL? = nil
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             urlOnLine0 = grid.lineInfo(atLineNumber: 0).externalAttributesCreatingIfNeeded(false)?.attributes[NSNumber(value: 15)]?.url
             urlOnLine1 = grid.lineInfo(atLineNumber: 1).externalAttributesCreatingIfNeeded(false)?.attributes[NSNumber(value: 0)]?.url
         })
@@ -1472,7 +1472,7 @@ final class iTermLineAttributeTests: XCTestCase {
 
         // Write 25 chars → wraps to 3 lines at width=10: [0-9] [10-19] [20-24]
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "ABCDEFGHIJKLMNOPQRSTUVWXY")
+            mutableState.appendString(atCursor: "ABCDEFGHIJKLMNOPQRSTUVWXY")
         })
 
         // Set URL on the last 5 chars (line 2, cols 0-4).
@@ -1480,17 +1480,17 @@ final class iTermLineAttributeTests: XCTestCase {
                                identifier: nil,
                                target: nil)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.currentGrid.setURL(testURL,
+            mutableState.currentGrid.setURL(testURL,
                                               inRectFrom: VT100GridCoordMake(0, 2),
                                               to: VT100GridCoordMake(4, 2))
         })
 
         // Resize: widen to 11 then back to 10.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(11, 5), delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(11, 5), delegate: screen.delegate!)
         })
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.setSize(VT100GridSizeMake(10, 5), delegate: screen.delegate)
+            mutableState.setSize(VT100GridSizeMake(10, 5), delegate: screen.delegate!)
         })
 
         // The URL should be on the last wrapped line (line 2), not elsewhere.
@@ -1498,7 +1498,7 @@ final class iTermLineAttributeTests: XCTestCase {
         var urlOnLine1: iTermURL? = nil
         var urlOnLine2: iTermURL? = nil
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             urlOnLine0 = grid.lineInfo(atLineNumber: 0).externalAttributesCreatingIfNeeded(false)?.attributes[NSNumber(value: 0)]?.url
             urlOnLine1 = grid.lineInfo(atLineNumber: 1).externalAttributesCreatingIfNeeded(false)?.attributes[NSNumber(value: 0)]?.url
             urlOnLine2 = grid.lineInfo(atLineNumber: 2).externalAttributesCreatingIfNeeded(false)?.attributes[NSNumber(value: 0)]?.url
@@ -1535,7 +1535,7 @@ final class iTermLineAttributeTests: XCTestCase {
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             var continuation = screen_char_t()
             continuation.code = unichar(EOL_HARD)
-            mutableState!.appendScreenChars(
+            mutableState.appendScreenChars(
                 &sourceData,
                 length: Int32(sourceData.count),
                 externalAttributeIndex: iTermExternalAttributeIndex(),
@@ -1569,7 +1569,7 @@ final class iTermLineAttributeTests: XCTestCase {
             var continuation = screen_char_t()
             continuation.code = unichar(EOL_HARD)
             chars.withUnsafeMutableBufferPointer { buf in
-                mutableState!.appendScreenChars(
+                mutableState.appendScreenChars(
                     buf.baseAddress!,
                     length: Int32(buf.count),
                     externalAttributeIndex: iTermExternalAttributeIndex(),
@@ -1596,7 +1596,7 @@ final class iTermLineAttributeTests: XCTestCase {
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             var continuation = screen_char_t()
             continuation.code = unichar(EOL_HARD)
-            mutableState!.appendScreenChars(
+            mutableState.appendScreenChars(
                 &sourceData,
                 length: Int32(sourceData.count),
                 externalAttributeIndex: iTermExternalAttributeIndex(),
@@ -1622,10 +1622,10 @@ final class iTermLineAttributeTests: XCTestCase {
         // Write DWL content on line 0, then add a line below so we can clear.
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.maxScrollbackLines = 0
-            mutableState!.appendString(atCursor: "AB")
-            mutableState!.appendCarriageReturnLineFeed()
-            mutableState!.appendString(atCursor: "below")
+            mutableState.maxScrollbackLines = 0
+            mutableState.appendString(atCursor: "AB")
+            mutableState.appendCarriageReturnLineFeed()
+            mutableState.appendString(atCursor: "below")
         })
 
         // Verify DWL content before clearing
@@ -1640,7 +1640,7 @@ final class iTermLineAttributeTests: XCTestCase {
         // cursor line should be saved and restored at line 0.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             // Cursor is already on line 1 from appendString("below")
-            mutableState!.clearFromAbsoluteLine(toEnd: 0)
+            mutableState.clearFromAbsoluteLine(toEnd: 0)
         })
 
         // The cursor line ("below") should have been restored at line 0.
@@ -1657,8 +1657,8 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.maxScrollbackLines = 0
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.maxScrollbackLines = 0
+            mutableState.appendString(atCursor: "AB")
         })
 
         // Verify DWL content before clearing
@@ -1669,11 +1669,11 @@ final class iTermLineAttributeTests: XCTestCase {
         var attrAfter = iTermLineAttribute.singleWidth
         var codesAfter = [unichar]()
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.currentGrid.cursorY = 0
-            mutableState!.currentGrid.cursorX = 4
-            mutableState!.clearFromAbsoluteLine(toEnd: 0)
+            mutableState.currentGrid.cursorY = 0
+            mutableState.currentGrid.cursorX = 4
+            mutableState.clearFromAbsoluteLine(toEnd: 0)
             // Read immediately after clear, inside the same performBlock
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             attrAfter = grid.lineInfo(atLineNumber: 0).metadata.lineAttribute
             let chars = grid.immutableScreenChars(atLineNumber: 0)!
             for i in 0..<6 {
@@ -1699,17 +1699,17 @@ final class iTermLineAttributeTests: XCTestCase {
     func testClearFromAbsoluteLineToEndNormalLine() {
         let screen = makeScreen(width: 10, height: 4)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.maxScrollbackLines = 0
-            mutableState!.appendString(atCursor: "hello")
-            mutableState!.appendCarriageReturnLineFeed()
-            mutableState!.appendString(atCursor: "world")
+            mutableState.maxScrollbackLines = 0
+            mutableState.appendString(atCursor: "hello")
+            mutableState.appendCarriageReturnLineFeed()
+            mutableState.appendString(atCursor: "world")
         })
         // Clear from line 0 to end; cursor is on line 1 ("world")
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.currentGrid.cursorY = 1
-            mutableState!.currentGrid.cursorX = 5
-            let absLine = mutableState!.cumulativeScrollbackOverflow
-            mutableState!.clearFromAbsoluteLine(toEnd: absLine)
+            mutableState.currentGrid.cursorY = 1
+            mutableState.currentGrid.cursorX = 5
+            let absLine = mutableState.cumulativeScrollbackOverflow
+            mutableState.clearFromAbsoluteLine(toEnd: absLine)
         })
 
         // Line 0 should have "world" (cursor line restored)
@@ -1728,17 +1728,17 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         setLineAttribute(screen, attr: .doubleHeightBottom)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.maxScrollbackLines = 0
-            mutableState!.appendString(atCursor: "QR")
+            mutableState.maxScrollbackLines = 0
+            mutableState.appendString(atCursor: "QR")
         })
 
         XCTAssertEqual(lineAttribute(screen, line: 0), .doubleHeightBottom)
 
         // Clear from line 0 with cursor on line 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.currentGrid.cursorY = 0
-            mutableState!.currentGrid.cursorX = 4
-            mutableState!.clearFromAbsoluteLine(toEnd: 0)
+            mutableState.currentGrid.cursorY = 0
+            mutableState.currentGrid.cursorX = 4
+            mutableState.clearFromAbsoluteLine(toEnd: 0)
         })
 
         XCTAssertEqual(lineAttribute(screen, line: 0), .doubleHeightBottom)
@@ -1758,12 +1758,12 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
 
         var resultAttr = iTermLineAttribute.singleWidth
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let extractor = iTermTextExtractor(dataSource: mutableState!)
+            let extractor = iTermTextExtractor(dataSource: mutableState)
             let sca = extractor.combinedLines(in: NSMakeRange(0, 1))
             resultAttr = sca.metadata.lineAttribute
         })
@@ -1776,12 +1776,12 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         setLineAttribute(screen, attr: .doubleHeightTop)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "XY")
+            mutableState.appendString(atCursor: "XY")
         })
 
         var resultAttr = iTermLineAttribute.singleWidth
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let extractor = iTermTextExtractor(dataSource: mutableState!)
+            let extractor = iTermTextExtractor(dataSource: mutableState)
             let sca = extractor.combinedLines(in: NSMakeRange(0, 1))
             resultAttr = sca.metadata.lineAttribute
         })
@@ -1795,14 +1795,14 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
-            mutableState!.appendCarriageReturnLineFeed()
-            mutableState!.appendString(atCursor: "normal")
+            mutableState.appendString(atCursor: "AB")
+            mutableState.appendCarriageReturnLineFeed()
+            mutableState.appendString(atCursor: "normal")
         })
 
         var resultAttr = iTermLineAttribute.singleWidth
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let extractor = iTermTextExtractor(dataSource: mutableState!)
+            let extractor = iTermTextExtractor(dataSource: mutableState)
             let sca = extractor.combinedLines(in: NSMakeRange(0, 2))
             resultAttr = sca.metadata.lineAttribute
         })
@@ -1821,7 +1821,7 @@ final class iTermLineAttributeTests: XCTestCase {
         // Set line 0 to DWL and write content.
         setLineAttribute(screen, attr: .doubleWidth)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "AB")
+            mutableState.appendString(atCursor: "AB")
         })
         XCTAssertEqual(lineAttribute(screen, line: 0), .doubleWidth)
 
@@ -1829,8 +1829,8 @@ final class iTermLineAttributeTests: XCTestCase {
         // variant. This simulates what clearFromAbsoluteLineToEnd does when
         // restoring a normal-width cursor line onto a formerly-DWL row.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.currentGrid.cursorY = 0
-            mutableState!.currentGrid.cursorX = 0
+            mutableState.currentGrid.cursorY = 0
+            mutableState.currentGrid.cursorX = 0
 
             var chars = [screen_char_t]()
             for scalar in "hello".unicodeScalars {
@@ -1841,7 +1841,7 @@ final class iTermLineAttributeTests: XCTestCase {
             var continuation = screen_char_t()
             continuation.code = unichar(EOL_SOFT)
             chars.withUnsafeMutableBufferPointer { buf in
-                mutableState!.appendScreenChars(
+                mutableState.appendScreenChars(
                     buf.baseAddress!,
                     length: Int32(buf.count),
                     externalAttributeIndex: iTermExternalAttributeIndex(),
@@ -1870,18 +1870,18 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 10, height: 4)
         // Line 0 starts singleWidth.
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.appendString(atCursor: "old")
+            mutableState.appendString(atCursor: "old")
         })
         XCTAssertEqual(lineAttribute(screen, line: 0), .singleWidth)
 
         // Now overwrite with DWL data (as if pasting from a DWL source).
         var sourceData = makeDWLData("XY")
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.currentGrid.cursorY = 0
-            mutableState!.currentGrid.cursorX = 0
+            mutableState.currentGrid.cursorY = 0
+            mutableState.currentGrid.cursorX = 0
             var continuation = screen_char_t()
             continuation.code = unichar(EOL_SOFT)
-            mutableState!.appendScreenChars(
+            mutableState.appendScreenChars(
                 &sourceData,
                 length: Int32(sourceData.count),
                 externalAttributeIndex: iTermExternalAttributeIndex(),
@@ -1905,7 +1905,7 @@ final class iTermLineAttributeTests: XCTestCase {
     private func cursorX(_ screen: VT100Screen) -> Int32 {
         var result: Int32 = 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            result = mutableState!.currentGrid.cursorX
+            result = mutableState.currentGrid.cursorX
         })
         return result
     }
@@ -1914,7 +1914,7 @@ final class iTermLineAttributeTests: XCTestCase {
     private func cursorY(_ screen: VT100Screen) -> Int32 {
         var result: Int32 = 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            result = mutableState!.currentGrid.cursorY
+            result = mutableState.currentGrid.cursorY
         })
         return result
     }
@@ -1922,7 +1922,7 @@ final class iTermLineAttributeTests: XCTestCase {
     /// Helper: inject raw bytes into terminal
     private func inject(_ screen: VT100Screen, _ string: String) {
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.inject(string.data(using: .utf8)!)
+            mutableState.inject(string.data(using: .utf8)!)
         })
     }
 
@@ -1931,8 +1931,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testCursorForwardOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
         // Cursor should be at physical 10 (5 chars × 2 cells each)
         XCTAssertEqual(cursorX(screen), 10)
@@ -1954,8 +1954,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testCursorBackwardOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
         // Cursor at physical 10
         XCTAssertEqual(cursorX(screen), 10)
@@ -1974,8 +1974,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testCursorPositionOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
 
         // CUP row 1, col 1 → physical (0, 0)
@@ -1995,8 +1995,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testHorizontalPositionAbsoluteOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
 
         // HPA col 1 → physical 0
@@ -2012,10 +2012,10 @@ final class iTermLineAttributeTests: XCTestCase {
     func testSetCursorXSnapsToEvenOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
             // Try to set cursor to odd physical position
-            mutableState!.currentGrid.cursorX = 3
+            mutableState.currentGrid.cursorX = 3
         })
         // Should snap to 2 (round down to even)
         XCTAssertEqual(cursorX(screen), 2, "setCursorX(3) should snap to 2 on DWL line")
@@ -2026,8 +2026,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testDeleteCharacterOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
 
         // Move to position of 'B' (physical 2) and delete 1
@@ -2050,8 +2050,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testInsertCharacterOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
 
         // Move to 'C' (physical 4) and insert 1 blank
@@ -2076,8 +2076,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testEraseCharacterOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
 
         // Move to 'B' and erase 2 characters
@@ -2103,19 +2103,19 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
             // Line 0: normal, cursor at column 5
-            mutableState!.appendString(atCursor: "Hello World")
-            mutableState!.currentGrid.cursorX = 5
-            mutableState!.currentGrid.cursorY = 0
+            mutableState.appendString(atCursor: "Hello World")
+            mutableState.currentGrid.cursorX = 5
+            mutableState.currentGrid.cursorY = 0
             // Line 1: double-width
-            mutableState!.currentGrid.cursorY = 1
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.currentGrid.cursorY = 1
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
 
         // Position cursor at column 5 on normal line 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.currentGrid.cursorX = 5
-            mutableState!.currentGrid.cursorY = 0
+            mutableState.currentGrid.cursorX = 5
+            mutableState.currentGrid.cursorY = 0
         })
 
         // Move down to DWL line — cursor at physical 5 is a spacer, should snap
@@ -2130,8 +2130,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testEraseInDisplayOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
 
         // Move to 'C' and erase from cursor to end of display
@@ -2152,8 +2152,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testCharacterInputOnDWLLinePreservesLayout() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABCDE")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABCDE")
         })
 
         // Move to 'C' and overwrite with 'X'
@@ -2171,8 +2171,8 @@ final class iTermLineAttributeTests: XCTestCase {
     func testBackspaceOnDWLLine() {
         let screen = makeScreen(width: 20, height: 5)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "ABC")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "ABC")
         })
         // Cursor at physical 6 (3 chars × 2 cells)
         XCTAssertEqual(cursorX(screen), 6)
@@ -2201,12 +2201,12 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 5)
 
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleHeightTop)
-            mutableState!.appendString(atCursor: "Hi")
-            mutableState!.terminalCarriageReturn()
-            mutableState!.terminalLineFeed()
-            mutableState!.terminalSetLineAttribute(.doubleHeightBottom)
-            mutableState!.appendString(atCursor: "Hi")
+            mutableState.terminalSetLineAttribute(.doubleHeightTop)
+            mutableState.appendString(atCursor: "Hi")
+            mutableState.terminalCarriageReturn()
+            mutableState.terminalLineFeed()
+            mutableState.terminalSetLineAttribute(.doubleHeightBottom)
+            mutableState.appendString(atCursor: "Hi")
         })
 
         // Verify grid state
@@ -2215,7 +2215,7 @@ final class iTermLineAttributeTests: XCTestCase {
         var line0Len: Int32 = 0
         var line1Len: Int32 = 0
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let grid = mutableState!.currentGrid
+            let grid = mutableState.currentGrid
             line0Attr = grid.lineInfo(atLineNumber: 0).metadata.lineAttribute
             line1Attr = grid.lineInfo(atLineNumber: 1).metadata.lineAttribute
             line0Len = grid.length(ofLineNumber: 0)
@@ -2229,7 +2229,7 @@ final class iTermLineAttributeTests: XCTestCase {
         // Extract without dedup — both top and bottom should be present
         var result = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let extractor = iTermTextExtractor(dataSource: mutableState!)
+            let extractor = iTermTextExtractor(dataSource: mutableState)
             let range = VT100GridWindowedRangeMake(
                 VT100GridCoordRangeMake(0, 0, 20, 1),
                 0, 0)
@@ -2256,16 +2256,16 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 5)
 
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleHeightTop)
-            mutableState!.appendString(atCursor: "Top")
-            mutableState!.terminalCarriageReturn()
-            mutableState!.terminalLineFeed()
-            mutableState!.appendString(atCursor: "Normal")
+            mutableState.terminalSetLineAttribute(.doubleHeightTop)
+            mutableState.appendString(atCursor: "Top")
+            mutableState.terminalCarriageReturn()
+            mutableState.terminalLineFeed()
+            mutableState.appendString(atCursor: "Normal")
         })
 
         var result = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let extractor = iTermTextExtractor(dataSource: mutableState!)
+            let extractor = iTermTextExtractor(dataSource: mutableState)
             let range = VT100GridWindowedRangeMake(
                 VT100GridCoordRangeMake(0, 0, 20, 1),
                 0, 0)
@@ -2292,13 +2292,13 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 5)
 
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleWidth)
-            mutableState!.appendString(atCursor: "Wide")
+            mutableState.terminalSetLineAttribute(.doubleWidth)
+            mutableState.appendString(atCursor: "Wide")
         })
 
         var result = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let extractor = iTermTextExtractor(dataSource: mutableState!)
+            let extractor = iTermTextExtractor(dataSource: mutableState)
             let range = VT100GridWindowedRangeMake(
                 VT100GridCoordRangeMake(0, 0, 20, 0),
                 0, 0)
@@ -2326,20 +2326,20 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 5)
 
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleHeightTop)
-            mutableState!.appendString(atCursor: "Hello")
-            mutableState!.terminalCarriageReturn()
-            mutableState!.terminalLineFeed()
-            mutableState!.terminalSetLineAttribute(.doubleHeightBottom)
-            mutableState!.appendString(atCursor: "Hello")
-            mutableState!.terminalCarriageReturn()
-            mutableState!.terminalLineFeed()
-            mutableState!.appendString(atCursor: "Normal")
+            mutableState.terminalSetLineAttribute(.doubleHeightTop)
+            mutableState.appendString(atCursor: "Hello")
+            mutableState.terminalCarriageReturn()
+            mutableState.terminalLineFeed()
+            mutableState.terminalSetLineAttribute(.doubleHeightBottom)
+            mutableState.appendString(atCursor: "Hello")
+            mutableState.terminalCarriageReturn()
+            mutableState.terminalLineFeed()
+            mutableState.appendString(atCursor: "Normal")
         })
 
         var result = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let extractor = iTermTextExtractor(dataSource: mutableState!)
+            let extractor = iTermTextExtractor(dataSource: mutableState)
             let range = VT100GridWindowedRangeMake(
                 VT100GridCoordRangeMake(0, 0, 20, 2),
                 0, 0)
@@ -2367,17 +2367,17 @@ final class iTermLineAttributeTests: XCTestCase {
         let screen = makeScreen(width: 20, height: 5)
 
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.terminalSetLineAttribute(.doubleHeightTop)
-            mutableState!.appendString(atCursor: "Top")
-            mutableState!.terminalCarriageReturn()
-            mutableState!.terminalLineFeed()
-            mutableState!.terminalSetLineAttribute(.doubleHeightBottom)
-            mutableState!.appendString(atCursor: "Bottom")
+            mutableState.terminalSetLineAttribute(.doubleHeightTop)
+            mutableState.appendString(atCursor: "Top")
+            mutableState.terminalCarriageReturn()
+            mutableState.terminalLineFeed()
+            mutableState.terminalSetLineAttribute(.doubleHeightBottom)
+            mutableState.appendString(atCursor: "Bottom")
         })
 
         var result = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let extractor = iTermTextExtractor(dataSource: mutableState!)
+            let extractor = iTermTextExtractor(dataSource: mutableState)
             let range = VT100GridWindowedRangeMake(
                 VT100GridCoordRangeMake(0, 0, 20, 1),
                 0, 0)
@@ -2420,19 +2420,19 @@ final class iTermLineAttributeTests: XCTestCase {
     private func copyWithControlSequences(from screen: VT100Screen) -> String {
         var result = ""
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            let snapshot = TerminalContentSnapshot(lineBuffer: mutableState!.linebuffer,
-                                                    grid: mutableState!.currentGrid,
-                                                    cumulativeOverflow: mutableState!.cumulativeScrollbackOverflow)
-            let totalLines = Int(mutableState!.numberOfLines())
-            let selDelegate = MinimalSelectionDelegate(width: mutableState!.width)
+            let snapshot = TerminalContentSnapshot(lineBuffer: mutableState.linebuffer,
+                                                    grid: mutableState.currentGrid,
+                                                    cumulativeOverflow: mutableState.cumulativeScrollbackOverflow)
+            let totalLines = Int(mutableState.numberOfLines())
+            let selDelegate = MinimalSelectionDelegate(width: mutableState.width)
             let selection = iTermSelection()
             selection.delegate = selDelegate
             let sub = iTermSubSelection.init(
                 absRange: VT100GridAbsWindowedRangeMake(
-                    VT100GridAbsCoordRangeMake(0, 0, Int32(mutableState!.width), Int64(totalLines - 1)),
+                    VT100GridAbsCoordRangeMake(0, 0, Int32(mutableState.width), Int64(totalLines - 1)),
                     0, 0),
                 mode: .kiTermSelectionModeCharacter,
-                width: mutableState!.width)
+                width: mutableState.width)
             selection.add(sub)
             let extractor = SGRSelectionExtractor(
                 selection: selection,
@@ -2472,7 +2472,7 @@ final class iTermLineAttributeTests: XCTestCase {
 
         let screen = makeScreen(width: 80, height: 100)
         screen.performBlock(joinedThreads: { _, mutableState, _ in
-            mutableState!.inject(crlf.data(using: .utf8)!)
+            mutableState.inject(crlf.data(using: .utf8)!)
         })
         let actual = trimTrailingResetLines(copyWithControlSequences(from: screen))
 

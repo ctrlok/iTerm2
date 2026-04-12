@@ -23,6 +23,13 @@
 
 @implementation iTermBGColorRLEMockColorMap
 
+@synthesize darkMode = _darkMode;
+@synthesize dimOnlyText = _dimOnlyText;
+@synthesize faintTextAlpha = _faintTextAlpha;
+@synthesize generation = _generation;
+@synthesize harmonize = _harmonize;
+@synthesize useSeparateColorsForLightAndDarkMode = _useSeparateColorsForLightAndDarkMode;
+
 - (vector_float4)fastProcessedBackgroundColorForBackgroundColor:(vector_float4)color {
     return color;
 }
@@ -33,6 +40,23 @@
 - (CGFloat)mutingAmount { return 0; }
 - (NSColor *)colorForKey:(iTermColorMapKey)key { return [NSColor blackColor]; }
 - (NSColor *)dimmedColorForKey:(iTermColorMapKey)key { return [NSColor blackColor]; }
+
+- (nonnull id)copyWithZone:(nullable NSZone *)zone { return self; }
+- (vector_float4)fastColorForKey:(iTermColorMapKey)theKey { return simd_make_float4(0, 0, 0, 1); }
+- (vector_float4)fastColorForKey:(iTermColorMapKey)theKey colorSpace:(NSColorSpace *)colorSpace { return simd_make_float4(0, 0, 0, 1); }
+- (NSColor *)processedTextColorForTextColor:(NSColor *)textColor overBackgroundColor:(NSColor *)backgroundColor disableMinimumContrast:(BOOL)disableMinimumContrast { return textColor; }
+- (NSColor *)processedBackgroundColorForBackgroundColor:(NSColor *)color { return color; }
+- (NSColor *)colorByMutingColor:(NSColor *)color { return color; }
+- (vector_float4)fastColorByMutingColor:(vector_float4)color { return color; }
+- (NSColor *)colorByDimmingTextColor:(NSColor *)color { return color; }
+- (NSString *)profileKeyForColorMapKey:(int)theKey { return @""; }
+- (NSString *)profileKeyForBaseKey:(NSString *)baseKey { return baseKey; }
+- (iTermColorMapKey)keyForSystemMessageForBackground:(BOOL)background { return 0; }
+- (NSDictionary<NSNumber *, NSString *> *)colormapKeyToProfileKeyDictionary { return @{}; }
+- (iTermColorMapKey)keyForColor:(int)theIndex green:(int)green blue:(int)blue colorMode:(ColorMode)theMode bold:(BOOL)isBold isBackground:(BOOL)isBackground useCustomBoldColor:(BOOL)useCustomBoldColor brightenBold:(BOOL)brightenBold { return 0; }
+- (NSColor *)colorForCode:(int)theIndex green:(int)green blue:(int)blue colorMode:(ColorMode)theMode bold:(BOOL)isBold faint:(BOOL)isFaint isBackground:(BOOL)isBackground useCustomBoldColor:(BOOL)useCustomBoldColor brightenBold:(BOOL)brightenBold { return [NSColor blackColor]; }
+- (iTermColorMap *)copy { return (iTermColorMap *)self; }
+- (VT100SavedColorsSlot *)savedColorsSlot { return nil; }
 
 @end
 

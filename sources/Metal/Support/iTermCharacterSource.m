@@ -750,7 +750,6 @@ static const CGFloat iTermCharacterSourceAliasedFakeBoldShiftPoints = 1;
                                offset:(CGPoint)offset {
     if (!_isEmoji) {
         // Can't use this with emoji.
-        const CGFloat hScale = [self drawHScale];
         const CGFloat vScale = [self drawVScale];
         // For DWL lines, retina + DWL scales are in the CTM, so the text
         // matrix matches the legacy renderer: a=1, d=vScale.
