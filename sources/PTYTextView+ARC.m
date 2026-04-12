@@ -836,10 +836,18 @@ iTermCommandInfoViewControllerDelegate>
             return [urlAction.identifier URL];
 
         case kURLActionOpenExistingFile:
+            if (!urlAction.fullPath) {
+                return nil;
+            }
             return [NSURL fileURLWithPath:urlAction.fullPath];
 
-        case kURLActionOpenImage:
-            return [NSURL fileURLWithPath:[urlAction.identifier nameForNewSavedTempFile]];
+        case kURLActionOpenImage: {
+            NSString *tempFile = [urlAction.identifier nameForNewSavedTempFile];
+            if (!tempFile) {
+                return nil;
+            }
+            return [NSURL fileURLWithPath:tempFile];
+        }
 
         case kURLActionOpenURL: {
             if (!urlAction.string) {
