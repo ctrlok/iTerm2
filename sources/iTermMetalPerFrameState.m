@@ -1654,7 +1654,7 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
                                    &previousImageCoord,
                                    imageRuns);
             gk = iTermGlyphKeyEmitPlaceholder(buf, gk, logicalIndex, bidiLUT, bidiLUTLength);
-        } else if (attributedString && !isBoxDrawingCharacter && !ScreenCharIsDWL_SPACER(line[logicalIndex])) {
+        } else if (attributedString && !isBoxDrawingCharacter && !ScreenCharIsDWL_SPACER(line[logicalIndex]) && !ScreenCharIsDWC_RIGHT(line[logicalIndex])) {
             if (!haveEmittedAttributedString) {
                 gk = iTermGlyphKeyEmitDecomposed(buf,
                                                  !!line[logicalIndex].bold,
