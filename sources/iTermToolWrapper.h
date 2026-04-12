@@ -23,6 +23,7 @@
 @protocol iTermGenericNamedMarkReading;
 @class ToolNamedMarks;
 @class ToolStatus;
+@class iTermSessionNoteModel;
 @class iTermToolWrapper;
 @class iTermToolCodecierge;
 
@@ -55,6 +56,8 @@
 - (NSArray<id<iTermGenericNamedMarkReading>> *)toolbeltNamedMarks;
 - (ProfileType)toolbeltProfileType;
 - (BOOL)toolbeltWindowContainsSessionWithGUID:(NSString *)guid;
+- (iTermSessionNoteModel *)toolbeltCurrentSessionNoteModel;
+- (iTermSessionNoteModel *)toolbeltEnsureCurrentSessionNoteModel;
 @end
 
 @protocol ToolWrapperDelegate <NSObject>

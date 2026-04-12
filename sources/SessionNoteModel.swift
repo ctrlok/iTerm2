@@ -2,10 +2,14 @@ import Foundation
 
 @objc(iTermSessionNoteModel)
 class SessionNoteModel: NSObject {
+    @objc static let textDidChangeNotification = NSNotification.Name("iTermSessionNoteModelTextDidChange")
+
     @objc var text: String = "" {
         didSet {
             if text != oldValue {
                 generation += 1
+                NotificationCenter.default.post(name: SessionNoteModel.textDidChangeNotification,
+                                                object: self)
             }
         }
     }

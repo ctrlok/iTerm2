@@ -13247,6 +13247,21 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
     [self.currentSession openComposerWithString:text escaping:escaping];
 }
 
+- (iTermSessionNoteModel *)toolbeltCurrentSessionNoteModel {
+    return self.currentSession.sessionNoteModel;
+}
+
+- (iTermSessionNoteModel *)toolbeltEnsureCurrentSessionNoteModel {
+    PTYSession *session = self.currentSession;
+    if (!session) {
+        return nil;
+    }
+    if (!session.sessionNoteModel) {
+        session.sessionNoteModel = [[[iTermSessionNoteModel alloc] init] autorelease];
+    }
+    return session.sessionNoteModel;
+}
+
 - (NSArray<iTermCommandHistoryCommandUseMO *> *)toolbeltCommandUsesForCurrentSession {
     return [self.currentSession commandUses];
 }

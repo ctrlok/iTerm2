@@ -213,6 +213,12 @@ class SessionNoteView: NSView, NSTextViewDelegate {
             name: .PTYTextViewWillChangeFont,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(modelTextDidChange(_:)),
+            name: SessionNoteModel.textDidChangeNotification,
+            object: model
+        )
     }
 
     @available(*, unavailable)
@@ -595,6 +601,14 @@ class SessionNoteView: NSView, NSTextViewDelegate {
                 return
             }
             self.updateFont(font)
+        }
+    }
+
+    // MARK: - External Model Change
+
+    @objc private func modelTextDidChange(_ notification: Notification) {
+        if textView.string != model.text {
+            textView.string = model.text
         }
     }
 
