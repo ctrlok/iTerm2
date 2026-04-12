@@ -938,6 +938,11 @@ iTermWindowType iTermWindowTypeNormalized(iTermWindowType windowType) {
     [self didChangeAnyFullScreen];
 
     [self updateTabBarControlIsTitlebarAccessory];
+    // Work around macOS bug where the content view frame isn't updated to
+    // account for titlebar accessories after exiting Lion fullscreen. Issue 12810.
+    if (@available(macOS 26, *)) {
+        [_titlebarAccessoryNanny forceReaddAll];
+    }
     [self.contentView.tabBarControl updateFlashing];
     // Set scrollbars appropriately
     [self updateSessionScrollbars];
