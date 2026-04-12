@@ -7222,11 +7222,11 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
             }
             DLog(@"tabViewDidChangeNumberOfTabViewItems: tmuxOriginatedResizeInProgress=%d window frame before=%@",
                  tmuxOriginatedResizeInProgress_, NSStringFromRect(self.window.frame));
-            if (tmuxOriginatedResizeInProgress_) {
-                [self lazyFitWindowToTabs];
-            } else {
-                [self fitWindowToTabs];
-            }
+            // Always use lazyFitWindowToTabs here. It falls back to fitWindowToTabs when
+            // no tmux tabs are present, and avoids sub-cell shrinkage when there are tmux
+            // tabs — even when tmuxOriginatedResizeInProgress_ is 0 (e.g., when the
+            // pre-tmux session is buried after tmux init completes). Issue 9480.
+            [self lazyFitWindowToTabs];
             const NSRect frameAfter = self.window.frame;
             DLog(@"tabViewDidChangeNumberOfTabViewItems: window frame after=%@", NSStringFromRect(frameAfter));
             if (NSEqualRects(frameBefore, frameAfter) && neededInitialSize) {
