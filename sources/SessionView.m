@@ -186,6 +186,7 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
     if (self) {
         [self registerForDraggedTypes:@[ iTermMovePaneDragType, @"com.iterm2.psm.controlitem" ]];
         lastResizeDate_ = [NSDate date];
+        _showInlineProgressBar = YES;
         _announcements = [[NSMutableArray alloc] init];
 
         _imageView = [[iTermImageView alloc] init];
@@ -1968,13 +1969,20 @@ typedef NS_ENUM(NSInteger, SessionViewTrackingMode) {
             _progressBar.hidden = YES;
         }
     }
-    if (!self.enableProgressBars) {
+    if (!self.enableProgressBars || !self.showInlineProgressBar) {
         _progressBar.hidden = YES;
     }
 }
 
 - (void)setEnableProgressBars:(BOOL)enableProgressBars {
     _enableProgressBars = enableProgressBars;
+    [self updateProgressBar];
+}
+
+- (void)setShowInlineProgressBar:(BOOL)showInlineProgressBar {
+    DLog(@"setShowInlineProgressBar:%d (was %d) enableProgressBars=%d progress=%d",
+         showInlineProgressBar, _showInlineProgressBar, _enableProgressBars, (int)_progress);
+    _showInlineProgressBar = showInlineProgressBar;
     [self updateProgressBar];
 }
 

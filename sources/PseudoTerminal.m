@@ -2218,6 +2218,7 @@ ITERM_WEAKLY_REFERENCEABLE
     DLog(@"%@", self);
     if ([self anyFullScreen]) {
         [self updateTabBarControlIsTitlebarAccessory];
+        [self updateSessionProgressBarVisibility];
         [_contentView.tabBarControl updateFlashing];
         [self repositionWidgets];
         [self fitTabsToWindow];
@@ -6343,6 +6344,7 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
         DLog(@"tab bar should NOT be accessory, but is on loan.");
         [self returnTabBarToContentView];
     }
+    [self updateSessionProgressBarVisibility];
     DLog(@"Tab bar state after updateTabBarControlIsTitlebarAccessory: hidden=%@ alpha=%@ frame=%@",
          @(_contentView.tabBarControl.isHidden),
          @(_contentView.tabBarControl.alphaValue),
@@ -6758,6 +6760,7 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
     [self showOrHideInstantReplayBar];
     [self refreshTools];
     [self updateTabColors];
+    [self updateSessionProgressBarVisibility];
     [self updateToolbeltAppearance];
     [[NSNotificationCenter defaultCenter] postNotificationName:kCurrentSessionDidChange object:nil];
     [self notifyTmuxOfTabChange];
@@ -7318,6 +7321,7 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
     }
 
     [self updateTabColors];
+    [self updateSessionProgressBarVisibility];
     [self updateTabProgress];
     [self updateToolbeltAppearance];
     [self setNeedsUpdateTabObjectCounts:YES];
@@ -7792,6 +7796,8 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
 - (void)tabView:(NSTabView *)tabView updateStateForTabViewItem:(NSTabViewItem *)tabViewItem {
     PTYTab *tab = tabViewItem.identifier;
     [_contentView.tabBarControl setIsProcessing:tab.isProcessing forTabWithIdentifier:tab];
+    [_contentView.tabBarControl setProgress:(PSMProgress)tab.progress
+                       forTabWithIdentifier:tab];
     [_contentView.tabBarControl setIcon:tab.icon forTabWithIdentifier:tab];
     [_contentView.tabBarControl setObjectCount:tab.objectCount forTabWithIdentifier:tab];
     [_contentView.tabBarControl setIsPinned:tab.isPinned forTabViewItem:tabViewItem];
@@ -7824,9 +7830,44 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
     [_contentView updateTitleAndBorderViews];
 }
 
+- (BOOL)tabBarProvidesProgressVisibility {
+    if (togglingLionFullScreen_ || self.anyFullScreen) {
+        const BOOL result = self.shouldShowPermanentFullScreenTabBar;
+        DLog(@"tabBarProvidesProgressVisibility: fullscreen path -> shouldShowPermanentFullScreenTabBar=%d", result);
+        return result;
+    }
+    const BOOL result = self.tabBarShouldBeVisible;
+    DLog(@"tabBarProvidesProgressVisibility: normal path -> tabBarShouldBeVisible=%d", result);
+    return result;
+}
+
+- (BOOL)shouldShowInlineProgressBarForSession:(PTYSession *)session tabBarVisible:(BOOL)tabBarVisible {
+    PTYTab *tab = [self tabForSession:session];
+    if (!tab) {
+        DLog(@"shouldShowInlineProgressBarForSession: no tab, return YES");
+        return YES;
+    }
+    const BOOL hasSingleTab = (self.numberOfTabs == 1);
+    const BOOL hasSplitPanes = (tab.sessions.count > 1);
+    const BOOL isInOverflow = [_contentView.tabBarControl isInOverflowMenuForTabWithIdentifier:tab];
+    const BOOL result = (hasSingleTab || hasSplitPanes || isInOverflow || !tabBarVisible);
+    DLog(@"shouldShowInlineProgressBarForSession: hasSingleTab=%d hasSplitPanes=%d isInOverflow=%d tabBarVisible=%d -> %d",
+         hasSingleTab, hasSplitPanes, isInOverflow, tabBarVisible, result);
+    return result;
+}
+
+- (void)updateSessionProgressBarVisibility {
+    const BOOL tabBarVisible = [self tabBarProvidesProgressVisibility];
+    DLog(@"updateSessionProgressBarVisibility: tabBarVisible=%d sessions=%d", tabBarVisible, (int)self.allSessions.count);
+    for (PTYSession *session in self.allSessions) {
+        session.view.showInlineProgressBar = [self shouldShowInlineProgressBarForSession:session
+                                                                           tabBarVisible:tabBarVisible];
+    }
+}
+
 - (void)updateTabProgress {
     for (PTYTab *tab in [self tabs]) {
-        [_contentView.tabBarControl setProgress:(PSMProgress)tab.activeSession.screen.progress
+        [_contentView.tabBarControl setProgress:(PSMProgress)tab.progress
                            forTabWithIdentifier:tab];
     }
 }
@@ -9233,7 +9274,12 @@ static CGFloat iTermDimmingAmount(PSMTabBarControl *tabView) {
         // Moving an existing session (newSession) into a new split
         [newSession setScrollViewDocumentView];
 
-        // SessionView doesn't have any state that survives being moved except the browser view & view controller.
+        // SessionView doesn't have any state that survives being moved except the browser view & view controller
+        // and progress bar state.
+        newSession.view.progress = originalNewSessionView.progress;
+        newSession.view.enableProgressBars = originalNewSessionView.enableProgressBars;
+        newSession.view.progressBarHeight = originalNewSessionView.progressBarHeight;
+        newSession.view.progressBarColorScheme = originalNewSessionView.progressBarColorScheme;
         if (@available(macOS 11, *)) {
             if (originalNewSessionView.browserViewController) {
                 [newSession.view setBrowserViewController:originalNewSessionView.browserViewController
@@ -12320,6 +12366,10 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
     return NO;
 }
 
+- (void)iTermTabBarDidUpdateProgressBars {
+    [self updateSessionProgressBarVisibility];
+}
+
 - (PTYSession *)sessionForDirectoryRecycling {
     // Get active session's directory
     PTYSession* currentSession = [[[iTermController sharedInstance] currentTerminal] currentSession];
@@ -13039,6 +13089,7 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
 }
 
 - (void)numberOfSessionsDidChangeInTab:(PTYTab *)tab {
+    [self updateSessionProgressBarVisibility];
     if (tab == self.currentTab) {
         [self updateUseTransparency];
     }

@@ -7287,10 +7287,25 @@ backgroundColor:(NSColor *)backgroundColor {
     [self.delegate tabProcessInfoProviderDidChange:self];
 }
 
-- (void)session:(PTYSession *)session progressDidChange:(VT100ScreenProgress)progress {
-    if (session == self.activeSession) {
-        [self.delegate tab:self progressDidChange:progress];
+- (VT100ScreenProgress)progress {
+    const VT100ScreenProgress activeProgress = self.activeSession.screen.progress;
+    if (VT100ScreenProgressIsVisible(activeProgress)) {
+        return activeProgress;
     }
+    for (PTYSession *session in self.sessions) {
+        if (session == self.activeSession) {
+            continue;
+        }
+        const VT100ScreenProgress progress = session.screen.progress;
+        if (VT100ScreenProgressIsVisible(progress)) {
+            return progress;
+        }
+    }
+    return VT100ScreenProgressStopped;
+}
+
+- (void)session:(PTYSession *)session progressDidChange:(VT100ScreenProgress)progress {
+    [self.delegate tab:self progressDidChange:self.progress];
 }
 
 - (NSScriptObjectSpecifier *)objectSpecifier { 

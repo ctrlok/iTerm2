@@ -413,7 +413,33 @@ class PSMTahoeTabStyle: NSObject, PSMTabStyle {
         frame.size.height = generic.height - 1
         return frame
     }
-    
+
+    private func backgroundRect(for cellFrame: NSRect) -> NSRect {
+        var rect = cellFrame
+        rect.origin.y += 2
+        rect.size.height -= 3
+        return rect
+    }
+
+    @objc func progressBarRect(forTabCell cell: PSMTabBarCell) -> NSRect {
+        let cellFrame = cell.frame
+        // Enclose the progress bar within the pill-shaped background for all tabs.
+        let pillRect = backgroundRect(for: cellFrame)
+        let horizontalInset = CGFloat(4)
+        let verticalInset = CGFloat(1)
+        return NSRect(x: pillRect.origin.x + horizontalInset,
+                      y: pillRect.origin.y + verticalInset,
+                      width: max(CGFloat(0), pillRect.size.width - horizontalInset * 2),
+                      height: PSMTabBarProgressBarHeight)
+    }
+
+    @objc func progressBarClipPath(forTabCell cell: PSMTabBarCell) -> NSBezierPath? {
+        let cellFrame = cell.frame
+        let rect = backgroundRect(for: cellFrame).insetBy(dx: 1, dy: 1)
+        let radius = max(0, barRadius - 2.5 - 1)
+        return NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
+    }
+
     // MARK: - Drawing
     
     private static let rightDropShadow: NSImage = {
@@ -789,9 +815,7 @@ class PSMTahoeTabStyle: NSObject, PSMTabStyle {
         backgroundColorSelected(selected, highlightAmount: isHighlighted ? 1.0 : 0.0).set()
         
         let radius = barRadius - 2.5
-        var rect = cellFrame
-        rect.origin.y += 2
-        rect.size.height -= 3
+        let rect = backgroundRect(for: cellFrame)
         let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
         path.fill()
         if selected {
