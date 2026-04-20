@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="24127" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="24765" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24127"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24765"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -113,7 +113,7 @@
                     <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="57P-Xf-65n">
                         <rect key="frame" x="18" y="369" width="629" height="23"/>
                         <autoresizingMask key="autoresizingMask" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="What’s New in Version 3.6" id="Dih-Go-912">
+                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="What’s New in Version 3.7" id="Dih-Go-912">
                             <font key="font" metaFont="systemLight" size="16"/>
                             <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
@@ -139,7 +139,7 @@
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="4gk-fe-vQq" userLabel="Web">
                     <rect key="frame" x="18" y="289" width="589" height="34"/>
                     <autoresizingMask key="autoresizingMask"/>
-                    <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="Web Browsing" id="LXN-RX-ZgC">
+                    <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="TODO" id="LXN-RX-ZgC">
                         <font key="font" metaFont="systemUltraLight" size="28"/>
                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
@@ -148,9 +148,8 @@
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="bGK-Us-rSz" customClass="iTermOnboardingTextField">
                     <rect key="frame" x="18" y="20" width="589" height="48"/>
                     <autoresizingMask key="autoresizingMask"/>
-                    <textFieldCell key="cell" alignment="center" id="0Bk-78-p2L">
+                    <textFieldCell key="cell" alignment="center" title="TODO" id="0Bk-78-p2L">
                         <font key="font" metaFont="system"/>
-                        <string key="title">Set a profile’s type to Browser and you can enjoy almost all the features of iTerm2—regex search, instant replay, split panes, hotkey windows, and more—to view web pages. &lt;a href="iterm2whatsnew:/browser"&gt;Try it now!&lt;/a&gt;</string>
                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
@@ -173,7 +172,7 @@
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="UXE-KQ-MEi">
                     <rect key="frame" x="18" y="289" width="589" height="34"/>
                     <autoresizingMask key="autoresizingMask"/>
-                    <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="AI Chat" id="hKz-h7-CcP">
+                    <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="TODO" id="hKz-h7-CcP">
                         <font key="font" metaFont="systemUltraLight" size="28"/>
                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
@@ -187,7 +186,7 @@
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jYX-nH-O5u" customClass="iTermOnboardingTextField">
                     <rect key="frame" x="49" y="20" width="558" height="41"/>
                     <autoresizingMask key="autoresizingMask"/>
-                    <textFieldCell key="cell" alignment="center" title="AI Chat lets an LLM view and drive your terminal. Fine-grained permissions settings keep you safe." id="Lvg-vI-G64">
+                    <textFieldCell key="cell" alignment="center" title="TODO" id="Lvg-vI-G64">
                         <font key="font" metaFont="system"/>
                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
@@ -206,7 +205,7 @@
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="7Lc-G4-yGt">
                     <rect key="frame" x="18" y="290" width="589" height="34"/>
                     <autoresizingMask key="autoresizingMask" flexibleMinY="YES"/>
-                    <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="Right-to-Left Text Support" id="VcV-iJ-Nlq">
+                    <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="TODO" id="VcV-iJ-Nlq">
                         <font key="font" metaFont="systemUltraLight" size="28"/>
                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
@@ -215,7 +214,7 @@
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="S6M-1Y-bvP" customClass="iTermOnboardingTextField">
                     <rect key="frame" x="30" y="20" width="577" height="41"/>
                     <autoresizingMask key="autoresizingMask"/>
-                    <textFieldCell key="cell" alignment="center" title="Right-to-Left text is now rendered properly." id="d4H-cG-h3K">
+                    <textFieldCell key="cell" alignment="center" title="TODO" id="d4H-cG-h3K">
                         <font key="font" metaFont="system"/>
                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
@@ -239,7 +238,7 @@
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="dAJ-jg-bJ2" userLabel="Command Palette">
                     <rect key="frame" x="18" y="289" width="589" height="34"/>
                     <autoresizingMask key="autoresizingMask"/>
-                    <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="Command Palette" id="OAI-gn-AQ7" userLabel="tmux Flow Control">
+                    <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="TODO" id="OAI-gn-AQ7" userLabel="tmux Flow Control">
                         <font key="font" metaFont="systemUltraLight" size="28"/>
                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
@@ -248,7 +247,7 @@
                 <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Gmu-pM-bKu" customClass="iTermOnboardingTextField">
                     <rect key="frame" x="30" y="28" width="577" height="32"/>
                     <autoresizingMask key="autoresizingMask"/>
-                    <textFieldCell key="cell" alignment="center" title="The Open Quickly UI is now a command palette. Open with ⇧⌘O and type part of the name of a menu item." id="a2B-NS-5LJ">
+                    <textFieldCell key="cell" alignment="center" title="TODO" id="a2B-NS-5LJ">
                         <font key="font" metaFont="system"/>
                         <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>

@@ -197,9 +197,9 @@ static const CGFloat kSponsorRowY = 170.0;
         NSString *const versionNumber = myDict[(NSString *)kCFBundleVersionKey];
         NSString *versionString = [NSString stringWithFormat: @"Build %@\n\n", versionNumber];
         NSAttributedString *whatsNew = nil;
-        if ([versionNumber hasPrefix:@"3.6."] || [versionString isEqualToString:@"unknown"]) {
+        if ([versionNumber hasPrefix:@"3.7."] || [versionString isEqualToString:@"unknown"]) {
             whatsNew = [self attributedStringWithLinkToURL:iTermAboutWindowControllerWhatsNewURLString
-                                                     title:@"What’s New in 3.6?\n"];
+                                                     title:@"What’s New in 3.7?\n"];
         }
 
         NSAttributedString *webAString = [self attributedStringWithLinkToURL:@"https://iterm2.com/"
