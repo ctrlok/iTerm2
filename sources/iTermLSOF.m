@@ -96,16 +96,24 @@
     return [argv componentsJoinedByString:@" "];
 }
 
-+ (NSArray<NSString *> *)commandLineArgumentsForProcess:(pid_t)pid execName:(NSString **)execName {
++ (NSString *)displayCommandForProcess:(pid_t)pid execName:(NSString **)execName {
+    NSArray<NSString *> *argv = [self rawCommandLineArgumentsForProcess:pid execName:execName];
+    if (!argv) {
+        return nil;
+    }
+    return [argv componentsJoinedByString:@" "];
+}
+
++ (NSArray<NSString *> *)rawCommandLineArgumentsForProcess:(pid_t)pid execName:(NSString **)execName {
     int argmax = [self maximumLengthOfProcargs];
     char *procargs = [self procargsForProcess:pid];
+    if (procargs == nil) {
+        return nil;
+    }
 
     // Consume argc
     size_t offset = 0;
     int nargs;
-    if (procargs == nil) {
-        return nil;
-    }
     memmove(&nargs, procargs + offset, sizeof(int));
     offset += sizeof(int);
 
@@ -134,7 +142,7 @@
         if (procargs[offset] == 0) {
             NSString *string = [NSString stringWithUTF8String:start];
             if (string.length > 0) {
-                [argv addObject:[self escapedArgument:string] ?: @""];
+                [argv addObject:string];
             }
             argsConsumed++;
             start = procargs + offset + 1;
@@ -151,6 +159,18 @@
         argv[0] = [command substringFromIndex:lastSlash.location + 1];
     }
     return argv;
+}
+
++ (NSArray<NSString *> *)commandLineArgumentsForProcess:(pid_t)pid execName:(NSString **)execName {
+    NSArray<NSString *> *raw = [self rawCommandLineArgumentsForProcess:pid execName:execName];
+    if (!raw) {
+        return nil;
+    }
+    NSMutableArray<NSString *> *result = [NSMutableArray arrayWithCapacity:raw.count];
+    for (NSString *arg in raw) {
+        [result addObject:[self escapedArgument:arg] ?: @""];
+    }
+    return result;
 }
 
 + (NSString *)escapedArgument:(NSString *)arg {

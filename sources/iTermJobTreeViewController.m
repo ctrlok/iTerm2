@@ -235,7 +235,7 @@ static int gSignalsToList[] = {
     if (_fullName) {
         return _fullName;
     }
-    _fullName = [iTermLSOF commandForProcess:_pid execName:nil];
+    _fullName = [iTermLSOF displayCommandForProcess:_pid execName:nil];
     if (!_fullName) {
         // login has this problem
         _fullName = _name;
@@ -555,12 +555,18 @@ static int gSignalsToList[] = {
     }
     id item = [_outlineView itemAtRow:row];
     iTermJobProxy *info = item ?: _root;
-    if (!info.fullName) {
+    if (!info.pid) {
+        return;
+    }
+    // Use the escaped (shell-quotable) form so the user can paste directly into a shell.
+    // Fall back to fullName (unescaped display form) if lsof fails.
+    NSString *shellCommand = [iTermLSOF commandForProcess:info.pid execName:nil] ?: info.fullName;
+    if (!shellCommand) {
         return;
     }
     NSPasteboard *pboard = [NSPasteboard generalPasteboard];
     [pboard declareTypes:@[ NSPasteboardTypeString ] owner:self];
-    [pboard setString:info.fullName forType:NSPasteboardTypeString];
+    [pboard setString:shellCommand forType:NSPasteboardTypeString];
 }
 
 - (IBAction)copyProcessID:(id)sender {
