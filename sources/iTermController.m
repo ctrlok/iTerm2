@@ -576,6 +576,9 @@ replaceInitialDirectoryForSessionWithGUID:(NSString *)guid
     if (!arrangements) {
         return;
     }
+    if (![iTermArrangementTrustGate shouldOpenUntrustedArrangementAtPath:path]) {
+        return;
+    }
     for (NSDictionary *terminalArrangement in arrangements) {
         [self tryOpenArrangement:terminalArrangement named:path.lastPathComponent.stringByDeletingPathExtension asTabsInWindow:term];
     }

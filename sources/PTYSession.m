@@ -86,6 +86,7 @@
 #import "iTermAdvancedSettingsModel.h"
 #import "iTermAnnouncementView.h"
 #import "iTermAnnouncementViewController.h"
+#import "iTermArrangementKeys.h"
 #import "iTermApplication.h"
 #import "iTermApplicationDelegate.h"
 #import "iTermAutomaticProfileSwitcher.h"
@@ -255,7 +256,7 @@ static NSString *PATH_ENVNAME = @"PATH";
 // Constants for saved window arrangement keys.
 static NSString *const SESSION_ARRANGEMENT_COLUMNS = @"Columns";
 static NSString *const SESSION_ARRANGEMENT_ROWS = @"Rows";
-static NSString *const SESSION_ARRANGEMENT_BOOKMARK = @"Bookmark";
+NSString *const SESSION_ARRANGEMENT_BOOKMARK = @"Bookmark";
 static NSString *const __attribute__((unused)) SESSION_ARRANGEMENT_BOOKMARK_NAME_DEPRECATED = @"Bookmark Name";
 static NSString *const SESSION_ARRANGEMENT_WORKING_DIRECTORY = @"Working Directory";
 static NSString *const SESSION_ARRANGEMENT_CONTENTS = @"Contents";
@@ -299,7 +300,7 @@ static NSString *const SESSION_ARRANGEMENT_CURSOR_GUIDE = @"Cursor Guide";  // B
 static NSString *const SESSION_ARRANGEMENT_SELECTION = @"Selection";  // Dictionary for iTermSelection.
 static NSString *const SESSION_ARRANGEMENT_APS = @"Automatic Profile Switching";  // Dictionary of APS state.
 
-static NSString *const SESSION_ARRANGEMENT_PROGRAM = @"Program";  // Dictionary. See kProgram constants below.
+NSString *const SESSION_ARRANGEMENT_PROGRAM = @"Program";  // Dictionary. See kProgram constants below.
 static NSString *const SESSION_ARRANGEMENT_ENVIRONMENT = @"Environment";  // Dictionary of environment vars program was run in
 static NSString *const SESSION_ARRANGEMENT_KEYLABELS = @"Key Labels";  // Dictionary string -> string
 static NSString *const SESSION_ARRANGEMENT_KEYLABELS_STACK = @"Key Labels Stack";  // Array of encoded iTermKeyLables dicts
@@ -325,14 +326,14 @@ static NSString *const SESSION_ARRANGEMENT_TAB_STATUS = @"Tab Status";  // NSDic
 static NSString *const SESSION_ARRANGEMENT_SESSION_NOTE = @"Session Note";  // NSDictionary (graph-encoded)
 
 // Keys for dictionary in SESSION_ARRANGEMENT_PROGRAM
-static NSString *const kProgramType = @"Type";  // Value will be one of the kProgramTypeXxx constants.
-static NSString *const kProgramCommand = @"Command";  // For kProgramTypeCommand: value is command to run.
+NSString *const kProgramType = @"Type";  // Value will be one of the kProgramTypeXxx constants.
+NSString *const kProgramCommand = @"Command";  // For kProgramTypeCommand: value is command to run.
 static NSString *const kCustomShell = @"Custom Shell";
 
 // Values for kProgramType
-static NSString *const kProgramTypeShellLauncher = @"Shell Launcher";  // Use ShellLauncher --launch_shell
-static NSString *const kProgramTypeCommand = @"Command";  // Use command in kProgramCommand
-static NSString *const kProgramTypeCustomShell = @"Custom Shell";
+NSString *const kProgramTypeShellLauncher = @"Shell Launcher";  // Use ShellLauncher --launch_shell
+NSString *const kProgramTypeCommand = @"Command";  // Use command in kProgramCommand
+NSString *const kProgramTypeCustomShell = @"Custom Shell";
 
 static NSString *kTmuxFontChanged = @"kTmuxFontChanged";
 

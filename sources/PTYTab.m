@@ -5,6 +5,7 @@
 #import "iTerm2SharedARC-Swift.h"
 #import "iTermAPIHelper.h"
 #import "iTermAdvancedSettingsModel.h"
+#import "iTermArrangementKeys.h"
 #import "iTermApplicationDelegate.h"
 #import "iTermController.h"
 #import "iTermFlexibleView.h"
@@ -72,10 +73,10 @@ static void SetWithGrainDim(BOOL isVertical, NSSize* dest, CGFloat value);
 static void SetAgainstGrainDim(BOOL isVertical, NSSize* dest, CGFloat value);
 
 // Constants for saved window arrangement keys.
-static NSString* TAB_ARRANGEMENT_ROOT = @"Root";
-static NSString* TAB_ARRANGEMENT_VIEW_TYPE = @"View Type";
-static NSString* VIEW_TYPE_SPLITTER = @"Splitter";
-static NSString* VIEW_TYPE_SESSIONVIEW = @"SessionView";
+NSString *const TAB_ARRANGEMENT_ROOT = @"Root";
+NSString *const TAB_ARRANGEMENT_VIEW_TYPE = @"View Type";
+NSString *const VIEW_TYPE_SPLITTER = @"Splitter";
+NSString *const VIEW_TYPE_SESSIONVIEW = @"SessionView";
 static NSString* SPLITTER_IS_VERTICAL = @"isVertical";
 static NSString* TAB_ARRANGEMENT_SPLITTER_FRAME = @"frame";
 static NSString* TAB_ARRANGEMENT_SPLITTER_ID = @"Splitter ID";
@@ -84,8 +85,8 @@ static NSString* TAB_WIDTH = @"width";
 static NSString* TAB_HEIGHT = @"height";
 static NSString* TAB_X = @"x";
 static NSString* TAB_Y = @"y";
-static NSString* SUBVIEWS = @"Subviews";
-static NSString* TAB_ARRANGEMENT_SESSION = @"Session";
+NSString *const SUBVIEWS = @"Subviews";
+NSString *const TAB_ARRANGEMENT_SESSION = @"Session";
 static NSString* TAB_ARRANGEMENT_IS_ACTIVE = @"Is Active";
 static NSString* TAB_ARRANGEMENT_ID = @"ID";  // only for maximize/unmaximize
 static NSString* TAB_ARRANGEMENT_IS_MAXIMIZED = @"Maximized";
