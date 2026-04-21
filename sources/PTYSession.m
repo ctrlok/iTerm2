@@ -18030,7 +18030,7 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
 
     NSString *message = [NSString stringWithFormat:@"%@main %@ %@ %@ %@",
                          conductorSH,
-                         token.length ? [token base64EncodedWithEncoding:NSUTF8StringEncoding] : @"=",
+                         token.length ? [token base64EncodedWithEncoding:NSUTF8StringEncoding] : @"bm9uZQ==",
                          [uniqueID base64EncodedWithEncoding:NSUTF8StringEncoding],
                          [encodedBA base64EncodedWithEncoding:NSUTF8StringEncoding],
                          [sshArgs base64EncodedWithEncoding:NSUTF8StringEncoding]];
