@@ -13015,8 +13015,11 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
     } else {
         NSTabViewItem *tabViewItem = [tab tabViewItem];
         [_contentView.tabView removeTabViewItem:tabViewItem];
-        PtyLog(@"tabRemoveTab - calling fitWindowToTabs");
-        [self fitWindowToTabs];
+        PtyLog(@"tabRemoveTab - calling lazyFitWindowToTabs");
+        // Use lazyFitWindowToTabs so that burying the pre-tmux session after a tmux -CC
+        // attach does not shrink the window by a sub-cell amount. Falls back to
+        // fitWindowToTabs when no tmux tabs remain. Issue 9480.
+        [self lazyFitWindowToTabs];
     }
 }
 
