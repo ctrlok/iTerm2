@@ -533,7 +533,8 @@ replaceInitialDirectoryForSessionWithGUID:(NSString *)guid
 // Precondition: at least one of name,saveItem is nonnil.
 - (void)saveWindowArrangementForWindow:(PseudoTerminal *)currentTerminal name:(NSString *)name saveItem:(iTermSavePanelItem *)saveItem {
     NSMutableArray *terminalArrangements = [NSMutableArray arrayWithCapacity:[_terminalWindows count]];
-    NSDictionary *arrangement = [currentTerminal arrangement];
+    NSDictionary *arrangement = [currentTerminal arrangementExcludingTmuxTabs:YES
+                                                           includingContents:saveItem != nil];
     if (arrangement) {
         [terminalArrangements addObject:arrangement];
     }
