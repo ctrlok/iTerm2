@@ -1469,10 +1469,15 @@ static NSString *const iTermProfilePreferencesUpdateSessionName = @"iTermProfile
                                                                                    components:value
                                                                                 isWindowTitle:NO];
 
-    const CGFloat maxWidth = NSMinX(_customTitleHelp.frame) - NSMinX(titleSettings.frame) - 5;
     [titleSettings sizeToFit];
     NSRect frame = titleSettings.frame;
-    frame.size.width = MIN(maxWidth, frame.size.width);
+    CGFloat maxWidth = frame.size.width;
+    if (titleSettings == _titleSettings) {
+        maxWidth = MIN(maxWidth, NSMinX(_customTitleHelp.frame) - NSMinX(frame) - 5);
+    } else if (titleSettings.superview) {
+        maxWidth = MIN(maxWidth, NSMaxX(titleSettings.superview.bounds) - NSMinX(frame) - 5);
+    }
+    frame.size.width = maxWidth;
     titleSettings.frame = frame;
 }
 
