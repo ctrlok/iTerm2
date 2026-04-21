@@ -188,8 +188,8 @@ NSString * const DirectoryLocationDomain = @"DirectoryLocationDomain";
                                                      error:&error];
     NSString *linkName = [self spacelessAppSupportWithoutCreatingLink];
 
-    NSString *executableName =
-        [[[NSBundle mainBundle] infoDictionary] objectForKey:(id)kCFBundleExecutableKey];
+    NSString *suiteName = [iTermUserDefaults customSuiteName];
+    NSString *executableName = suiteName ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(id)kCFBundleExecutableKey];
     NSString *realFolder = [realAppSupport stringByAppendingPathComponent:executableName];
 
     const BOOL created = [[NSFileManager defaultManager] createSymbolicLinkAtPath:linkName
