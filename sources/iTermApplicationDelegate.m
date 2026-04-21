@@ -1026,6 +1026,11 @@ static NSModalResponse iTermCompareRenderingRunModal(id self, SEL _cmd) {
     DLog(@"Will release shared instance");
     [iTermController releaseSharedInstance];
 
+    // Record that this process is exiting cleanly so the next launch can
+    // distinguish a post-crash cold start (where the SQLite integrity check
+    // may take a long time) from a normal one.
+    [iTermUserDefaults markShutdownAsClean];
+
     // save preferences
     [[iTermUserDefaults userDefaults] synchronize];
     if (![[iTermRemotePreferences sharedInstance] customFolderChanged]) {

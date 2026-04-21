@@ -49,6 +49,17 @@ typedef NS_ENUM(NSUInteger, iTermAppleWindowTabbingMode) {
 @property (class, nonatomic) BOOL shouldSendReturnAfterPassword;
 @property (class, nonatomic, copy, nullable) NSDictionary<NSString *, NSNumber *> *windowCornerRadiusCache;
 
+// Returns whether the previous process exited cleanly. The value is latched on
+// first access: the on-disk flag is read then immediately reset so that if this
+// process crashes before +markShutdownAsClean is called, the next launch will
+// correctly see the previous shutdown as unclean. Subsequent calls return the
+// cached value from first access.
+@property (class, nonatomic, readonly) BOOL lastShutdownWasClean;
+
+// Call during clean application termination to record that this launch ended
+// cleanly. Writes to disk and synchronizes.
++ (void)markShutdownAsClean;
+
 @end
 
 NS_ASSUME_NONNULL_END

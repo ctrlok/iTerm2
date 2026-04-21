@@ -11,6 +11,7 @@
 #import "FMDatabase.h"
 #import "NSArray+iTerm.h"
 #import "iTermAdvancedSettingsModel.h"
+#import "iTermUserDefaults.h"
 
 @interface FMResultSet (iTerm)<iTermDatabaseResultSet>
 @end
@@ -261,7 +262,11 @@ typedef enum {
     NSObject *lock = [[NSObject alloc] init];
     __block iTermDatabaseIntegrityCheckState state = iTermDatabaseIntegrityCheckStateQuerying;
     __weak __typeof(self) weakSelf = self;
-    const NSTimeInterval timeout = 10;
+    // After a clean shutdown the WAL has been checkpointed and the db vacuumed,
+    // so the integrity check should finish quickly. After a crash the check can
+    // take much longer, so extend the timeout to avoid false-alarming the user
+    // with the "taking a long time" dialog on every post-crash launch.
+    const NSTimeInterval timeout = [iTermUserDefaults lastShutdownWasClean] ? 10 : 120;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(timeout * NSEC_PER_SEC)), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         [weakSelf integrityCheckDidTimeOut:lock state:&state];
     });

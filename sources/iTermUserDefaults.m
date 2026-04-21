@@ -36,6 +36,7 @@ static NSString *const iTermUserDefaultsKeyProbeForPassword = @"ProbeForPassword
 static NSString *const iTermUserDefaultsKeyImportPath = @"ImportPath";
 static NSString *const iTermUserDefaultsKeyShouldSendReturnAfterPassword = @"ShouldSendReturnAfterPassword";
 static NSString *const iTermUserDefaultsKeyWindowCornerRadiusCache = @"NoSyncWindowCornerRadiusCache";
+static NSString *const iTermUserDefaultsKeyLastShutdownWasClean = @"NoSyncLastShutdownWasClean";
 
 @implementation iTermUserDefaults
 
@@ -275,6 +276,23 @@ static NSUserDefaults *iTermPrivateUserDefaults(void) {
 + (void)setWindowCornerRadiusCache:(NSDictionary<NSString *, NSNumber *> *)windowCornerRadiusCache {
     [self.userDefaults setObject:windowCornerRadiusCache
                           forKey:iTermUserDefaultsKeyWindowCornerRadiusCache];
+}
+
++ (BOOL)lastShutdownWasClean {
+    static BOOL cachedValue;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        cachedValue = [self.userDefaults boolForKey:iTermUserDefaultsKeyLastShutdownWasClean];
+        // Immediately clear the flag so that a crash between now and the next
+        // +markShutdownAsClean is correctly reported as unclean on next launch.
+        [self.userDefaults setBool:NO forKey:iTermUserDefaultsKeyLastShutdownWasClean];
+        [self.userDefaults synchronize];
+    });
+    return cachedValue;
+}
+
++ (void)markShutdownAsClean {
+    [self.userDefaults setBool:YES forKey:iTermUserDefaultsKeyLastShutdownWasClean];
 }
 
 @end
