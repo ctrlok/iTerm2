@@ -25,3 +25,4 @@
 - You should treat warnings as errors.
 - If you get stuck, ask for help. It's better to ask me to look at something in the debugger than to flail around for a long time.
 - If your changes introduce compiler warnings, fix them.
+- After landing a feature or bugfix, update notes-3.7.txt (the release notes). Max width of a line is 50 characters.
