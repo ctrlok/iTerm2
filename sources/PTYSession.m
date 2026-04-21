@@ -6299,7 +6299,7 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     if (_filter.length && _liveSession != nil) {
         DLog(@"Encode live session because this one is filtered.");
         const BOOL ok = [_liveSession encodeArrangementWithContents:includeContents encoder:result];
-        if (ok) {
+        if (ok && includeContents) {
             result[SESSION_ARRANGEMENT_FILTER] = _filter;
         }
         return ok;
@@ -6335,14 +6335,18 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
             return [info serialized];
         }];
     }
-    result[SESSION_ARRANGEMENT_KEYLABELS] = _keyLabels ?: @{};
-    result[SESSION_ARRANGEMENT_KEYLABELS_STACK] = [_keyLabelsStack mapWithBlock:^id(iTermKeyLabels *anObject) {
-        return anObject.dictionaryValue;
-    }];
-    result[SESSION_ARRANGEMENT_ENVIRONMENT] = self.environment ?: @{};
+    if (includeContents) {
+        result[SESSION_ARRANGEMENT_KEYLABELS] = _keyLabels ?: @{};
+        result[SESSION_ARRANGEMENT_KEYLABELS_STACK] = [_keyLabelsStack mapWithBlock:^id(iTermKeyLabels *anObject) {
+            return anObject.dictionaryValue;
+        }];
+    }
+    if (includeContents) {
+        result[SESSION_ARRANGEMENT_ENVIRONMENT] = self.environment ?: @{};
+    }
     result[SESSION_ARRANGEMENT_IS_UTF_8] = @(self.isUTF8);
     result[SESSION_ARRANGEMENT_SHORT_LIVED_SINGLE_USE] = @(self.shortLivedSingleUse);
-    if (self.hostnameToShell) {
+    if (self.hostnameToShell && includeContents) {
         result[SESSION_ARRANGEMENT_HOSTNAME_TO_SHELL] = [[self.hostnameToShell copy] autorelease];
     }
 
@@ -6431,10 +6435,10 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
             }
         }
     }
-    if (_logging.enabled) {
+    if (_logging.enabled && includeContents) {
         result[SESSION_ARRANGEMENT_AUTOLOG_FILENAME] = _logging.path;
     }
-    if (_cookie) {
+    if (_cookie && includeContents) {
         result[SESSION_ARRANGEMENT_REUSABLE_COOKIE] = _cookie;
     }
     if (_overriddenFields.count > 0) {
@@ -6453,7 +6457,7 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
             result[SESSION_ARRANGEMENT_OVERRIDDEN_FIELDS] = _overriddenFields.allObjects;
         }
     }
-    if (self.tmuxMode == TMUX_GATEWAY && self.tmuxController.sessionName) {
+    if (self.tmuxMode == TMUX_GATEWAY && self.tmuxController.sessionName && includeContents) {
         result[SESSION_ARRANGEMENT_IS_TMUX_GATEWAY] = @YES;
         result[SESSION_ARRANGEMENT_TMUX_GATEWAY_SESSION_ID] = @(self.tmuxController.sessionId);
         result[SESSION_ARRANGEMENT_TMUX_GATEWAY_SESSION_NAME] = self.tmuxController.sessionName;
@@ -6462,30 +6466,34 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
             result[SESSION_ARRANGEMENT_TMUX_DCS_ID] = dcsID;
         }
     }
-    if ( _conductor) {
+    if (_conductor && includeContents) {
         result[SESSION_ARRANGEMENT_CONDUCTOR_DCS_ID] = _conductor.dcsID;
         result[SESSION_ARRANGEMENT_CONDUCTOR_TREE] = _conductor.tree.it_keyValueCodedData;
     }
 
     result[SESSION_ARRANGEMENT_SHOULD_EXPECT_PROMPT_MARKS] = @(_screen.shouldExpectPromptMarks);
-    result[SESSION_ARRANGEMENT_COMMANDS] = _commands;
-    [_directoryTracker encodeArrangementWith:result];
+    if (includeContents) {
+        result[SESSION_ARRANGEMENT_COMMANDS] = _commands;
+        [_directoryTracker encodeArrangementWith:result];
+    }
 
     NSString *pwd = [self currentLocalWorkingDirectory];
     result[SESSION_ARRANGEMENT_WORKING_DIRECTORY] = pwd ? pwd : @"";
 
-    NSDictionary *tabStatusDict = [_tabStatus arrangementDictionary];
-    if (tabStatusDict) {
-        result[SESSION_ARRANGEMENT_TAB_STATUS] = tabStatusDict;
-    }
-    if (_sessionNoteModel.hasContent) {
-        [result encodeChildWithKey:SESSION_ARRANGEMENT_SESSION_NOTE
-                        identifier:@"note"
-                        generation:_sessionNoteModel.generation
-                             block:^BOOL(id<iTermEncoderAdapter> encoder) {
-            [_sessionNoteModel encodeWithAdapter:encoder];
-            return YES;
-        }];
+    if (includeContents) {
+        NSDictionary *tabStatusDict = [_tabStatus arrangementDictionary];
+        if (tabStatusDict) {
+            result[SESSION_ARRANGEMENT_TAB_STATUS] = tabStatusDict;
+        }
+        if (_sessionNoteModel.hasContent) {
+            [result encodeChildWithKey:SESSION_ARRANGEMENT_SESSION_NOTE
+                            identifier:@"note"
+                            generation:_sessionNoteModel.generation
+                                 block:^BOOL(id<iTermEncoderAdapter> encoder) {
+                [_sessionNoteModel encodeWithAdapter:encoder];
+                return YES;
+            }];
+        }
     }
     return YES;
 }
