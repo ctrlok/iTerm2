@@ -243,11 +243,27 @@
 }
 
 - (NSData *)dataWhenOptionPressed {
-    const unichar unicode = _event.characters.length > 0 ? [_event.characters characterAtIndex:0] : 0;
+    // Yen-to-backslash substitution, cases 2 and 4 (see the long comment in
+    // iTermKeyboardHandler's insertText:replacementRange: for the full story
+    // and case numbering). When Option is OPT_ESC/OPT_META and the user
+    // presses the ¥ key (bare or via a remapped layout), the output should
+    // be ESC+\ / Meta+\, not ESC+¥ / Meta+¥ — because JIS users have always
+    // expected their ¥ key to behave as backslash. Substituting the strings
+    // up front lets the meta wrapping in dataForOptionModifiedKeypress
+    // operate on \ and the control-code lookup below operate on \ too.
+    NSString *characters = _event.characters;
+    NSString *charactersIgnoringModifiers = _event.charactersIgnoringModifiers;
+    if ([charactersIgnoringModifiers isEqualToString:@"¥"]) {
+        charactersIgnoringModifiers = @"\\";
+        if ([characters isEqualToString:@"¥"]) {
+            characters = @"\\";
+        }
+    }
+
+    const unichar unicode = characters.length > 0 ? [characters characterAtIndex:0] : 0;
     const BOOL controlPressed = !!(_event.it_modifierFlags & NSEventModifierFlagControl);
-    if (controlPressed && _event.characters.length > 0) {
+    if (controlPressed && characters.length > 0) {
         const BOOL shiftPressed = !!(_event.it_modifierFlags & NSEventModifierFlagShift);
-        NSString *charactersIgnoringModifiers = _event.charactersIgnoringModifiers;
         const unichar characterIgnoringModifiers = [charactersIgnoringModifiers length] > 0 ? [charactersIgnoringModifiers characterAtIndex:0] : 0;
         const unichar specialCode = [iTermStandardKeyMapper codeForSpecialControlCharacter:unicode
                                                                 characterIgnoringModifiers:characterIgnoringModifiers
@@ -256,9 +272,9 @@
             // e.g., control-2. This lets control-meta-2 send ^[^@
             return [[NSString stringWithCharacters:&specialCode length:1] dataUsingEncoding:_configuration.encoding];
         }
-        return [_event.characters dataUsingEncoding:_configuration.encoding];
+        return [characters dataUsingEncoding:_configuration.encoding];
     } else {
-        return [_event.charactersIgnoringModifiers dataUsingEncoding:_configuration.encoding];
+        return [charactersIgnoringModifiers dataUsingEncoding:_configuration.encoding];
     }
 }
 

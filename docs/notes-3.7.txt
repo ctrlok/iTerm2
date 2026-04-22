@@ -270,6 +270,10 @@ Settings Improvements:
   don't get reset by control sequence.
 
 Bug Fixes:
+- Fix ⌥Y and the Character Viewer inserting
+  a backslash instead of ¥ on non-JIS
+  keyboards. Restore ⌥+¥ sending ESC+\
+  (with Option=Esc+) on JIS keyboards.
 - Fix various crashes.
 - Fix wrong terminal size after exiting
   fullscreen with multiple tabs.

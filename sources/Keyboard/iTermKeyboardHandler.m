@@ -197,8 +197,105 @@ static iTermKeyboardHandler *sCurrentKeyboardHandler;
         return;
     }
 
-    // See issue 6699
-    aString = [aString stringByReplacingOccurrencesOfString:@"¥" withString:@"\\"];
+    // Yen-to-backslash substitution. Tortured history, summarized here for
+    // anyone who has to touch this next. Relevant issues: 4778, 6699, 12828.
+    //
+    // Background: JIS (Japanese) keyboards replace the backslash key with ¥.
+    // Shells, programming, and file paths all use \, so JIS users have long
+    // expected ¥ input to behave like \. iTerm (even pre-iTerm2) obliged.
+    //
+    // Cases we care about, and the desired behavior:
+    // 1. Bare ¥ key on JIS, no IME active
+    //    Send \
+    //    Issue 4778
+    //
+    // 2. ⌥+¥ key on JIS, Option=Esc+ or Meta
+    //    Send ESC+\ or M-\
+    //    Issue 4778
+    //
+    // 3. A key remapped by the layout to emit ¥ (non-JIS keyCode), no IME
+    //    Send \
+    //    Original 2.1.4 behavior
+    //
+    // 4. ⌥+that remapped key, Option=Esc+
+    //    Send ESC+\
+    //
+    // 5. ¥ key routed through an IME that maps it to some other character (Katakana (Google) commits ー)
+    //    Send whatever the IME committed, not \
+    //    Issue 6699
+    //
+    // 6. ¥ key routed through an IME in ASCII / pass-through that commits ¥
+    //    Send \
+    //    Case 1, with an IME in the way
+    //
+    // 7. ⌥Y on US/British/German layouts (Cocoa's layout maps this combo to ¥ as an accented-char shortcut)
+    //    Send ¥
+    //    Issue 12828
+    //
+    // 8. ¥ inserted from Character Viewer/ Show Emoji & Symbols/text replacement/TouchBar button
+    //    Send ¥
+    //    Issue 12828
+    //
+    // Event flow (terminal input path):
+    //
+    //   keystroke
+    //      │
+    //      ▼
+    //   [PTYTextView keyDown:]
+    //      │
+    //      ▼
+    //   [iTermKeyboardHandler keyDown:inputContext:]
+    //      │
+    //      ├─▶ (A) bypass Cocoa — hasActionableKeyMapping or keyMapperShouldBypassPreCocoaForEvent,
+    //      │        e.g. when Option=Esc+/Meta pre-empts text input
+    //      │              │
+    //      │              ▼
+    //      │       [PTYTextView keyboardHandler:sendEventToController:]
+    //      │              │
+    //      │              ▼
+    //      │       [PTYSession keyDown:] → -regularKeyDown:
+    //      │              │
+    //      │              ▼
+    //      │       [iTermStandardKeyMapper keyMapperDataForPostCocoaEvent:]
+    //      │              │
+    //      │              ▼
+    //      │          -postCocoaData
+    //      │              │
+    //      │              ▼
+    //      │          -dataForOptionModifiedKeypress
+    //      │              │
+    //      │              ▼
+    //      │          -dataWhenOptionPressed        Cases 2 and 4 ¥ to \ substitution happens here
+    //      │              │
+    //      │              ▼
+    //      │          [PTYSession writeLatin1EncodedData:...]
+    //      │
+    //      └─▶ (B) Let Cocoa and/or the IME process
+    //              │
+    //              ▼
+    //          [NSTextInputContext handleEvent:]
+    //              │
+    //              ▼
+    //          IME (or pass-through)                Character Viewer, text replacement,
+    //              │                                TouchBar button, etc. _eventBeingHandled = nil
+    //              │                                       │
+    //              ▼                                       ▼
+    //          [iTermKeyboardHandler insertText:replacementRange:] Cases 1, 3, 5, 6, 7, 8
+    //              │                                               ¥ to \ substitution happens here
+    //              │                                               when _eventBeingHandled is ¥
+    //              ▼
+    //          [PTYTextView keyboardHandler:insertText:]
+    //              │
+    //              ▼
+    //          [PTYSession insertText:]
+    //              │
+    //              ▼
+    //          [PTYSession writeTask:]
+    if ([aString containsString:@"¥"] &&
+        _eventBeingHandled.type == NSEventTypeKeyDown &&
+        [_eventBeingHandled.charactersIgnoringModifiers isEqualToString:@"¥"]) {
+        aString = [aString stringByReplacingOccurrencesOfString:@"¥" withString:@"\\"];
+    }
 
     DLog(@"PTYTextView insertText:%@", aString);
     if (replacementRange.length > 0 && replacementRange.location != NSNotFound) {
