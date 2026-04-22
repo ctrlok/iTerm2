@@ -48,9 +48,14 @@ static NSString *const iTermNaggingControllerArrangementTextReplacements = @"Tex
 static NSString *const iTermNaggingControllerArrangementSetProfileProperty = @"SetProfileProperty";
 static NSString *const iTermNaggingControllerClaudeCodeStatusToolIdentifier = @"ClaudeCodeStatusTool";
 static NSString *const iTermNaggingControllerClaudeCodeStatusToolDismissedNotification = @"iTermNaggingControllerClaudeCodeStatusToolDismissed";
+static NSString *const iTermNaggingControllerRestoreIconAndWindowNameChoiceNotification = @"iTermNaggingControllerRestoreIconAndWindowNameChoice";
+static NSString *const iTermNaggingControllerRestoreIconAndWindowNameChoiceAlwaysKey = @"always";
 
 @implementation iTermNaggingController {
     BOOL _haveOutstandingTextReplacementOffer;
+    NSString *_pendingRestoreIconName;
+    NSString *_pendingRestoreWindowName;
+    BOOL _hasPendingRestoreOffer;
 }
 
 - (instancetype)init {
@@ -63,6 +68,10 @@ static NSString *const iTermNaggingControllerClaudeCodeStatusToolDismissedNotifi
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(claudeCodeStatusToolDismissed:)
                                                      name:iTermNaggingControllerClaudeCodeStatusToolDismissedNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(restoreIconAndWindowNameChoiceMade:)
+                                                     name:iTermNaggingControllerRestoreIconAndWindowNameChoiceNotification
                                                    object:nil];
     }
     return self;
@@ -603,35 +612,70 @@ static NSString *const iTermNaggingControllerClaudeCodeStatusToolDismissedNotifi
     NSString *title;
     title = @"Automatically restore the tab and window title when an ssh session ends?";
 
+    _pendingRestoreIconName = [iconName copy];
+    _pendingRestoreWindowName = [windowName copy];
+    _hasPendingRestoreOffer = YES;
+
     [self.delegate naggingControllerShowMessage:title
                                      isQuestion:YES
                                       important:YES
                                      identifier:kRestoreIconAndWindowNameOnHostChangeAnnouncementIdentifier
-                                        options:@[ @"_Yes", @"Always", @"Never" ]
+                                        options:@[ @"_Only This Time", @"Always", @"Never" ]
                                      completion:^(int selection) {
         switch (selection) {
             case -2:  // Dismiss programmatically
+                [self clearPendingRestoreOffer];
                 break;
 
             case -1: // No
+                [self clearPendingRestoreOffer];
                 break;
 
-            case 0: // Yes
+            case 0: // Only This Time
+                [self clearPendingRestoreOffer];
                 [self.delegate naggingControllerRestoreIconNameTo:iconName windowName:windowName];
                 break;
 
             case 1: // Always
+                [self clearPendingRestoreOffer];
                 [[iTermUserDefaults userDefaults] setBool:YES
                                                         forKey:kRestoreIconAndWindowNameOnHostChangeUserDefaultsKey];
                 [self.delegate naggingControllerRestoreIconNameTo:iconName windowName:windowName];
+                [[NSNotificationCenter defaultCenter] postNotificationName:iTermNaggingControllerRestoreIconAndWindowNameChoiceNotification
+                                                                    object:nil
+                                                                  userInfo:@{ iTermNaggingControllerRestoreIconAndWindowNameChoiceAlwaysKey: @YES }];
                 break;
 
             case 2: // Never
+                [self clearPendingRestoreOffer];
                 [[iTermUserDefaults userDefaults] setBool:NO
                                                         forKey:kRestoreIconAndWindowNameOnHostChangeUserDefaultsKey];
+                [[NSNotificationCenter defaultCenter] postNotificationName:iTermNaggingControllerRestoreIconAndWindowNameChoiceNotification
+                                                                    object:nil
+                                                                  userInfo:@{ iTermNaggingControllerRestoreIconAndWindowNameChoiceAlwaysKey: @NO }];
                 break;
         }
     }];
+}
+
+- (void)clearPendingRestoreOffer {
+    _hasPendingRestoreOffer = NO;
+    _pendingRestoreIconName = nil;
+    _pendingRestoreWindowName = nil;
+}
+
+- (void)restoreIconAndWindowNameChoiceMade:(NSNotification *)notification {
+    if (!_hasPendingRestoreOffer) {
+        return;
+    }
+    NSString *iconName = _pendingRestoreIconName;
+    NSString *windowName = _pendingRestoreWindowName;
+    const BOOL always = [notification.userInfo[iTermNaggingControllerRestoreIconAndWindowNameChoiceAlwaysKey] boolValue];
+    [self clearPendingRestoreOffer];
+    if (always) {
+        [self.delegate naggingControllerRestoreIconNameTo:iconName windowName:windowName];
+    }
+    [self.delegate naggingControllerRemoveMessageWithIdentifier:kRestoreIconAndWindowNameOnHostChangeAnnouncementIdentifier];
 }
 
 - (void)offerToDisableTriggersInInteractiveAppsWithStats:(NSString *)stats {
