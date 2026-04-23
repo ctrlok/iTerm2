@@ -105,7 +105,7 @@
                                                          selector:@selector(redrawSearchField:)
                                                          userInfo:nil
                                                           repeats:YES];
-        _animationTimer.tolerance = 1.0 / 120.0;
+        _animationTimer.tolerance = 1.0 / 600.0;
     }
 }
 

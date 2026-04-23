@@ -183,7 +183,7 @@ class MiniFilterViewController: NSViewController, NSTextFieldDelegate, iTermFilt
             let t = Timer.scheduledTimer(withTimeInterval: 1 / 60.0, repeats: true, block: { [weak self] timer in
                 self?.redrawSearchField()
             })
-            t.tolerance = 1.0 / 120.0
+            t.tolerance = 1.0 / 600.0
             timer = t
         }
     }
