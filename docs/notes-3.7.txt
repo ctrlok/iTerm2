@@ -278,6 +278,11 @@ Settings Improvements:
   Han, Hangul, and Cyrillic.
 
 Bug Fixes:
+- Add tolerance to search-field animation
+  timers and the tail-find poll timer so the
+  OS can coalesce wake-ups on battery.
+- Add tolerance to the hostname refresh timer
+  in iTermGlobalScopeController.
 - Fix ⌥Y and the Character Viewer inserting
   a backslash instead of ¥ on non-JIS
   keyboards. Restore ⌥+¥ sending ESC+\
