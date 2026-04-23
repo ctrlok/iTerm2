@@ -322,7 +322,6 @@ extern NSString *const iTermAdvancedSettingsDidChange;
 + (BOOL)noSyncTipsDisabled;
 + (NSString *)noSyncVariablesToReport;
 + (void)setNoSyncVariablesToReport:(NSString *)value;
-+ (double)notificationOcclusionThreshold;
 + (int)numberOfLinesForAccessibility;
 + (NSString *)onePasswordAccount;
 + (void)setOnePasswordAccount:(NSString *)value;

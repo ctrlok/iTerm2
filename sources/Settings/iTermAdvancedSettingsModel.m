@@ -503,7 +503,6 @@ DEFINE_INT(smartSelectionRadius, 2, SECTION_GENERAL @"Maximum number of lines be
 DEFINE_INT(wordSelectionRegexRadius, 500, SECTION_GENERAL @"Maximum number of characters before and after the click location to search when applying word selection regex patterns.");
 DEFINE_FLOAT(alertTriggerRateLimit, 1, SECTION_GENERAL @"Rate limit for Alert triggers.\nIf the same trigger fires with less than this time interval (in seconds) between firings, it will be suppressed.")
 DEFINE_FLOAT(userNotificationTriggerRateLimit, 0, SECTION_GENERAL @"Rate limit for Notification triggers.\nIf the same trigger fires with less than this time interval (in seconds) between firings, it will be suppressed.")
-DEFINE_FLOAT(notificationOcclusionThreshold, 0.4, SECTION_GENERAL @"Foreground tabs will post user notifications if their window is partially hidden (for example, it is partially offscreen). This value, in 0 to 1, gives the fraction that must be occluded for a notification be posted.");
 DEFINE_BOOL(silentUserNotifications, NO, SECTION_GENERAL @"System notifications should be silent.");
 DEFINE_BOOL(simpleNotifications, NO, SECTION_GENERAL @"Omit session identifier from notifications.\nWhen enabled, notifications will only show the message without the session name and tab number prefix.");
 

@@ -4661,9 +4661,17 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     if (![_delegate sessionBelongsToVisibleTab]) {
         return YES;
     }
-    BOOL windowIsObscured =
-    ([[iTermController sharedInstance] terminalIsObscured:_delegate.realParentWindow]);
-    return (windowIsObscured);
+    if (!NSApp.isActive) {
+        return YES;
+    }
+    NSWindow *window = self.view.window;
+    if (!window) {
+        return YES;
+    }
+    if (!window.isKeyWindow && !window.isMainWindow) {
+        return YES;
+    }
+    return NO;
 }
 
 - (BOOL)hasSelection {

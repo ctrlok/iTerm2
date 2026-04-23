@@ -279,6 +279,11 @@ Settings Improvements:
 
 Bug Fixes:
 - Improved energy efficiency.
+- Fix bell and other user notifications not being
+  posted when iTerm2 is not hidden behind another
+  app. Notifications now post whenever iTerm2 is
+  not the active app or the session’s window is
+  not frontmost.
 - Fix ⌥Y and the Character Viewer inserting
   a backslash instead of ¥ on non-JIS
   keyboards. Restore ⌥+¥ sending ESC+\
