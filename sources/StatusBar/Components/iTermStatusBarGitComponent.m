@@ -356,8 +356,8 @@ static const NSTimeInterval iTermStatusBarGitComponentDefaultCadence = 2;
         return nil;
     }
 
-    NSAttributedString *upCount = self.currentState.pushArrow.integerValue > 0 ? [self attributedStringWithString:self.currentState.pushArrow] : nil;
-    NSAttributedString *downCount = self.currentState.pullArrow.integerValue > 0 ? [self attributedStringWithString:self.currentState.pullArrow] : nil;
+    NSAttributedString *upCount = self.currentState.ahead.integerValue > 0 ? [self attributedStringWithString:self.currentState.ahead] : nil;
+    NSAttributedString *downCount = self.currentState.behind.integerValue > 0 ? [self attributedStringWithString:self.currentState.behind] : nil;
 
     NSMutableAttributedString *result = [[NSMutableAttributedString alloc] init];
     [result appendAttributedString:branch];
@@ -380,13 +380,13 @@ static const NSTimeInterval iTermStatusBarGitComponentDefaultCadence = 2;
         [result appendAttributedString:dirtyImage];
     }
 
-    if (self.currentState.pushArrow.integerValue > 0) {
+    if (self.currentState.ahead.integerValue > 0) {
         [result appendAttributedString:enSpace];
         [result appendAttributedString:upImage];
         [result appendAttributedString:upCount];
     }
 
-    if (self.currentState.pullArrow.integerValue > 0) {
+    if (self.currentState.behind.integerValue > 0) {
         [result appendAttributedString:enSpace];
         [result appendAttributedString:downImage];
         [result appendAttributedString:downCount];
@@ -552,7 +552,7 @@ static const NSTimeInterval iTermStatusBarGitComponentDefaultCadence = 2;
         addItem(@"Log", @selector(log:), YES);
         addItem([NSString stringWithFormat:@"Push origin %@", state.branch],
                 @selector(push:),
-                state.pushArrow.intValue > 0 || [state.pushArrow isEqualToString:@"error"]);
+                state.ahead.intValue > 0 || [state.ahead isEqualToString:@"error"]);
         addItem([NSString stringWithFormat:@"Pull origin %@", state.branch],
                 @selector(pull:),
                 !state.dirty);

@@ -157,9 +157,11 @@ typedef void (^DeferralBlock)(void);
 }
 
 // git rev-list --left-right --count HEAD...@'{u}'
+// aheadCount:  commits on HEAD not in upstream (commits you would push).
+// behindCount: commits on upstream not in HEAD (commits you would pull).
 - (BOOL)getCountsFromRef:(git_reference *)ref
-                    pull:(NSInteger *)pullCount
-                    push:(NSInteger *)pushCount {
+                   ahead:(NSInteger *)aheadCount
+                  behind:(NSInteger *)behindCount {
     const git_oid *local_head_oid = [self oidAtRef:ref];
     if (!local_head_oid) {
         return NO;
@@ -176,21 +178,14 @@ typedef void (^DeferralBlock)(void);
         return NO;
     }
 
-    // git_graph_ahead_behind walks both sides with merge-base-aware pruning, the same algorithm
-    // the git CLI uses for `rev-list --left-right --count`. This replaces a prior hand-rolled
-    // revwalk that could take minutes on large repos because it didn't hide the merge base and
-    // ended up traversing unrelated ancestor history before stumbling onto it in topological order.
     size_t ahead = 0;
     size_t behind = 0;
     if (git_graph_ahead_behind(&ahead, &behind, _repo, local_head_oid, remote_oid)) {
         return NO;
     }
 
-    // Preserve existing semantics: *pullCount receives the local-ahead count (ahead),
-    // *pushCount receives the remote-ahead count (behind). The caller swaps them back into
-    // pushArrow/pullArrow; don't rename the parameters here — that's a separate cleanup.
-    *pullCount = (NSInteger)ahead;
-    *pushCount = (NSInteger)behind;
+    *aheadCount = (NSInteger)ahead;
+    *behindCount = (NSInteger)behind;
 
     return YES;
 }
@@ -268,17 +263,17 @@ static int GitForEachCallback(git_reference *ref, void *data) {
         return nil;
     }
 
-    // Get pull/push count
-    NSInteger left_count = -1;
-    NSInteger right_count = -1;
+    // Get ahead/behind counts vs upstream
+    NSInteger aheadCount = 0;
+    NSInteger behindCount = 0;
     if ([client getCountsFromRef:headRef
-                            pull:&left_count
-                            push:&right_count]) {
-        state.pushArrow = [@(left_count) stringValue];
-        state.pullArrow = [@(right_count) stringValue];
+                           ahead:&aheadCount
+                          behind:&behindCount]) {
+        state.ahead = [@(aheadCount) stringValue];
+        state.behind = [@(behindCount) stringValue];
     } else {
-        state.pushArrow = @"";
-        state.pullArrow = @"";
+        state.ahead = @"";
+        state.behind = @"";
     }
 
     BOOL dirty = NO;
