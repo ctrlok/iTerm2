@@ -220,6 +220,7 @@ extern NSString *const iTermAdvancedSettingsDidChange;
 + (BOOL)generativeAIAllowed;
 + (NSString *)gitSearchPath;
 + (double)gitTimeout;
++ (void)setGitTimeout:(double)value;
 + (BOOL)hdrCursor;
 + (BOOL)hideStuckTooltips;
 + (BOOL)highVisibility;

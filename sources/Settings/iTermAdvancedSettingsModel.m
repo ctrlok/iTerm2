@@ -496,7 +496,7 @@ DEFINE_FLOAT(dynamicProfilesNotificationLatency, 0.1, SECTION_GENERAL @"Delay be
 DEFINE_BOOL(addDynamicTagToDynamicProfiles, NO, SECTION_GENERAL @"Add a 'Dynamic' tag to dynamic profiles.\nWhen enabled, dynamic profiles will have a 'Dynamic' tag added to them, which can be used to filter or identify them.");
 DEFINE_STRING(gitSearchPath, @"", SECTION_GENERAL @"$PATH used when running git for the status bar component.\nChange this to use a custom install of git. You must restart iTerm2 for a change here to take effect.");
 DEFINE_INT(screenshotMaxPixelHeight, 30000, SECTION_GENERAL @"Maximum pixel height for a single screenshot file.\nScreenshots taller than this will be split into multiple files. Also affects the maximum total pixels (this value squared / 5).");
-DEFINE_FLOAT(gitTimeout, 4, SECTION_GENERAL @"Timeout in seconds when running git for the status bar component.");
+DEFINE_SETTABLE_FLOAT(gitTimeout, GitTimeout, 4, SECTION_GENERAL @"Timeout in seconds when running git for the status bar component.");
 DEFINE_STRING(preferredBaseDir, @"", SECTION_GENERAL @"Folder for config files. There must not be a space in the path.\nIf empty, then ~/.config/iterm2 will be the default location.");
 DEFINE_INT(maximumNumberOfTriggerCommands, 16, SECTION_GENERAL @"Maximum number of trigger-launched commands that can run at once.\nIf too many “Run Command…” triggers fire their commands will be queued. You must restart iTerm2 for changes to this setting to take effect.");
 DEFINE_INT(smartSelectionRadius, 2, SECTION_GENERAL @"Maximum number of lines before and after the click location to include in smart selection.");
