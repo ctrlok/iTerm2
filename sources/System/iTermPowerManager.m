@@ -13,6 +13,7 @@
 #import "NSTimer+iTerm.h"
 
 #import <IOKit/ps/IOPowerSources.h>
+#import <stdatomic.h>
 
 NSString *const iTermPowerManagerStateDidChange = @"iTermPowerManagerStateDidChange";
 NSString *const iTermPowerManagerMetalAllowedDidChangeNotification = @"iTermPowerManagerMetalAllowedDidChangeNotification";
@@ -39,7 +40,8 @@ NSString *const iTermPowerManagerMetalAllowedDidChangeNotification = @"iTermPowe
     CFRunLoopRef _runLoop;
     CFRunLoopSourceRef _runLoopSource;
     BOOL _metalAllowed;
-    BOOL _isLowPowerModeEnabled;
+    // NSProcessInfoPowerStateDidChangeNotification is posted on an arbitrary thread; readers can be off-main.
+    atomic_bool _isLowPowerModeEnabled;
     iTermPublisher<iTermPowerState *> *_publisher;
     NSTimer *_timer;
     NSNumber *_hasBatteryNumber;
