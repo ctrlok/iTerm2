@@ -50,7 +50,7 @@ NS_ASSUME_NONNULL_BEGIN
     }
     _enabled = enabled;
     if (!enabled) {
-        DLog(@"%@: Enabled set to true. Calling update.", self);
+        DLog(@"%@: Enabled set to false. Calling update to clear display.", self);
         _update();
     }
 }
@@ -62,6 +62,7 @@ NS_ASSUME_NONNULL_BEGIN
                                                    selector:@selector(poll)
                                                    userInfo:nil
                                                     repeats:YES];
+    _timer.tolerance = _cadence * 0.1;
 }
 
 - (void)bump {
