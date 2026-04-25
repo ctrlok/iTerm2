@@ -431,6 +431,16 @@ SWIFT_CLASS("_TtC14SwiftyMarkdown14SwiftyMarkdown")
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
 @end
 
+SWIFT_CLASS("_TtC14SwiftyMarkdown15TableCellStyles")
+@interface TableCellStyles : LineStyles
+- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+@end
+
+SWIFT_CLASS("_TtC14SwiftyMarkdown11TableStyles")
+@interface TableStyles : NSObject
+- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+@end
+
 #endif // defined(__OBJC__)
 #if __has_attribute(external_source_symbol)
 # pragma clang attribute pop
@@ -870,6 +880,16 @@ SWIFT_CLASS("_TtC14SwiftyMarkdown14SwiftyMarkdown")
 @interface SwiftyMarkdown : NSObject
 - (nonnull instancetype)init SWIFT_UNAVAILABLE;
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+SWIFT_CLASS("_TtC14SwiftyMarkdown15TableCellStyles")
+@interface TableCellStyles : LineStyles
+- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+@end
+
+SWIFT_CLASS("_TtC14SwiftyMarkdown11TableStyles")
+@interface TableStyles : NSObject
+- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
 @end
 
 #endif // defined(__OBJC__)

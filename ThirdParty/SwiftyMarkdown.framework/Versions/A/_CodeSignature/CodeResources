@@ -15,21 +15,21 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			FJtwDI359r+aMpAf7MQRoKAvPCGc4mV5EuuirBswDyA=
+			/v7bAXSc+BYlUPDz++Wv+D8v9Ss5fWVBY87VdtqTDS4=
 			</data>
 		</dict>
 		<key>Modules/SwiftyMarkdown.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			onqoMe9QiwUTQOyyEfbNz11VZjnP5NdiUCReyzCeui0=
+			tgXKajBnkCspwNTAv2NIUQTWK35mj1n3Q8NFFoX72+w=
 			</data>
 		</dict>
 		<key>Modules/SwiftyMarkdown.swiftmodule/Project/x86_64-apple-macos.swiftsourceinfo</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			XQXAhwVWXfxfGUcHHNHAtO4b2736blQMLU/O18WgWx4=
+			IYfGp/thNX1iddzh+P1OqV/eUp117pgaI/u79YkU5IE=
 			</data>
 		</dict>
 		<key>Modules/SwiftyMarkdown.swiftmodule/arm64-apple-macos.abi.json</key>
@@ -43,14 +43,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			b+y5TUN5favL827GNVG3ULwgqyB61nBNm7+h1CjxxCs=
+			TSqoUuRHtLMVoBVSOipQmrEYbWDPiBmdUJhfTk1nDTw=
 			</data>
 		</dict>
 		<key>Modules/SwiftyMarkdown.swiftmodule/arm64-apple-macos.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			3z+GP286a2ID0fIGQcb5YX5UezIpnCKjvCmOC1t9K4c=
+			P8O1SRFNMgcHnBDi5bIuBihUK03O6JTnHr0katWH2P0=
 			</data>
 		</dict>
 		<key>Modules/SwiftyMarkdown.swiftmodule/x86_64-apple-macos.abi.json</key>
@@ -64,14 +64,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			9yI+KvTZXxaOadJv8webR0X7geYg9ANbHzTMlPjosDM=
+			bC8RmLU6gpEc+6jXKnG12EpJoMkpnu4P4x+MKYbJSmw=
 			</data>
 		</dict>
 		<key>Modules/SwiftyMarkdown.swiftmodule/x86_64-apple-macos.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			Q0EZPkvn8NqZ6flQTpXufXnonXO7vkejHbVbwxvUuR8=
+			N4hzBLECBawFXEjuT+4zFEhctsnlENp3cO2E6o99Ck0=
 			</data>
 		</dict>
 		<key>Resources/Info.plist</key>
