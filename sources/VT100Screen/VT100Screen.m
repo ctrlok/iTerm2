@@ -171,13 +171,20 @@ const NSInteger VT100ScreenBigFileDownloadThreshold = 1024 * 1024 * 1024;
 }
 
 - (void)setColorsFromDictionary:(NSDictionary<NSNumber *, id> *)dict harmonize:(BOOL)harmonize {
-    [self performBlockWithJoinedThreads:^(VT100Terminal *terminal, VT100ScreenMutableState *mutableState, id<VT100ScreenDelegate> delegate) {
+    // Reentrant-safe because AppKit can spontaneously fire
+    // viewDidChangeEffectiveAppearance during a window/tab operation that
+    // runs as a side effect (see the long-form comment in
+    // -[VT100ScreenMutableState mutateColorMap:]). That can re-enter here via
+    // sessionViewDidChangeEffectiveAppearance → loadColorsFromProfile while
+    // performingSideEffect is YES. mutateColorMap already schedules a paused
+    // side effect for the main-thread copy, so running inline is safe.
+    [self performBlockWithJoinedThreadsReentrantSafe:^(VT100Terminal *terminal, VT100ScreenMutableState *mutableState, id<VT100ScreenDelegate> delegate) {
         [mutableState setColorsFromDictionary:dict harmonize:harmonize];
     }];
 }
 
 - (void)setColor:(NSColor *)color forKey:(int)key {
-    [self performBlockWithJoinedThreads:^(VT100Terminal *terminal, VT100ScreenMutableState *mutableState, id<VT100ScreenDelegate> delegate) {
+    [self performBlockWithJoinedThreadsReentrantSafe:^(VT100Terminal *terminal, VT100ScreenMutableState *mutableState, id<VT100ScreenDelegate> delegate) {
         [mutableState setColor:color forKey:key];
     }];
 }

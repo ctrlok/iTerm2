@@ -21,6 +21,8 @@ NSString *const kKeyBindingsChangedNotification = @"kKeyBindingsChangedNotificat
 static NSInteger iTermKeyMappingsNotificationSupressionCount = 0;
 NSString *const iTermKeyMappingsLeaderDidChange = @"iTermKeyMappingsLeaderDidChange";
 
+static NSDictionary *gGlobalKeyMapping;
+
 @implementation iTermKeyMappings
 
 + (void)suppressNotifications:(void (^ NS_NOESCAPE)(void))block {
@@ -187,7 +189,7 @@ NSString *const iTermKeyMappingsLeaderDidChange = @"iTermKeyMappingsLeaderDidCha
 #pragma mark - Mutation
 
 + (void)removeAllGlobalKeyMappings {
-    [[iTermUserDefaults userDefaults] setObject:@{} forKey:@"GlobalKeyMap"];
+    [self setGlobalKeyMap:@{}];
 }
 
 + (void)setMappingAtIndex:(int)rowIndex
@@ -268,8 +270,7 @@ NSString *const iTermKeyMappingsLeaderDidChange = @"iTermKeyMappingsLeaderDidCha
 
 #pragma mark - Global State
 
-+ (NSDictionary *)globalKeyMap {
-    static NSDictionary *gGlobalKeyMapping;
++ (void)ensureGlobalKeyMapInitialized {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         NSString *const key = @"GlobalKeyMap";
@@ -288,6 +289,10 @@ NSString *const iTermKeyMappingsLeaderDidChange = @"iTermKeyMappingsLeaderDidCha
             }
         }];
     });
+}
+
++ (NSDictionary *)globalKeyMap {
+    [self ensureGlobalKeyMapInitialized];
     return gGlobalKeyMapping;
 }
 
@@ -297,6 +302,10 @@ NSString *const iTermKeyMappingsLeaderDidChange = @"iTermKeyMappingsLeaderDidCha
 }
 
 + (void)setGlobalKeyMap:(NSDictionary *)src {
+    [self ensureGlobalKeyMapInitialized];
+    // Update the cache synchronously. The user-defaults observer block is
+    // async, so without this the assert below would read stale state.
+    gGlobalKeyMapping = src;
     [[iTermUserDefaults userDefaults] setObject:src forKey:@"GlobalKeyMap"];
     assert([self.globalKeyMap isEqual:src]);
 }
