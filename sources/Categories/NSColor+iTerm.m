@@ -757,17 +757,24 @@ iTermP3Color iTermSRGBColorToP3Color(iTermSRGBColor srgb) {
     if (dimmingAmount == 0) {
         return self;
     }
+    // Normalize so the fixed-size buffer and 3-component loop below are valid for
+    // any input (gray, CMYK, system colors, etc.). The colorMap normalizes its
+    // stored colors to it_defaultColorSpace, so this is a no-op in the common case.
+    NSColor *rgb = [self colorUsingColorSpace:[NSColorSpace it_defaultColorSpace]];
+    if (!rgb) {
+        return self;
+    }
     // This algorithm limits the dynamic range of colors as well as brightening
     // them. Both attributes change in proportion to the dimmingAmount.
 
     // Find a linear interpolation between kCenter and the requested color component
     // in proportion to 1- dimmingAmount.
     CGFloat components[4];
-    [self getComponents:components];
+    [rgb getComponents:components];
     for (int i = 0; i < 3; i++) {
         components[i] = (1 - dimmingAmount) * components[i] + dimmingAmount * grayLevel;
     }
-    return [NSColor colorWithColorSpace:self.colorSpace components:components count:4];
+    return [NSColor colorWithColorSpace:rgb.colorSpace components:components count:4];
 }
 
 - (CGFloat)perceivedBrightness {

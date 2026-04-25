@@ -452,6 +452,13 @@ const int kColorMapAnsiBrightModifier = 8;
     if (!backgroundColor) {
         return nil;
     }
+    // Normalize so the fixed-size buffer below is valid for any input (gray,
+    // CMYK, system colors, etc.). Stored map colors are already in this space,
+    // so this is a no-op for the common path.
+    backgroundColor = [backgroundColor colorUsingColorSpace:[NSColorSpace it_defaultColorSpace]];
+    if (!backgroundColor) {
+        return nil;
+    }
     // Fist apply muting then dimming (as needed).
     CGFloat backgroundRgb[4];
     [backgroundColor getComponents:backgroundRgb];
