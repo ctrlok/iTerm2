@@ -99,6 +99,7 @@ static inline BOOL iTermCharacterAttributesUnderlineColorEqual(iTermCharacterAtt
 }
 
 static NSColor *iTermTextDrawingHelperGetTextColor(screen_char_t *c,
+                                                   iTermExternalAttribute *ea,
                                                    BOOL inUnderlinedRange,
                                                    int index,
                                                    iTermTextColorContext *context,
@@ -149,30 +150,41 @@ static NSColor *iTermTextDrawingHelperGetTextColor(screen_char_t *c,
         rawColor = [context->colorMap colorForKey:kColorMapBackground];
         assert(rawColor);
         context->havePreviousCharacterAttributes = NO;
-    } else if (!context->havePreviousCharacterAttributes ||
-               c->foregroundColor != context->previousCharacterAttributes.foregroundColor ||
-               c->fgGreen != context->previousCharacterAttributes.fgGreen ||
-               c->fgBlue != context->previousCharacterAttributes.fgBlue ||
-               c->foregroundColorMode != context->previousCharacterAttributes.foregroundColorMode ||
-               c->bold != context->previousCharacterAttributes.bold ||
-               c->faint != context->previousCharacterAttributes.faint ||
-               !context->previousForegroundColor) {
-        // "Normal" case for uncached text color. Recompute the unprocessed color from the character.
-        context->previousCharacterAttributes = *c;
-        context->havePreviousCharacterAttributes = YES;
-        rawColor = [context->delegate colorForCode:c->foregroundColor
-                                             green:c->fgGreen
-                                              blue:c->fgBlue
-                                         colorMode:c->foregroundColorMode
-                                              bold:c->bold
-                                             faint:c->faint
-                                      isBackground:NO];
-        assert(rawColor);
     } else {
-        // Foreground attributes are just like the last character. There is a cached foreground color.
-        if (needsProcessing && context->backgroundColor != context->previousBackgroundColor) {
-            // Process the text color for the current background color, which has changed since
-            // the last cell.
+        // For dual-mode (ColorModeExternal) cells, resolve the appearance variant
+        // up front; subsequent cache comparisons use the resolved fields, so
+        // consecutive External cells with different dark variants don't
+        // falsely cache-hit.
+        screen_char_t resolvedChar = *c;
+        if (c->foregroundColorMode == ColorModeExternal && ea.dualModeForeground.valid) {
+            const VT100TerminalColorValue v = [context->colorMap resolvedDualModeColor:ea.dualModeForeground];
+            resolvedChar.foregroundColor = v.red;
+            resolvedChar.fgGreen = v.green;
+            resolvedChar.fgBlue = v.blue;
+            resolvedChar.foregroundColorMode = v.mode;
+        }
+        if (!context->havePreviousCharacterAttributes ||
+            resolvedChar.foregroundColor != context->previousCharacterAttributes.foregroundColor ||
+            resolvedChar.fgGreen != context->previousCharacterAttributes.fgGreen ||
+            resolvedChar.fgBlue != context->previousCharacterAttributes.fgBlue ||
+            resolvedChar.foregroundColorMode != context->previousCharacterAttributes.foregroundColorMode ||
+            c->bold != context->previousCharacterAttributes.bold ||
+            c->faint != context->previousCharacterAttributes.faint ||
+            !context->previousForegroundColor) {
+            // "Normal" case for uncached text color. Recompute the unprocessed color from the character.
+            context->previousCharacterAttributes = resolvedChar;
+            context->havePreviousCharacterAttributes = YES;
+            rawColor = [context->delegate colorForCode:resolvedChar.foregroundColor
+                                                 green:resolvedChar.fgGreen
+                                                  blue:resolvedChar.fgBlue
+                                             colorMode:resolvedChar.foregroundColorMode
+                                                  bold:c->bold
+                                                 faint:c->faint
+                                          isBackground:NO];
+            assert(rawColor);
+        } else if (needsProcessing && context->backgroundColor != context->previousBackgroundColor) {
+            // Foreground attributes match prior cell, but background changed:
+            // need to reprocess for contrast.
             rawColor = context->lastUnprocessedColor;
             assert(rawColor);
         } else {
@@ -630,6 +642,7 @@ preferSpeedToFullLigatureSupport:(BOOL)preferSpeedToFullLigatureSupport
         attributes->foregroundColor = forceTextColor;
     } else {
         attributes->foregroundColor = iTermTextDrawingHelperGetTextColor(c,
+                                                                         ea,
                                                                          inUnderlinedRange,
                                                                          i,
                                                                          textColorContext,

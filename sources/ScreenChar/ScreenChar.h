@@ -142,7 +142,10 @@ typedef enum {
     ColorModeAlternate = 0,  // ALTSEM_XXX values
     ColorModeNormal = 1,  // kiTermScreenCharAnsiColor values
     ColorMode24bit = 2,
-    ColorModeInvalid = 3
+    // Indicates the actual color is carried by the cell's iTermExternalAttribute
+    // (e.g. for dual-mode dark/light colors). Renderer must consult the EA.
+    // Persisted in saved scrollback continuation chars; do not change the raw value.
+    ColorModeExternal = 3
 } ColorMode;
 
 // Note that this is a bit field in screen_char_t. If you add to it ensure there is space to grow.
@@ -160,7 +163,21 @@ typedef struct {
     int green;
     int blue;
     ColorMode mode;
+    // Dual-mode (light/dark) extension: when hasDarkVariant is true, the fields
+    // above hold the light-mode color and the fields below hold the dark-mode
+    // color. Both variants use the same `mode` (ColorModeNormal for indexed
+    // dual mode, ColorMode24bit for RGB dual mode).
+    BOOL hasDarkVariant;
+    int redDark;
+    int greenDark;
+    int blueDark;
 } VT100TerminalColorValue;
+
+typedef struct {
+    BOOL valid;
+    VT100TerminalColorValue light;
+    VT100TerminalColorValue dark;
+} iTermDualModeColor;
 
 NSString *VT100TerminalColorValueDescription(VT100TerminalColorValue value, BOOL fg);
 

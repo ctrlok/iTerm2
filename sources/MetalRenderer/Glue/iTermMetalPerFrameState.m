@@ -1300,6 +1300,7 @@ int iTermGetMetalBackgroundColors(iTermMetalPerFrameState *self,
                                          NSIndexSet * _Nullable selectedIndexes,
                                          NSData * _Nullable findMatches,
                                          id<iTermColorMapReading> colorMap,
+                                         iTermExternalAttributeIndex * _Nullable eaIndex,
                                          iTermBidiDisplayInfo * _Nullable bidiInfo,
                                          iTermLineAttribute lineAttribute) {
     iTermBackgroundColorKey lastBackgroundKey;
@@ -1309,6 +1310,7 @@ int iTermGetMetalBackgroundColors(iTermMetalPerFrameState *self,
     const int bidiLUTLength = bidiInfo.numberOfCells;
     const int adjacentDistance = iTermLineAttributeIsDoubleWidth(lineAttribute) ? 2 : 1;
     int prevVisualX = -1;
+    const BOOL darkMode = colorMap.backgroundIsDark;
 
     // Set background colors
     for (int logicalX = 0; logicalX < width; logicalX++) {
@@ -1344,6 +1346,19 @@ int iTermGetMetalBackgroundColors(iTermMetalPerFrameState *self,
             .isMatch = findMatch,
             .image = line[logicalX].image && !line[logicalX].virtualPlaceholder,
         };
+        if (line[logicalX].backgroundColorMode == ColorModeExternal) {
+            iTermExternalAttribute *bgEA = eaIndex[logicalX];
+            if (bgEA.dualModeBackground.valid) {
+                // RLE key uses the resolved variant so consecutive External cells with same
+                // light but different dark variants don't falsely coalesce.
+                const VT100TerminalColorValue v = darkMode ? bgEA.dualModeBackground.dark
+                                                           : bgEA.dualModeBackground.light;
+                backgroundKey.bgColor = v.red;
+                backgroundKey.bgGreen = v.green;
+                backgroundKey.bgBlue = v.blue;
+                backgroundKey.bgColorMode = v.mode;
+            }
+        }
 
         vector_float4 backgroundColor;
         vector_float4 unprocessedBackgroundColor;
@@ -1394,6 +1409,8 @@ static void iTermInitializeColorKey(BOOL findMatch,
                                     BOOL isBlockCharacter,
                                     vector_float4 bgColor,
                                     const screen_char_t *characterPointer,
+                                    iTermExternalAttribute *ea,
+                                    BOOL darkMode,
                                     iTermTextColorKey *currentColorKey) {
     currentColorKey->isMatch = findMatch;
     currentColorKey->inUnderlinedRange = inUnderlinedRange;
@@ -1402,6 +1419,16 @@ static void iTermInitializeColorKey(BOOL findMatch,
     currentColorKey->foregroundColor = characterPointer->foregroundColor;
     currentColorKey->fgGreen = characterPointer->fgGreen;
     currentColorKey->fgBlue = characterPointer->fgBlue;
+    if (characterPointer->foregroundColorMode == ColorModeExternal && ea.dualModeForeground.valid) {
+        // Cache key reflects the resolved appearance variant, not the cell's
+        // light-mode fallback bytes; otherwise consecutive dual-mode cells
+        // with same light but different dark variants would falsely cache-hit.
+        const VT100TerminalColorValue v = darkMode ? ea.dualModeForeground.dark : ea.dualModeForeground.light;
+        currentColorKey->mode = v.mode;
+        currentColorKey->foregroundColor = v.red;
+        currentColorKey->fgGreen = v.green;
+        currentColorKey->fgBlue = v.blue;
+    }
     currentColorKey->bold = characterPointer->bold;
     currentColorKey->faint = characterPointer->faint;
     currentColorKey->background = bgColor;
@@ -1513,6 +1540,7 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
     iTermTextColorKey *currentColorKey = &keys[0];
     iTermTextColorKey *previousColorKey = &keys[1];
     const BOOL underlineHyperlinks = [iTermAdvancedSettingsModel underlineHyperlinks];
+    const BOOL darkMode = _configuration->_colorMap.backgroundIsDark;
     int nextAttributedStringLogicalStartIndex = attributedStrings.count > 0 ? [attributedStrings.firstObject sourceColumnRange].location : -1;
     id<iTermAttributedString> attributedString = nil;
     NSInteger gk = 0;
@@ -1608,11 +1636,14 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
                                 isBlockCharacter,
                                 bgColor,
                                 &line[logicalIndex],
+                                ea,
+                                darkMode,
                                 currentColorKey);
         if (logicalIndex > 0 && iTermColorKeysEqual(currentColorKey, previousColorKey)) {
             attributes[visualX].foregroundColor = attributes[previousVisualX].foregroundColor;
         } else {
             vector_float4 textColor = [self textColorForCharacter:&line[logicalIndex]
+                                                externalAttribute:ea
                                                              line:row
                                                   backgroundColor:attributes[visualX].unprocessedBackgroundColor
                                                          selected:selected
@@ -1749,6 +1780,7 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
                                              selectedIndexes,
                                              findMatches,
                                              _configuration->_colorMap,
+                                             eaIndex,
                                              bidiInfo,
                                              rowLineAttribute);
     *rleCount = rles;
@@ -2012,6 +2044,10 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
             break;
         case ColorMode24bit:
             return [iTermColorMap keyFor8bitRed:theIndex green:green blue:blue];
+        case ColorModeExternal:
+            // Reached only when the renderer didn't pre-resolve via the EA;
+            // fall back to keying on the cell's stored light variant.
+            return [iTermColorMap keyFor8bitRed:theIndex green:green blue:blue];
         case ColorModeNormal:
             // Render bold text as bright. The spec (ECMA-48) describes the intense
             // display setting (esc[1m) as "bold or bright". We make it a
@@ -2023,9 +2059,6 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
                 theIndex |= 8;  // set "bright" bit.
             }
             return kColorMap8bitBase + (theIndex & 0xff);
-
-        case ColorModeInvalid:
-            return kColorMapInvalid;
     }
     ITAssertWithMessage(ok, @"Bogus color mode %d", (int)theMode);
     return kColorMapInvalid;
@@ -2292,6 +2325,7 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
 #pragma mark - Color
 
 - (vector_float4)textColorForCharacter:(const screen_char_t *const)c
+                     externalAttribute:(iTermExternalAttribute *)ea
                                   line:(int)line
                        backgroundColor:(vector_float4)unprocessedBackgroundColor
                               selected:(BOOL)selected
@@ -2331,33 +2365,35 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
            rawColor = VectorForColor([colorMap colorForKey:kColorMapBackground],
                                      _configuration->_colorSpace);
            caches->havePreviousCharacterAttributes = NO;
-    } else if (!caches->havePreviousCharacterAttributes ||
-               c->foregroundColor != caches->previousCharacterAttributes.foregroundColor ||
-               c->fgGreen != caches->previousCharacterAttributes.fgGreen ||
-               c->fgBlue != caches->previousCharacterAttributes.fgBlue ||
-               c->foregroundColorMode != caches->previousCharacterAttributes.foregroundColorMode ||
-               c->bold != caches->previousCharacterAttributes.bold ||
-               c->faint != caches->previousCharacterAttributes.faint ||
-               !caches->havePreviousForegroundColor) {
-        // "Normal" case for uncached text color. Recompute the unprocessed color from the character.
-        caches->previousCharacterAttributes = *c;
-        caches->havePreviousCharacterAttributes = YES;
-        rawColor = [self vectorColorForCode:c->foregroundColor
-                                      green:c->fgGreen
-                                       blue:c->fgBlue
-                                  colorMode:c->foregroundColorMode
-                                       bold:c->bold
-                                      faint:c->faint
-                               isBackground:NO];
     } else {
-        // Foreground attributes are just like the last character. There is a cached foreground color.
-        if (needsProcessing) {
-            // Process the text color for the current background color, which has changed since
-            // the last cell.
+        screen_char_t resolvedChar = *c;
+        if (c->foregroundColorMode == ColorModeExternal && ea.dualModeForeground.valid) {
+            const VT100TerminalColorValue v = [colorMap resolvedDualModeColor:ea.dualModeForeground];
+            resolvedChar.foregroundColor = v.red;
+            resolvedChar.fgGreen = v.green;
+            resolvedChar.fgBlue = v.blue;
+            resolvedChar.foregroundColorMode = v.mode;
+        }
+        if (!caches->havePreviousCharacterAttributes ||
+            resolvedChar.foregroundColor != caches->previousCharacterAttributes.foregroundColor ||
+            resolvedChar.fgGreen != caches->previousCharacterAttributes.fgGreen ||
+            resolvedChar.fgBlue != caches->previousCharacterAttributes.fgBlue ||
+            resolvedChar.foregroundColorMode != caches->previousCharacterAttributes.foregroundColorMode ||
+            c->bold != caches->previousCharacterAttributes.bold ||
+            c->faint != caches->previousCharacterAttributes.faint ||
+            !caches->havePreviousForegroundColor) {
+            caches->previousCharacterAttributes = resolvedChar;
+            caches->havePreviousCharacterAttributes = YES;
+            rawColor = [self vectorColorForCode:resolvedChar.foregroundColor
+                                          green:resolvedChar.fgGreen
+                                           blue:resolvedChar.fgBlue
+                                      colorMode:resolvedChar.foregroundColorMode
+                                           bold:c->bold
+                                          faint:c->faint
+                                   isBackground:NO];
+        } else if (needsProcessing) {
             rawColor = caches->lastUnprocessedColor;
         } else {
-            // Text color is unchanged. Either it's independent of the background color or the
-            // background color has not changed.
             return caches->previousForegroundColor;
         }
     }

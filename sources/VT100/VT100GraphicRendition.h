@@ -97,6 +97,21 @@ typedef struct {
 
     BOOL hasUnderlineColor;
     VT100TerminalColorValue underlineColor;
+
+    // Dual-mode color extension. When hasDualModeFg is set, the fg fields above
+    // hold the light-mode color (universal fallback) and the dark-mode variant
+    // is in fgDark*. Same shape for bg.
+    BOOL hasDualModeFg;
+    int fgDarkColorCode;
+    int fgDarkGreen;
+    int fgDarkBlue;
+    ColorMode fgDarkColorMode;
+
+    BOOL hasDualModeBg;
+    int bgDarkColorCode;
+    int bgDarkGreen;
+    int bgDarkBlue;
+    ColorMode bgDarkColorMode;
 } VT100GraphicRendition;
 
 typedef NS_ENUM(NSUInteger, VT100GraphicRenditionSideEffect) {
@@ -121,6 +136,13 @@ VT100TerminalColorValue VT100TerminalColorValueFromCSI(CSIParam *csi, int *index
 
 // Backwardsly creates a rendition from an existing character.
 VT100GraphicRendition VT100GraphicRenditionFromCharacter(const screen_char_t *c, iTermExternalAttribute *attr);
+
+// Builds an iTermDualModeColor describing what the cell's fg slot will display
+// once the rendition is applied. Honors SGR 7 (reverse): when set, the cell's
+// fg slot will hold the rendition's bg, so the returned dual-mode color is
+// the rendition's bg dual variants in that case (and vice-versa for Bg).
+iTermDualModeColor VT100GraphicRenditionDualModeFg(const VT100GraphicRendition *r);
+iTermDualModeColor VT100GraphicRenditionDualModeBg(const VT100GraphicRendition *r);
 
 // Updates the foreground attributes of c
 void VT100GraphicRenditionUpdateForeground(const VT100GraphicRendition *rendition, BOOL applyReverse, BOOL protectedMode, screen_char_t *c);

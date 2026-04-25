@@ -1110,16 +1110,18 @@ makeCursorLineSoft:(BOOL)makeCursorLineSoft {
 }
 
 - (void)setBackgroundColor:(screen_char_t)bg
+                   applyBg:(BOOL)applyBg
            foregroundColor:(screen_char_t)fg
+                   applyFg:(BOOL)applyFg
                 inRectFrom:(VT100GridCoord)from
                         to:(VT100GridCoord)to {
     for (int y = from.y; y <= to.y; y++) {
         screen_char_t *line = [self screenCharsAtLineNumber:y];
         for (int x = from.x; x <= to.x; x++) {
-            if (fg.foregroundColorMode != ColorModeInvalid) {
+            if (applyFg) {
                 CopyForegroundColor(&line[x], fg);
             }
-            if (bg.backgroundColorMode != ColorModeInvalid) {
+            if (applyBg) {
                 CopyBackgroundColor(&line[x], bg);
             }
         }
@@ -1145,14 +1147,18 @@ makeCursorLineSoft:(BOOL)makeCursorLineSoft {
                                                                      underlineColor:rendition.underlineColor
                                                                                 url:updatedAttr.url
                                                                         blockIDList:updatedAttr.blockIDList
-                                                                        controlCode:updatedAttr.controlCodeNumber];
+                                                                        controlCode:updatedAttr.controlCodeNumber
+                                                                 dualModeForeground:VT100GraphicRenditionDualModeFg(&rendition)
+                                                                 dualModeBackground:VT100GraphicRenditionDualModeBg(&rendition)];
                 break;
             case VT100GraphicRenditionSideEffectSkip2AndUpdateExternalAttributes:
                 updatedAttr = [iTermExternalAttribute attributeHavingUnderlineColor:rendition.hasUnderlineColor
                                                                      underlineColor:rendition.underlineColor
                                                                                 url:updatedAttr.url
                                                                         blockIDList:updatedAttr.blockIDList
-                                                                        controlCode:updatedAttr.controlCodeNumber];
+                                                                        controlCode:updatedAttr.controlCodeNumber
+                                                                 dualModeForeground:VT100GraphicRenditionDualModeFg(&rendition)
+                                                                 dualModeBackground:VT100GraphicRenditionDualModeBg(&rendition)];
                 i += 2;
                 break;
             case VT100GraphicRenditionSideEffectSkip4AndUpdateExternalAttributes:
@@ -1160,7 +1166,9 @@ makeCursorLineSoft:(BOOL)makeCursorLineSoft {
                                                                      underlineColor:rendition.underlineColor
                                                                                 url:updatedAttr.url
                                                                         blockIDList:updatedAttr.blockIDList
-                                                                        controlCode:updatedAttr.controlCodeNumber];
+                                                                        controlCode:updatedAttr.controlCodeNumber
+                                                                 dualModeForeground:VT100GraphicRenditionDualModeFg(&rendition)
+                                                                 dualModeBackground:VT100GraphicRenditionDualModeBg(&rendition)];
                 i += 4;
                 break;
             case VT100GraphicRenditionSideEffectSkip2:
@@ -1212,7 +1220,9 @@ makeCursorLineSoft:(BOOL)makeCursorLineSoft {
                                                           underlineColor:old.underlineColor
                                                                      url:url
                                                              blockIDList:old.blockIDList
-                                                             controlCode:old.controlCodeNumber];
+                                                             controlCode:old.controlCodeNumber
+                                                      dualModeForeground:old.dualModeForeground
+                                                      dualModeBackground:old.dualModeBackground];
         }];
         [self markCharsDirty:YES
                   inRectFrom:VT100GridCoordMake(from.x, y)
@@ -1230,7 +1240,9 @@ makeCursorLineSoft:(BOOL)makeCursorLineSoft {
                                                       underlineColor:old.underlineColor
                                                                  url:old.url
                                                          blockIDList:blockIDList
-                                                         controlCode:old.controlCodeNumber];
+                                                         controlCode:old.controlCodeNumber
+                                                  dualModeForeground:old.dualModeForeground
+                                                  dualModeBackground:old.dualModeBackground];
     }];
     [self markCharsDirty:YES
               inRectFrom:VT100GridCoordMake(0, line)

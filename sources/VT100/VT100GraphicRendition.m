@@ -70,9 +70,16 @@ VT100GraphicRenditionSideEffect VT100GraphicRenditionExecuteSGR(VT100GraphicRend
             rendition->blink = YES;
             return VT100GraphicRenditionSideEffectNone;
 
-        case VT100CHARATTR_REVERSE:
+        case VT100CHARATTR_REVERSE: {
+            const BOOL changed = !rendition->reversed;
             rendition->reversed = YES;
+            // Toggling reverse swaps which side carries dual mode in the cell,
+            // so the EA must be rebuilt when any dual mode is active.
+            if (changed && (rendition->hasDualModeFg || rendition->hasDualModeBg)) {
+                return VT100GraphicRenditionSideEffectUpdateExternalAttributes;
+            }
             return VT100GraphicRenditionSideEffectNone;
+        }
 
         case VT100CHARATTR_INVISIBLE:
             rendition->invisible = YES;
@@ -103,9 +110,14 @@ VT100GraphicRenditionSideEffect VT100GraphicRenditionExecuteSGR(VT100GraphicRend
             rendition->blink = NO;
             return VT100GraphicRenditionSideEffectNone;
 
-        case VT100CHARATTR_POSITIVE:
+        case VT100CHARATTR_POSITIVE: {
+            const BOOL changed = rendition->reversed;
             rendition->reversed = NO;
+            if (changed && (rendition->hasDualModeFg || rendition->hasDualModeBg)) {
+                return VT100GraphicRenditionSideEffectUpdateExternalAttributes;
+            }
             return VT100GraphicRenditionSideEffectNone;
+        }
 
         case VT100CHARATTR_VISIBLE:
             rendition->invisible = NO;
@@ -115,19 +127,27 @@ VT100GraphicRenditionSideEffect VT100GraphicRenditionExecuteSGR(VT100GraphicRend
             rendition->strikethrough = NO;
             return VT100GraphicRenditionSideEffectNone;
 
-        case VT100CHARATTR_FG_DEFAULT:
+        case VT100CHARATTR_FG_DEFAULT: {
+            const BOOL hadDual = rendition->hasDualModeFg;
             rendition->fgColorCode = ALTSEM_DEFAULT;
             rendition->fgGreen = 0;
             rendition->fgBlue = 0;
             rendition->fgColorMode = ColorModeAlternate;
-            return VT100GraphicRenditionSideEffectNone;
+            rendition->hasDualModeFg = NO;
+            return hadDual ? VT100GraphicRenditionSideEffectUpdateExternalAttributes
+                           : VT100GraphicRenditionSideEffectNone;
+        }
 
-        case VT100CHARATTR_BG_DEFAULT:
+        case VT100CHARATTR_BG_DEFAULT: {
+            const BOOL hadDual = rendition->hasDualModeBg;
             rendition->bgColorCode = ALTSEM_DEFAULT;
             rendition->bgGreen = 0;
             rendition->bgBlue = 0;
             rendition->bgColorMode = ColorModeAlternate;
-            return VT100GraphicRenditionSideEffectNone;
+            rendition->hasDualModeBg = NO;
+            return hadDual ? VT100GraphicRenditionSideEffectUpdateExternalAttributes
+                           : VT100GraphicRenditionSideEffectNone;
+        }
 
         case VT100CHARATTR_UNDERLINE_COLOR_DEFAULT:
             rendition->hasUnderlineColor = NO;
@@ -159,6 +179,15 @@ VT100GraphicRenditionSideEffect VT100GraphicRenditionExecuteSGR(VT100GraphicRend
                 rendition->fgGreen = value.green;
                 rendition->fgBlue = value.blue;
                 rendition->fgColorMode = value.mode;
+                if (value.hasDarkVariant) {
+                    rendition->hasDualModeFg = YES;
+                    rendition->fgDarkColorCode = value.redDark;
+                    rendition->fgDarkGreen = value.greenDark;
+                    rendition->fgDarkBlue = value.blueDark;
+                    rendition->fgDarkColorMode = value.mode;
+                } else {
+                    rendition->hasDualModeFg = NO;
+                }
             }
             if (j == i) {
                 return value.red >= 0 ? VT100GraphicRenditionSideEffectUpdateExternalAttributes : VT100GraphicRenditionSideEffectNone;
@@ -180,6 +209,15 @@ VT100GraphicRenditionSideEffect VT100GraphicRenditionExecuteSGR(VT100GraphicRend
                 rendition->bgGreen = value.green;
                 rendition->bgBlue = value.blue;
                 rendition->bgColorMode = value.mode;
+                if (value.hasDarkVariant) {
+                    rendition->hasDualModeBg = YES;
+                    rendition->bgDarkColorCode = value.redDark;
+                    rendition->bgDarkGreen = value.greenDark;
+                    rendition->bgDarkBlue = value.blueDark;
+                    rendition->bgDarkColorMode = value.mode;
+                } else {
+                    rendition->hasDualModeBg = NO;
+                }
             }
             if (j == i) {
                 return value.red >= 0 ? VT100GraphicRenditionSideEffectUpdateExternalAttributes : VT100GraphicRenditionSideEffectNone;
@@ -299,6 +337,36 @@ VT100TerminalColorValue VT100TerminalColorValueFromCSI(CSIParam *csi, int *index
                 .mode = ColorMode24bit
             };
         }
+        if (numberOfSubparameters >= 7 && subs[0] == 12) {
+            // iTerm2 extension: dual-mode 24-bit color (light variant first,
+            // dark variant second). Colon-form only.
+            // CSI 38:12:Rl:Gl:Bl:Rd:Gd:Bd m
+            return (VT100TerminalColorValue) {
+                .red = subs[1],
+                .green = subs[2],
+                .blue = subs[3],
+                .mode = ColorMode24bit,
+                .hasDarkVariant = YES,
+                .redDark = subs[4],
+                .greenDark = subs[5],
+                .blueDark = subs[6],
+            };
+        }
+        if (numberOfSubparameters >= 3 && subs[0] == 13) {
+            // iTerm2 extension: dual-mode indexed color (light first, dark
+            // second). Colon-form only.
+            // CSI 38:13:Nl:Nd m
+            return (VT100TerminalColorValue) {
+                .red = subs[1],
+                .green = 0,
+                .blue = 0,
+                .mode = ColorModeNormal,
+                .hasDarkVariant = YES,
+                .redDark = subs[2],
+                .greenDark = 0,
+                .blueDark = 0,
+            };
+        }
         return (VT100TerminalColorValue) {
             .red = -1,
             .green = -1,
@@ -339,8 +407,50 @@ VT100TerminalColorValue VT100TerminalColorValueFromCSI(CSIParam *csi, int *index
     };
 }
 
+iTermDualModeColor VT100GraphicRenditionDualModeFg(const VT100GraphicRendition *r) {
+    if (r->reversed) {
+        if (!r->hasDualModeBg) {
+            return (iTermDualModeColor){ 0 };
+        }
+        return (iTermDualModeColor){
+            .valid = YES,
+            .light = { .red = r->bgColorCode, .green = r->bgGreen, .blue = r->bgBlue, .mode = r->bgColorMode },
+            .dark = { .red = r->bgDarkColorCode, .green = r->bgDarkGreen, .blue = r->bgDarkBlue, .mode = r->bgDarkColorMode },
+        };
+    }
+    if (!r->hasDualModeFg) {
+        return (iTermDualModeColor){ 0 };
+    }
+    return (iTermDualModeColor){
+        .valid = YES,
+        .light = { .red = r->fgColorCode, .green = r->fgGreen, .blue = r->fgBlue, .mode = r->fgColorMode },
+        .dark = { .red = r->fgDarkColorCode, .green = r->fgDarkGreen, .blue = r->fgDarkBlue, .mode = r->fgDarkColorMode },
+    };
+}
+
+iTermDualModeColor VT100GraphicRenditionDualModeBg(const VT100GraphicRendition *r) {
+    if (r->reversed) {
+        if (!r->hasDualModeFg) {
+            return (iTermDualModeColor){ 0 };
+        }
+        return (iTermDualModeColor){
+            .valid = YES,
+            .light = { .red = r->fgColorCode, .green = r->fgGreen, .blue = r->fgBlue, .mode = r->fgColorMode },
+            .dark = { .red = r->fgDarkColorCode, .green = r->fgDarkGreen, .blue = r->fgDarkBlue, .mode = r->fgDarkColorMode },
+        };
+    }
+    if (!r->hasDualModeBg) {
+        return (iTermDualModeColor){ 0 };
+    }
+    return (iTermDualModeColor){
+        .valid = YES,
+        .light = { .red = r->bgColorCode, .green = r->bgGreen, .blue = r->bgBlue, .mode = r->bgColorMode },
+        .dark = { .red = r->bgDarkColorCode, .green = r->bgDarkGreen, .blue = r->bgDarkBlue, .mode = r->bgDarkColorMode },
+    };
+}
+
 VT100GraphicRendition VT100GraphicRenditionFromCharacter(const screen_char_t *c, iTermExternalAttribute *attr) {
-    return (VT100GraphicRendition) {
+    VT100GraphicRendition r = {
         .bold = c->bold,
         .blink = c->blink,
         .invisible = c->invisible,
@@ -364,12 +474,41 @@ VT100GraphicRendition VT100GraphicRenditionFromCharacter(const screen_char_t *c,
         .hasUnderlineColor = attr.hasUnderlineColor,
         .underlineColor = attr.underlineColor,
     };
+    // If the cell is flagged External, the EA carries the authoritative light
+    // and dark variants. Prefer those over the cell's bytes (which are a stale
+    // snapshot of the light variant).
+    if (c->foregroundColorMode == ColorModeExternal && attr.dualModeForeground.valid) {
+        const iTermDualModeColor dual = attr.dualModeForeground;
+        r.fgColorCode = dual.light.red;
+        r.fgGreen = dual.light.green;
+        r.fgBlue = dual.light.blue;
+        r.fgColorMode = dual.light.mode;
+        r.hasDualModeFg = YES;
+        r.fgDarkColorCode = dual.dark.red;
+        r.fgDarkGreen = dual.dark.green;
+        r.fgDarkBlue = dual.dark.blue;
+        r.fgDarkColorMode = dual.dark.mode;
+    }
+    if (c->backgroundColorMode == ColorModeExternal && attr.dualModeBackground.valid) {
+        const iTermDualModeColor dual = attr.dualModeBackground;
+        r.bgColorCode = dual.light.red;
+        r.bgGreen = dual.light.green;
+        r.bgBlue = dual.light.blue;
+        r.bgColorMode = dual.light.mode;
+        r.hasDualModeBg = YES;
+        r.bgDarkColorCode = dual.dark.red;
+        r.bgDarkGreen = dual.dark.green;
+        r.bgDarkBlue = dual.dark.blue;
+        r.bgDarkColorMode = dual.dark.mode;
+    }
+    return r;
 }
 
 void VT100GraphicRenditionUpdateForeground(const VT100GraphicRendition *rendition,
                                            BOOL applyReverse,
                                            BOOL protectedMode,
                                            screen_char_t *c) {
+    BOOL applyDualMode = NO;
     if (applyReverse) {
         if (rendition->reversed) {
             if (rendition->bgColorMode == ColorModeAlternate &&
@@ -381,11 +520,13 @@ void VT100GraphicRenditionUpdateForeground(const VT100GraphicRendition *renditio
             c->fgGreen = rendition->bgGreen;
             c->fgBlue = rendition->bgBlue;
             c->foregroundColorMode = rendition->bgColorMode;
+            applyDualMode = rendition->hasDualModeBg;
         } else {
             c->foregroundColor = rendition->fgColorCode;
             c->fgGreen = rendition->fgGreen;
             c->fgBlue = rendition->fgBlue;
             c->foregroundColorMode = rendition->fgColorMode;
+            applyDualMode = rendition->hasDualModeFg;
         }
         c->image = NO;
         c->virtualPlaceholder = NO;
@@ -394,7 +535,10 @@ void VT100GraphicRenditionUpdateForeground(const VT100GraphicRendition *renditio
         c->fgGreen = rendition->fgGreen;
         c->fgBlue = rendition->fgBlue;
         c->foregroundColorMode = rendition->fgColorMode;
-
+        applyDualMode = rendition->hasDualModeFg;
+    }
+    if (applyDualMode) {
+        c->foregroundColorMode = ColorModeExternal;
     }
     c->bold = rendition->bold;
     c->faint = rendition->faint;
@@ -426,17 +570,26 @@ void VT100GraphicRenditionUpdateBackground(const VT100GraphicRendition *renditio
             c->bgGreen = rendition->fgGreen;
             c->bgBlue = rendition->fgBlue;
             c->backgroundColorMode = rendition->fgColorMode;
+            if (rendition->hasDualModeFg) {
+                c->backgroundColorMode = ColorModeExternal;
+            }
         } else {
             c->backgroundColor = rendition->bgColorCode;
             c->bgGreen = rendition->bgGreen;
             c->bgBlue = rendition->bgBlue;
             c->backgroundColorMode = rendition->bgColorMode;
+            if (rendition->hasDualModeBg) {
+                c->backgroundColorMode = ColorModeExternal;
+            }
         }
     } else {
         c->backgroundColor = rendition->bgColorCode;
         c->bgGreen = rendition->bgGreen;
         c->bgBlue = rendition->bgBlue;
         c->backgroundColorMode = rendition->bgColorMode;
+        if (rendition->hasDualModeBg) {
+            c->backgroundColorMode = ColorModeExternal;
+        }
     }
 }
 

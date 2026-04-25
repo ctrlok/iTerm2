@@ -1096,6 +1096,11 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
 
 #pragma mark - API
 
+// Pure transformation: produces the protobuf cell style for a given screen_char_t
+// and its iTermExternalAttribute. Exposed as a class method for unit testing.
++ (ITMCellStyle *)protoStyleForCharacter:(screen_char_t)c
+                       externalAttributes:(iTermExternalAttribute *)ea;
+
 - (ITMGetBufferResponse *)handleGetBufferRequest:(ITMGetBufferRequest *)request;
 - (void)handleGetPromptRequest:(ITMGetPromptRequest *)request
                     completion:(void (^)(ITMGetPromptResponse *response))completion;

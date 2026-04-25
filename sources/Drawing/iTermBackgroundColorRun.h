@@ -12,6 +12,7 @@
 @class iTermBidiDisplayInfo;
 @class iTermBoxedBackgroundColorRun;
 @class iTermTextExtractor;
+@protocol iTermExternalAttributeIndexReading;
 
 typedef struct {
     NSRange modelRange;
@@ -59,6 +60,10 @@ NS_INLINE BOOL iTermBackgroundColorRunsEqual(const iTermBackgroundColorRun *a,
 
 // Creates a new autoreleased iTermBackgroundColorRunsInLine object that's ready to use.
 // Fills in *anyBlinkPtr with YES if some character in the range is blinking.
+//
+// Pass eaIndex when cells may carry dual-mode (ColorModeExternal) backgrounds;
+// darkMode selects which appearance variant is used to build the run keys, so
+// runs coalesce by the actually-rendered color.
 + (instancetype)backgroundRunsInLine:(const screen_char_t *)theLine
                           lineLength:(int)width
                     sourceLineNumber:(int)sourceLineNumber
@@ -68,7 +73,9 @@ NS_INLINE BOOL iTermBackgroundColorRunsEqual(const iTermBackgroundColorRun *a,
                              matches:(NSData *)matches
                             anyBlink:(BOOL *)anyBlinkPtr
                                    y:(CGFloat)y  // Value for self.y
-                                bidi:(iTermBidiDisplayInfo *)bidi;
+                                bidi:(iTermBidiDisplayInfo *)bidi
+                             eaIndex:(id<iTermExternalAttributeIndexReading>)eaIndex
+                            darkMode:(BOOL)darkMode;
 
 + (instancetype)defaultRunOfLength:(int)width
                                row:(int)row

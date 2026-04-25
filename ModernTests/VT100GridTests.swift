@@ -1984,7 +1984,9 @@ class VT100GridTests: XCTestCase {
         greenBg.backgroundColorMode = UInt32(ColorModeNormal.rawValue)
 
         grid.setBackgroundColor(greenBg,
+                                applyBg: true,
                                 foregroundColor: redFg,
+                                applyFg: true,
                                 inRectFrom: VT100GridCoord(x: 1, y: 1),
                                 to: VT100GridCoord(x: 2, y: 2))
 
@@ -2013,11 +2015,11 @@ class VT100GridTests: XCTestCase {
             }
         }
 
-        // Test that setting an invalid fg results in no change to fg
-        var invalidFg = redFg
-        invalidFg.foregroundColorMode = UInt32(ColorModeInvalid.rawValue)
+        // Test that passing applyFg:false leaves fg unchanged.
         grid.setBackgroundColor(greenBg,
-                                foregroundColor: invalidFg,
+                                applyBg: true,
+                                foregroundColor: redFg,
+                                applyFg: false,
                                 inRectFrom: VT100GridCoord(x: 0, y: 0),
                                 to: VT100GridCoord(x: 3, y: 3))
 
@@ -2037,11 +2039,11 @@ class VT100GridTests: XCTestCase {
             }
         }
 
-        // Try an invalid bg now
-        var invalidBg = greenBg
-        invalidBg.backgroundColorMode = UInt32(ColorModeInvalid.rawValue)
-        grid.setBackgroundColor(invalidBg,
+        // Try applyBg:false now (leaves bg unchanged).
+        grid.setBackgroundColor(greenBg,
+                                applyBg: false,
                                 foregroundColor: foregroundColor_,
+                                applyFg: true,
                                 inRectFrom: VT100GridCoord(x: 0, y: 0),
                                 to: VT100GridCoord(x: 3, y: 3))
 

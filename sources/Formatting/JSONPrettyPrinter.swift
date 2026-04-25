@@ -266,10 +266,12 @@ extension NSAttributedString {
             let eaIndex = iTermExternalAttributeIndex()
             if let attr = iTermExternalAttribute(
                 havingUnderlineColor: false,
-                underlineColor: .init(red: 0, green: 0, blue: 0, mode: ColorModeAlternate),
+                underlineColor: .init(red: 0, green: 0, blue: 0, mode: ColorModeAlternate, hasDarkVariant: false, redDark: 0, greenDark: 0, blueDark: 0),
                 url: nil,
                 blockIDList: blockIDList,
-                controlCode: nil) {
+                controlCode: nil,
+                dualModeForeground: iTermDualModeColor(),
+                dualModeBackground: iTermDualModeColor()) {
                 eaIndex.setAttributes(attr, at: 0, count: result.length)
                 result.setExternalAttributesIndex(eaIndex)
             }

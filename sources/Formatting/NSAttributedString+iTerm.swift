@@ -102,7 +102,11 @@ class AttributeToControlSequenceConverter {
             underlineColor = VT100TerminalColorValue(red: Int32(UInt32(UInt8(srgb.redComponent * 255))),
                                                      green: Int32(UInt8(srgb.greenComponent * 255)),
                                                      blue: Int32(UInt8(srgb.blueComponent * 255)),
-                                                     mode: ColorMode24bit)
+                                                     mode: ColorMode24bit,
+                                                     hasDarkVariant: false,
+                                                     redDark: 0,
+                                                     greenDark: 0,
+                                                     blueDark: 0)
         } else {
             underlineColor = nil
         }
@@ -127,7 +131,9 @@ class AttributeToControlSequenceConverter {
                                         underlineColor: underlineColor ?? VT100TerminalColorValue(),
                                         url: url,
                                         blockIDList: nil,
-                                        controlCode: nil)
+                                        controlCode: nil,
+                                        dualModeForeground: iTermDualModeColor(),
+                                        dualModeBackground: iTermDualModeColor())
         return VT100Terminal.sgrCodes(forCharacter: c, externalAttributes: ea).array as! [String]
     }
 }

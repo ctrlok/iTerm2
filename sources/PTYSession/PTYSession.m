@@ -19850,7 +19850,7 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
     [self sync];
 }
 
-- (ITMCellStyle *)protoStyleForCharacter:(screen_char_t)c externalAttributes:(iTermExternalAttribute *)ea {
++ (ITMCellStyle *)protoStyleForCharacter:(screen_char_t)c externalAttributes:(iTermExternalAttribute *)ea {
     ITMCellStyle *style = [[[ITMCellStyle alloc] init] autorelease];
     // For image cells, foregroundColor/backgroundColor store X/Y image coordinates,
     // not actual colors. Skip color mode processing to avoid invalid enum values.
@@ -19878,7 +19878,30 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
                 style.fgRgb = rgb;
                 break;
             }
-            case ColorModeInvalid: {
+            case ColorModeExternal: {
+                // Dual-mode cell: prefer the EA's light variant in its native
+                // form (indexed or RGB). If the EA is missing or invalid, fall
+                // back to the cell's stored bytes — matches the rendering path
+                // and avoids reporting black for chars loaded from a state
+                // that's missing the EA.
+                if (ea.dualModeForeground.valid) {
+                    const VT100TerminalColorValue light = ea.dualModeForeground.light;
+                    if (light.mode == ColorModeNormal) {
+                        style.fgStandard = light.red;
+                    } else {
+                        ITMRGBColor *rgb = [[[ITMRGBColor alloc] init] autorelease];
+                        rgb.red = light.red;
+                        rgb.green = light.green;
+                        rgb.blue = light.blue;
+                        style.fgRgb = rgb;
+                    }
+                } else {
+                    ITMRGBColor *rgb = [[[ITMRGBColor alloc] init] autorelease];
+                    rgb.red = c.foregroundColor;
+                    rgb.green = c.fgGreen;
+                    rgb.blue = c.fgBlue;
+                    style.fgRgb = rgb;
+                }
                 break;
             }
         }
@@ -19906,7 +19929,25 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
                 style.bgRgb = rgb;
                 break;
             }
-            case ColorModeInvalid: {
+            case ColorModeExternal: {
+                if (ea.dualModeBackground.valid) {
+                    const VT100TerminalColorValue light = ea.dualModeBackground.light;
+                    if (light.mode == ColorModeNormal) {
+                        style.bgStandard = light.red;
+                    } else {
+                        ITMRGBColor *rgb = [[[ITMRGBColor alloc] init] autorelease];
+                        rgb.red = light.red;
+                        rgb.green = light.green;
+                        rgb.blue = light.blue;
+                        style.bgRgb = rgb;
+                    }
+                } else {
+                    ITMRGBColor *rgb = [[[ITMRGBColor alloc] init] autorelease];
+                    rgb.red = c.backgroundColor;
+                    rgb.green = c.bgGreen;
+                    rgb.blue = c.bgBlue;
+                    style.bgRgb = rgb;
+                }
                 break;
             }
         }
@@ -19978,7 +20019,7 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
             }
         }
         if (style == nil) {
-            style = [self protoStyleForCharacter:screenChars[i] externalAttributes:eaIndex[i]];
+            style = [PTYSession protoStyleForCharacter:screenChars[i] externalAttributes:eaIndex[i]];
         }
         prev = screenChars[i];
 

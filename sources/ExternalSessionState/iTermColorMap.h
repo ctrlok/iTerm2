@@ -80,6 +80,10 @@ extern const int kColorMap24bitBase;
 @property(nonatomic, readonly) double minimumContrast;
 @property(nonatomic, readonly) BOOL useSeparateColorsForLightAndDarkMode;
 @property(nonatomic, readonly) BOOL darkMode;
+// YES if the current default background color has perceived brightness < 0.5.
+// This is the signal used to pick dual-mode SGR color variants — based on
+// what the user is actually looking at, not macOS appearance.
+@property(nonatomic, readonly) BOOL backgroundIsDark;
 @property(nonatomic, readonly) NSInteger generation;
 @property(nonatomic, readonly) CGFloat faintTextAlpha;
 @property(nonatomic, readonly) BOOL harmonize;
@@ -127,6 +131,10 @@ extern const int kColorMap24bitBase;
              isBackground:(BOOL)isBackground
        useCustomBoldColor:(BOOL)useCustomBoldColor
              brightenBold:(BOOL)brightenBold;
+
+// Selects the dual-mode variant for the current background. Always returns
+// a valid VT100TerminalColorValue with hasDarkVariant=NO.
+- (VT100TerminalColorValue)resolvedDualModeColor:(iTermDualModeColor)dual;
 
 - (iTermColorMap *)copy;
 - (VT100SavedColorsSlot *)savedColorsSlot;

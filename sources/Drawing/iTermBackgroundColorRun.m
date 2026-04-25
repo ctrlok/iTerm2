@@ -15,7 +15,9 @@ static void iTermMakeBackgroundColorRun(iTermBackgroundColorRun *run,
                                         int visualColumn,
                                         NSIndexSet *selectedIndexes,
                                         NSData *matches,
-                                        int width) {
+                                        int width,
+                                        id<iTermExternalAttributeIndexReading> eaIndex,
+                                        BOOL darkMode) {
     if (ScreenCharIsDWC_SKIP(theLine[coord.x])) {
         run->selected = NO;
     } else {
@@ -39,6 +41,19 @@ static void iTermMakeBackgroundColorRun(iTermBackgroundColorRun *run,
         run->bgBlue = theLine[coord.x].bgBlue;
         run->bgColorMode = theLine[coord.x].backgroundColorMode;
         run->beneathFaintText = !!theLine[coord.x].faint;
+        if (theLine[coord.x].backgroundColorMode == ColorModeExternal) {
+            iTermExternalAttribute *ea = [eaIndex objectAtIndexedSubscript:coord.x];
+            if (ea.dualModeBackground.valid) {
+                // Resolve to the active appearance's variant so the run key
+                // reflects the rendered color rather than the stored fallback.
+                const VT100TerminalColorValue v = darkMode ? ea.dualModeBackground.dark
+                                                           : ea.dualModeBackground.light;
+                run->bgColor = v.red;
+                run->bgGreen = v.green;
+                run->bgBlue = v.blue;
+                run->bgColorMode = v.mode;
+            }
+        }
     }
 }
 
@@ -83,7 +98,9 @@ static NSRange NSMakeRangeFromEndpointsInclusive(NSUInteger start, NSUInteger in
                              matches:(NSData *)matches
                             anyBlink:(BOOL *)anyBlinkPtr
                                    y:(CGFloat)y
-                                bidi:(iTermBidiDisplayInfo *)bidi {
+                                bidi:(iTermBidiDisplayInfo *)bidi
+                             eaIndex:(id<iTermExternalAttributeIndexReading>)eaIndex
+                            darkMode:(BOOL)darkMode {
     NSMutableArray *runs = [NSMutableArray array];
     iTermBackgroundColorRun previous;
     iTermBackgroundColorRun current;
@@ -125,7 +142,9 @@ static NSRange NSMakeRangeFromEndpointsInclusive(NSUInteger start, NSUInteger in
                                     visualColumnForSelection,
                                     selectedIndexes,
                                     matches,
-                                    width);
+                                    width,
+                                    eaIndex,
+                                    darkMode);
         if (theLine[x].blink) {
             *anyBlinkPtr = YES;
         }
@@ -191,7 +210,9 @@ static NSRange NSMakeRangeFromEndpointsInclusive(NSUInteger start, NSUInteger in
                                 0,
                                 nil,
                                 nil,
-                                width);
+                                width,
+                                nil,
+                                NO);
     run.modelRange = NSMakeRange(0, width);
     run.visualRange = NSMakeRange(0, width);
     NSMutableArray *runs = [NSMutableArray array];

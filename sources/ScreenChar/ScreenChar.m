@@ -717,8 +717,9 @@ static NSString *ScreenCharColorDescription(unsigned int red,
             return [NSString stringWithFormat:@"gray%@/22", @(gray)];
         case ColorMode24bit:
             return [NSString stringWithFormat:@"24bit(%@,%@,%@)", @(red), @(green), @(blue)];
-        case ColorModeInvalid:
-            return @"Invalid";
+        case ColorModeExternal:
+            return [NSString stringWithFormat:@"external(fallback=24bit(%@,%@,%@))",
+                    @(red), @(green), @(blue)];
     }
     return @"Invalid";
 }

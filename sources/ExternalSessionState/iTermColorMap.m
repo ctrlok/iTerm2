@@ -567,6 +567,19 @@ const int kColorMapAnsiBrightModifier = 8;
     return dict;
 }
 
+- (BOOL)backgroundIsDark {
+    return _backgroundBrightness < 0.5;
+}
+
+- (VT100TerminalColorValue)resolvedDualModeColor:(iTermDualModeColor)dual {
+    if (!dual.valid) {
+        return (VT100TerminalColorValue){ 0 };
+    }
+    VT100TerminalColorValue value = self.backgroundIsDark ? dual.dark : dual.light;
+    value.hasDarkVariant = NO;
+    return value;
+}
+
 - (NSColor *)colorForCode:(int)theIndex
                     green:(int)green
                      blue:(int)blue
@@ -682,6 +695,10 @@ const int kColorMapAnsiBrightModifier = 8;
             break;
         case ColorMode24bit:
             return [iTermColorMap keyFor8bitRed:color green:green blue:blue];
+        case ColorModeExternal:
+            // Reached only when the renderer didn't pre-resolve via the EA;
+            // fall back to keying on the cell's stored light variant.
+            return [iTermColorMap keyFor8bitRed:color green:green blue:blue];
         case ColorModeNormal:
             // Render bold text as bright. The spec (ECMA-48) describes the intense
             // display setting (esc[1m) as "bold or bright". We make it a
@@ -693,9 +710,6 @@ const int kColorMapAnsiBrightModifier = 8;
                 color |= 8;  // set "bright" bit.
             }
             return kColorMap8bitBase + (color & 0xff);
-
-        case ColorModeInvalid:
-            return kColorMapInvalid;
     }
     ITAssertWithMessage(ok, @"Bogus color mode %d", (int)mode);
     return kColorMapInvalid;

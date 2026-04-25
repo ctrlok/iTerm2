@@ -35,6 +35,7 @@
 }
 
 - (BOOL)darkBackground { return NO; }
+- (BOOL)backgroundIsDark { return NO; }
 - (CGFloat)minimumContrast { return 0; }
 - (CGFloat)dimmingAmount { return 0; }
 - (CGFloat)mutingAmount { return 0; }
@@ -126,6 +127,7 @@
         line, rles, attributes, unprocessed,
         width, nil, nil,
         (id<iTermColorMapReading>)mockColorMap,
+        nil,
         (iTermBidiDisplayInfo *)mockBidi,
         lineAttribute);
 

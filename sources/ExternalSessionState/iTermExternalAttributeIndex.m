@@ -431,12 +431,43 @@ static NSString *const iTermExternalAttributeKeyBlockIDList = @"b";
 static NSString *const iTermExternalAttributeKeyControlCode = @"cc";
 static NSString *const iTermExternalAttributeKeyURL = @"u";
 static NSString *const iTermExternalAttributeKeyLineAttribute = @"la";
+static NSString *const iTermExternalAttributeKeyDualModeForeground = @"dmf";
+static NSString *const iTermExternalAttributeKeyDualModeBackground = @"dmb";
+
+// Field-by-field comparison; avoids depending on the padding bytes inside
+// VT100TerminalColorValue (BOOL hasDarkVariant followed by int redDark)
+// being zero, which would be required for a memcmp to be reliable.
+static BOOL iTermTerminalColorValueEquals(const VT100TerminalColorValue *a,
+                                          const VT100TerminalColorValue *b) {
+    return a->red == b->red &&
+           a->green == b->green &&
+           a->blue == b->blue &&
+           a->mode == b->mode &&
+           a->hasDarkVariant == b->hasDarkVariant &&
+           a->redDark == b->redDark &&
+           a->greenDark == b->greenDark &&
+           a->blueDark == b->blueDark;
+}
+
+static BOOL iTermDualModeColorEquals(const iTermDualModeColor *a,
+                                     const iTermDualModeColor *b) {
+    if (a->valid != b->valid) {
+        return NO;
+    }
+    if (!a->valid) {
+        return YES;
+    }
+    return iTermTerminalColorValueEquals(&a->light, &b->light) &&
+           iTermTerminalColorValueEquals(&a->dark, &b->dark);
+}
 
 @interface iTermExternalAttribute()
 @property (atomic, readwrite) BOOL hasUnderlineColor;
 @property (atomic, readwrite) VT100TerminalColorValue underlineColor;
 @property (atomic, copy, readwrite) NSString *blockIDList;
 @property (atomic, readwrite) iTermControlCodeAttribute controlCode;
+@property (atomic, readwrite) iTermDualModeColor dualModeForeground;
+@property (atomic, readwrite) iTermDualModeColor dualModeBackground;
 @end
 
 @implementation iTermExternalAttribute
@@ -456,33 +487,63 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
                                            underlineColor:(VT100TerminalColorValue)underlineColor
                                                       url:(iTermURL * _Nullable)url
                                               blockIDList:(NSString *)blockIDList
-                                              controlCode:(NSNumber *)code {
-    if (!hasUnderlineColor && !url && blockIDList == nil && !code) {
+                                              controlCode:(NSNumber *)code
+                                       dualModeForeground:(iTermDualModeColor)dualFg
+                                       dualModeBackground:(iTermDualModeColor)dualBg {
+    if (!hasUnderlineColor && !url && blockIDList == nil && !code &&
+        !dualFg.valid && !dualBg.valid) {
         return nil;
     }
     static iTermExternalAttribute *last;
     if (last &&
         last.hasUnderlineColor == hasUnderlineColor &&
-        !memcmp(&last->_underlineColor, &underlineColor, sizeof(underlineColor)) &&
+        iTermTerminalColorValueEquals(&last->_underlineColor, &underlineColor) &&
         [NSObject object:last.url isEqualToObject:url] &&
         [NSObject object:last.blockIDList isEqualToObject:blockIDList] &&
-        iTermControlCodeAttributeEqualsNumber(&last->_controlCode, code)) {
+        iTermControlCodeAttributeEqualsNumber(&last->_controlCode, code) &&
+        iTermDualModeColorEquals(&last->_dualModeForeground, &dualFg) &&
+        iTermDualModeColorEquals(&last->_dualModeBackground, &dualBg)) {
         // Since this class is immutable, there's a nice optimization in reusing the last one created.
         return last;
     }
+    iTermExternalAttribute *result;
     if (hasUnderlineColor) {
-        return [[self alloc] initWithUnderlineColor:underlineColor
-                                                url:url
-                                        blockIDList:blockIDList
-                                        controlCode:code];
+        result = [[self alloc] initWithUnderlineColor:underlineColor
+                                                  url:url
+                                          blockIDList:blockIDList
+                                          controlCode:code];
+    } else {
+        result = [[self alloc] initWithURL:url blockIDList:blockIDList controlCode:code];
     }
-    last = [[self alloc] initWithURL:url blockIDList:blockIDList controlCode:code];
-    return last;
+    result.dualModeForeground = dualFg;
+    result.dualModeBackground = dualBg;
+    last = result;
+    return result;
+}
+
+// Reads four ints in order red, green, blue, mode from `decoder` into `value`.
+// Returns YES on success, NO on EOF.
+static BOOL iTermDecodeColorValue(iTermTLVDecoder *decoder, VT100TerminalColorValue *value) {
+    if (![decoder decodeInt:&value->red]) {
+        return NO;
+    }
+    if (![decoder decodeInt:&value->green]) {
+        return NO;
+    }
+    if (![decoder decodeInt:&value->blue]) {
+        return NO;
+    }
+    int mode = 0;
+    if (![decoder decodeInt:&mode]) {
+        return NO;
+    }
+    value->mode = mode;
+    return YES;
 }
 
 + (instancetype)fromData:(NSData *)data {
     iTermTLVDecoder *decoder = [[iTermTLVDecoder alloc] initWithData:data];
-    
+
     // v1
     BOOL hasUnderlineColor;
     if (![decoder decodeBool:&hasUnderlineColor]) {
@@ -490,26 +551,15 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
     }
     VT100TerminalColorValue underlineColor = { 0 };
     if (hasUnderlineColor) {
-        if (![decoder decodeInt:&underlineColor.red]) {
+        if (!iTermDecodeColorValue(decoder, &underlineColor)) {
             return nil;
         }
-        if (![decoder decodeInt:&underlineColor.green]) {
-            return nil;
-        }
-        if (![decoder decodeInt:&underlineColor.blue]) {
-            return nil;
-        }
-        int temp;
-        if (![decoder decodeInt:&temp]) {
-            return nil;
-        }
-        underlineColor.mode = temp;
     }
-    
+
     // v2
     unsigned int urlCode = 0;
     [decoder decodeUnsignedInt:&urlCode];
-    
+
     // V3
     NSData *blockData = [decoder decodeData];
     NSString *blockIDList = nil;
@@ -532,15 +582,51 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
     iTermLineAttribute lineAttr = 0;
     [decoder decodeInt:&lineAttr];
 
-    if (!hasUnderlineColor && !blockIDList && !url && lineAttr == 0) {
+    // V4 (optional, append-at-end for forward compat). Old data that lacks
+    // these trailing bytes simply yields no dual-mode color.
+    iTermDualModeColor dualFg = { 0 };
+    iTermDualModeColor dualBg = { 0 };
+    BOOL hasDualFg = NO;
+    if ([decoder decodeBool:&hasDualFg] && hasDualFg) {
+        if (!iTermDecodeColorValue(decoder, &dualFg.light)) {
+            return nil;
+        }
+        if (!iTermDecodeColorValue(decoder, &dualFg.dark)) {
+            return nil;
+        }
+        dualFg.valid = YES;
+    }
+    BOOL hasDualBg = NO;
+    if ([decoder decodeBool:&hasDualBg] && hasDualBg) {
+        if (!iTermDecodeColorValue(decoder, &dualBg.light)) {
+            return nil;
+        }
+        if (!iTermDecodeColorValue(decoder, &dualBg.dark)) {
+            return nil;
+        }
+        dualBg.valid = YES;
+    }
+
+    if (!hasUnderlineColor && !blockIDList && !url && lineAttr == 0 &&
+        !dualFg.valid && !dualBg.valid) {
         return nil;
     }
 
-    iTermExternalAttribute *result = [[self alloc] initWithUnderlineColor:underlineColor
-                                                                      url:url
-                                                              blockIDList:blockIDList
-                                                              controlCode:cc >= 0 && cc < 256 ? @(cc) : nil];
+    NSNumber *codeBox = cc >= 0 && cc < 256 ? @(cc) : nil;
+    iTermExternalAttribute *result;
+    if (hasUnderlineColor) {
+        result = [[self alloc] initWithUnderlineColor:underlineColor
+                                                  url:url
+                                          blockIDList:blockIDList
+                                          controlCode:codeBox];
+    } else {
+        result = [[self alloc] initWithURL:url
+                               blockIDList:blockIDList
+                               controlCode:codeBox];
+    }
     result->_lineAttribute = lineAttr;
+    result->_dualModeForeground = dualFg;
+    result->_dualModeBackground = dualBg;
     return result;
 }
 
@@ -616,6 +702,12 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
     if (_blockIDList) {
         [parts addObject:@"block"];
     }
+    if (_dualModeForeground.valid) {
+        [parts addObject:@"dualFg"];
+    }
+    if (_dualModeBackground.valid) {
+        [parts addObject:@"dualBg"];
+    }
     if (parts.count == 0) {
         return @"none";
     }
@@ -640,6 +732,16 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
     if (_controlCode.valid) {
         [parts addObject:[NSString stringWithFormat:@"cc=%d", _controlCode.code]];
     }
+    if (_dualModeForeground.valid) {
+        [parts addObject:[NSString stringWithFormat:@"dualFg=light(%@),dark(%@)",
+                          VT100TerminalColorValueDescription(_dualModeForeground.light, YES),
+                          VT100TerminalColorValueDescription(_dualModeForeground.dark, YES)]];
+    }
+    if (_dualModeBackground.valid) {
+        [parts addObject:[NSString stringWithFormat:@"dualBg=light(%@),dark(%@)",
+                          VT100TerminalColorValueDescription(_dualModeBackground.light, NO),
+                          VT100TerminalColorValueDescription(_dualModeBackground.dark, NO)]];
+    }
     if (parts.count == 0) {
         return @"none";
     }
@@ -662,16 +764,80 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
     } else {
         [encoder encodeInt:-1];
     }
-    if (!_url && _lineAttribute == iTermLineAttributeSingleWidth) {
-        return encoder.data;
-    } else {
-        [encoder encodeData:_url.data ?: [NSData data]];
-        if (_lineAttribute == iTermLineAttributeSingleWidth) {
-            return encoder.data;
-        }
-        [encoder encodeInt:_lineAttribute];
+    const BOOL hasTrailingFields = _url ||
+                                   _lineAttribute != iTermLineAttributeSingleWidth ||
+                                   _dualModeForeground.valid ||
+                                   _dualModeBackground.valid;
+    if (!hasTrailingFields) {
         return encoder.data;
     }
+    [encoder encodeData:_url.data ?: [NSData data]];
+    const BOOL hasFurtherTrailing = _lineAttribute != iTermLineAttributeSingleWidth ||
+                                    _dualModeForeground.valid ||
+                                    _dualModeBackground.valid;
+    if (!hasFurtherTrailing) {
+        return encoder.data;
+    }
+    [encoder encodeInt:_lineAttribute];
+    if (!_dualModeForeground.valid && !_dualModeBackground.valid) {
+        return encoder.data;
+    }
+    [encoder encodeBool:_dualModeForeground.valid];
+    if (_dualModeForeground.valid) {
+        [encoder encodeInt:_dualModeForeground.light.red];
+        [encoder encodeInt:_dualModeForeground.light.green];
+        [encoder encodeInt:_dualModeForeground.light.blue];
+        [encoder encodeInt:_dualModeForeground.light.mode];
+        [encoder encodeInt:_dualModeForeground.dark.red];
+        [encoder encodeInt:_dualModeForeground.dark.green];
+        [encoder encodeInt:_dualModeForeground.dark.blue];
+        [encoder encodeInt:_dualModeForeground.dark.mode];
+    }
+    [encoder encodeBool:_dualModeBackground.valid];
+    if (_dualModeBackground.valid) {
+        [encoder encodeInt:_dualModeBackground.light.red];
+        [encoder encodeInt:_dualModeBackground.light.green];
+        [encoder encodeInt:_dualModeBackground.light.blue];
+        [encoder encodeInt:_dualModeBackground.light.mode];
+        [encoder encodeInt:_dualModeBackground.dark.red];
+        [encoder encodeInt:_dualModeBackground.dark.green];
+        [encoder encodeInt:_dualModeBackground.dark.blue];
+        [encoder encodeInt:_dualModeBackground.dark.mode];
+    }
+    return encoder.data;
+}
+
+// Decodes a stored array shape @[mode, R, G, B] into `out`.
+// Returns YES if values were valid, NO otherwise (in which case `out` is unchanged).
+static BOOL iTermDecodeColorValueArray(NSArray<NSNumber *> *values,
+                                       VT100TerminalColorValue *out) {
+    if (!values || values.count < 4) {
+        return NO;
+    }
+    out->mode = [values[0] intValue];
+    out->red = [values[1] intValue];
+    out->green = [values[2] intValue];
+    out->blue = [values[3] intValue];
+    return YES;
+}
+
+// Decodes a stored array shape @[lightMode, lightR, lightG, lightB,
+// darkMode, darkR, darkG, darkB] into `out`.
+static BOOL iTermDecodeDualModeColorArray(NSArray<NSNumber *> *values,
+                                          iTermDualModeColor *out) {
+    if (!values || values.count < 8) {
+        return NO;
+    }
+    out->light.mode = [values[0] intValue];
+    out->light.red = [values[1] intValue];
+    out->light.green = [values[2] intValue];
+    out->light.blue = [values[3] intValue];
+    out->dark.mode = [values[4] intValue];
+    out->dark.red = [values[5] intValue];
+    out->dark.green = [values[6] intValue];
+    out->dark.blue = [values[7] intValue];
+    out->valid = YES;
+    return YES;
 }
 
 - (instancetype)initWithDictionary:(NSDictionary *)dict {
@@ -681,14 +847,10 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
         id obj = dict[iTermExternalAttributeKeyUnderlineColor];
         if (obj != nil && ![obj isKindOfClass:[NSNull class]]) {
             NSArray<NSNumber *> *values = [NSArray castFrom:obj];
-            if (!values || values.count < 4) {
+            if (!iTermDecodeColorValueArray(values, &_underlineColor)) {
                 return nil;
             }
             _hasUnderlineColor = YES;
-            _underlineColor.mode = [values[0] intValue];
-            _underlineColor.red = [values[1] intValue];
-            _underlineColor.green = [values[2] intValue];
-            _underlineColor.blue = [values[3] intValue];
         }
         const int urlCode = [dict[iTermExternalAttributeKeyURLCode_Deprecated] unsignedIntValue];
         if (urlCode) {
@@ -706,11 +868,34 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
         if (la) {
             _lineAttribute = (iTermLineAttribute)la.intValue;
         }
-        if (!_hasUnderlineColor && !_url && !self.blockIDList && !_controlCode.valid && _lineAttribute == iTermLineAttributeSingleWidth) {
+        id dualFgObj = dict[iTermExternalAttributeKeyDualModeForeground];
+        if (dualFgObj != nil && ![dualFgObj isKindOfClass:[NSNull class]]) {
+            NSArray<NSNumber *> *values = [NSArray castFrom:dualFgObj];
+            iTermDualModeColor dualFg = { 0 };
+            if (iTermDecodeDualModeColorArray(values, &dualFg)) {
+                _dualModeForeground = dualFg;
+            }
+        }
+        id dualBgObj = dict[iTermExternalAttributeKeyDualModeBackground];
+        if (dualBgObj != nil && ![dualBgObj isKindOfClass:[NSNull class]]) {
+            NSArray<NSNumber *> *values = [NSArray castFrom:dualBgObj];
+            iTermDualModeColor dualBg = { 0 };
+            if (iTermDecodeDualModeColorArray(values, &dualBg)) {
+                _dualModeBackground = dualBg;
+            }
+        }
+        if (!_hasUnderlineColor && !_url && !self.blockIDList && !_controlCode.valid &&
+            _lineAttribute == iTermLineAttributeSingleWidth &&
+            !_dualModeForeground.valid && !_dualModeBackground.valid) {
             return nil;
         }
     }
     return self;
+}
+
+static NSArray<NSNumber *> *iTermDualModeColorAsArray(const iTermDualModeColor *c) {
+    return @[ @(c->light.mode), @(c->light.red), @(c->light.green), @(c->light.blue),
+              @(c->dark.mode), @(c->dark.red), @(c->dark.green), @(c->dark.blue) ];
 }
 
 - (NSDictionary *)dictionaryValue {
@@ -722,7 +907,9 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
                                                                          @(_underlineColor.green),
                                                                          @(_underlineColor.blue) ] : [NSNull null] ,
         iTermExternalAttributeKeyControlCode: _controlCode.valid ? @(_controlCode.code) : [NSNull null],
-        iTermExternalAttributeKeyLineAttribute: _lineAttribute != iTermLineAttributeSingleWidth ? @(_lineAttribute) : [NSNull null]
+        iTermExternalAttributeKeyLineAttribute: _lineAttribute != iTermLineAttributeSingleWidth ? @(_lineAttribute) : [NSNull null],
+        iTermExternalAttributeKeyDualModeForeground: _dualModeForeground.valid ? iTermDualModeColorAsArray(&_dualModeForeground) : [NSNull null],
+        iTermExternalAttributeKeyDualModeBackground: _dualModeBackground.valid ? iTermDualModeColorAsArray(&_dualModeBackground) : [NSNull null]
     } dictionaryByRemovingNullValues];
 }
 
@@ -740,7 +927,7 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
     if (_hasUnderlineColor != rhs.hasUnderlineColor) {
         return NO;
     }
-    if (_hasUnderlineColor && memcmp(&_underlineColor, &rhs->_underlineColor, sizeof(_underlineColor))) {
+    if (_hasUnderlineColor && !iTermTerminalColorValueEquals(&_underlineColor, &rhs->_underlineColor)) {
         return NO;
     }
     if (_controlCode.valid != rhs.controlCode.valid) {
@@ -752,11 +939,17 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
     if (![NSObject object:_blockIDList isEqualToObject:rhs.blockIDList]) {
         return NO;
     }
+    if (!iTermDualModeColorEquals(&_dualModeForeground, &rhs->_dualModeForeground)) {
+        return NO;
+    }
+    if (!iTermDualModeColorEquals(&_dualModeBackground, &rhs->_dualModeBackground)) {
+        return NO;
+    }
     return YES;
 }
 
 - (BOOL)isDefault {
-    return !self.hasUnderlineColor && self.blockIDList == nil && self.controlCodeNumber == nil && self.url == nil && _lineAttribute == iTermLineAttributeSingleWidth;
+    return !self.hasUnderlineColor && self.blockIDList == nil && self.controlCodeNumber == nil && self.url == nil && _lineAttribute == iTermLineAttributeSingleWidth && !_dualModeForeground.valid && !_dualModeBackground.valid;
 }
 
 + (iTermExternalAttribute *)attributeWithLineAttribute:(iTermLineAttribute)attr {
@@ -982,7 +1175,9 @@ static BOOL iTermControlCodeAttributeEqualsNumber(const iTermControlCodeAttribut
                                                                                 underlineColor:(VT100TerminalColorValue){}
                                                                                            url:url
                                                                                    blockIDList:nil
-                                                                                   controlCode:nil];
+                                                                                   controlCode:nil
+                                                                            dualModeForeground:(iTermDualModeColor){ 0 }
+                                                                            dualModeBackground:(iTermDualModeColor){ 0 }];
             eaIndex[i] = ea;
             // This is a little hinky. dest goes from being a pointer to legacy_screen_char_t to screen_char_t at this point.
             // There's a rule that you can safely initialize a screen_char_t with 0s, so regardless of what future changes

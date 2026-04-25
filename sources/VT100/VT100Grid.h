@@ -342,9 +342,12 @@ makeCursorLineSoft:(BOOL)makeCursorLineSoft;
 // Returns a grid-owned empty line.
 - (NSMutableData *)defaultLineOfWidth:(int)width;
 
-// Set background/foreground colors in a range.
+// Set background/foreground colors in a range. Pass NO for applyFg or applyBg
+// to leave that color unchanged.
 - (void)setBackgroundColor:(screen_char_t)bg
+                   applyBg:(BOOL)applyBg
            foregroundColor:(screen_char_t)fg
+                   applyFg:(BOOL)applyFg
                 inRectFrom:(VT100GridCoord)from
                         to:(VT100GridCoord)to;
 - (void)setSGR:(CSIParam)csi

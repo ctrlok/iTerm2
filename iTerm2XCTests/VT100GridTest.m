@@ -1378,7 +1378,9 @@ do { \
     greenBg.backgroundColorMode = ColorModeNormal;
 
     [grid setBackgroundColor:greenBg
+                     applyBg:YES
              foregroundColor:redFg
+                     applyFg:YES
                   inRectFrom:VT100GridCoordMake(1, 1)
                           to:VT100GridCoordMake(2, 2)];
 
@@ -1398,11 +1400,11 @@ do { \
         }
     }
 
-    // Test the setting an invalid fg results in to change to fg
-    screen_char_t invalidFg = redFg;
-    invalidFg.foregroundColorMode = ColorModeInvalid;
+    // Test that passing applyFg:NO leaves fg unchanged.
     [grid setBackgroundColor:greenBg
-             foregroundColor:invalidFg
+                     applyBg:YES
+             foregroundColor:redFg
+                     applyFg:NO
                   inRectFrom:VT100GridCoordMake(0, 0)
                           to:VT100GridCoordMake(3, 3)];
     // Now should be green bg everywhere, red fg in center square
@@ -1420,11 +1422,11 @@ do { \
         }
     }
 
-    // Try an invalid bg now
-    screen_char_t invalidBg = greenBg;
-    invalidBg.backgroundColorMode = ColorModeInvalid;
-    [grid setBackgroundColor:invalidBg
+    // Try applyBg:NO now (leaves bg unchanged).
+    [grid setBackgroundColor:greenBg
+                     applyBg:NO
              foregroundColor:foregroundColor_
+                     applyFg:YES
                   inRectFrom:VT100GridCoordMake(0, 0)
                           to:VT100GridCoordMake(3, 3)];
     // Now should be default on green everywhere

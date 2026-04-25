@@ -57,6 +57,7 @@ int iTermGetMetalBackgroundColors(iTermMetalPerFrameState *self,
                                   NSIndexSet *_Nullable selectedIndexes,
                                   NSData *_Nullable findMatches,
                                   id<iTermColorMapReading> colorMap,
+                                  iTermExternalAttributeIndex *_Nullable eaIndex,
                                   iTermBidiDisplayInfo *_Nullable bidiInfo,
                                   iTermLineAttribute lineAttribute);
 

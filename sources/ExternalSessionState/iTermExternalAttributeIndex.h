@@ -37,6 +37,12 @@ typedef struct {
 // Only set when entering LineBuffer; stripped when reading out.
 @property (atomic, readonly) iTermLineAttribute lineAttribute;
 @property (nonatomic, readonly) BOOL isDefault;
+// Dual-mode foreground/background color carriers. When .valid is YES, the cell's
+// foregroundColorMode (or backgroundColorMode) on screen_char_t is
+// ColorModeExternal and the renderer picks .light or .dark based on the
+// terminal's current appearance.
+@property (atomic, readonly) iTermDualModeColor dualModeForeground;
+@property (atomic, readonly) iTermDualModeColor dualModeBackground;
 
 @property(nonatomic, readonly) NSDictionary *dictionaryValue;
 
@@ -44,7 +50,9 @@ typedef struct {
                                                      underlineColor:(VT100TerminalColorValue)underlineColor
                                                                 url:(iTermURL * _Nullable)url
                                                         blockIDList:(NSString * _Nullable)blockIDList
-                                                        controlCode:(NSNumber * _Nullable)code;
+                                                        controlCode:(NSNumber * _Nullable)code
+                                                 dualModeForeground:(iTermDualModeColor)dualFg
+                                                 dualModeBackground:(iTermDualModeColor)dualBg;
 
 + (instancetype _Nullable)fromData:(NSData *)data;
 + (BOOL)externalAttribute:(iTermExternalAttribute * _Nullable)lhs

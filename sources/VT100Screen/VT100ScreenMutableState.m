@@ -1689,7 +1689,9 @@ void VT100ScreenEraseCell(screen_char_t *sct,
                                                         underlineColor:(*eaOut).underlineColor
                                                                    url:nil
                                                            blockIDList:nil
-                                                           controlCode:nil];
+                                                           controlCode:nil
+                                                    dualModeForeground:(*eaOut).dualModeForeground
+                                                    dualModeBackground:(*eaOut).dualModeBackground];
     }
 }
 
@@ -4945,31 +4947,28 @@ basedAtAbsoluteLineNumber:(long long)absoluteLineNumber
     screen_char_t fg = { 0 };
     screen_char_t bg = { 0 };
 
-    NSColor *genericFgColor = [fgColor colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
-    NSColor *genericBgColor = [bgColor colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
-
     if (fgColor) {
+        NSColor *genericFgColor = [fgColor colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
         fg.foregroundColor = genericFgColor.redComponent * 255;
         fg.fgBlue = genericFgColor.blueComponent * 255;
         fg.fgGreen = genericFgColor.greenComponent * 255;
         fg.foregroundColorMode = ColorMode24bit;
-    } else {
-        fg.foregroundColorMode = ColorModeInvalid;
     }
 
     if (bgColor) {
+        NSColor *genericBgColor = [bgColor colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
         bg.backgroundColor = genericBgColor.redComponent * 255;
         bg.bgBlue = genericBgColor.blueComponent * 255;
         bg.bgGreen = genericBgColor.greenComponent * 255;
         bg.backgroundColorMode = ColorMode24bit;
-    } else {
-        bg.backgroundColorMode = ColorModeInvalid;
     }
 
     for (NSValue *value in [self.currentGrid rectsForRun:run]) {
         VT100GridRect rect = [value gridRectValue];
         [self.currentGrid setBackgroundColor:bg
+                                     applyBg:(bgColor != nil)
                              foregroundColor:fg
+                                     applyFg:(fgColor != nil)
                                   inRectFrom:rect.origin
                                           to:VT100GridRectMax(rect)];
     }

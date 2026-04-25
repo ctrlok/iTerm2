@@ -657,14 +657,22 @@ static const int kMaxScreenRows = 4096;
 }
 
 - (void)updateExternalAttributes {
-    if (!graphicRendition_.hasUnderlineColor && _currentURL == nil && self.currentBlockIDList == nil && _currentLiteral == nil) {
+    if (!graphicRendition_.hasUnderlineColor &&
+        !graphicRendition_.hasDualModeFg &&
+        !graphicRendition_.hasDualModeBg &&
+        _currentURL == nil &&
+        _currentLiteral == nil &&
+        self.currentBlockIDList == nil) {
         _externalAttributes = nil;
         return;
     }
-    _externalAttributes = [[iTermExternalAttribute alloc] initWithUnderlineColor:graphicRendition_.underlineColor
-                                                                             url:_currentURL
-                                                                     blockIDList:self.currentBlockIDList
-                                                                     controlCode:_currentLiteral];
+    _externalAttributes = [iTermExternalAttribute attributeHavingUnderlineColor:graphicRendition_.hasUnderlineColor
+                                                                 underlineColor:graphicRendition_.underlineColor
+                                                                            url:_currentURL
+                                                                    blockIDList:self.currentBlockIDList
+                                                                    controlCode:_currentLiteral
+                                                             dualModeForeground:VT100GraphicRenditionDualModeFg(&graphicRendition_)
+                                                             dualModeBackground:VT100GraphicRenditionDualModeBg(&graphicRendition_)];
 }
 
 - (void)setCurrentBlockIDList:(NSString *)currentBlockIDList {
@@ -3604,6 +3612,18 @@ static BOOL VT100TokenIsTmux(VT100Token *token) {
         graphicRendition.bgGreen = original.fgGreen;
         graphicRendition.bgBlue = original.fgBlue;
         graphicRendition.bgColorMode = original.fgColorMode;
+
+        graphicRendition.hasDualModeFg = original.hasDualModeBg;
+        graphicRendition.fgDarkColorCode = original.bgDarkColorCode;
+        graphicRendition.fgDarkGreen = original.bgDarkGreen;
+        graphicRendition.fgDarkBlue = original.bgDarkBlue;
+        graphicRendition.fgDarkColorMode = original.bgDarkColorMode;
+
+        graphicRendition.hasDualModeBg = original.hasDualModeFg;
+        graphicRendition.bgDarkColorCode = original.fgDarkColorCode;
+        graphicRendition.bgDarkGreen = original.fgDarkGreen;
+        graphicRendition.bgDarkBlue = original.fgDarkBlue;
+        graphicRendition.bgDarkColorMode = original.fgDarkColorMode;
     }
     switch (graphicRendition.fgColorMode) {
         case ColorModeNormal:
@@ -3613,6 +3633,11 @@ static BOOL VT100TokenIsTmux(VT100Token *token) {
                 [result addObject:[NSString stringWithFormat:@"%@", @(graphicRendition.fgColorCode - 8 + 90)]];
             } else {
                 [result addObject:[NSString stringWithFormat:@"38:5:%@", @(graphicRendition.fgColorCode)]];
+            }
+            if (graphicRendition.hasDualModeFg && graphicRendition.fgDarkColorMode == ColorModeNormal) {
+                [result addObject:[NSString stringWithFormat:@"38:13:%@:%@",
+                                   @(graphicRendition.fgColorCode),
+                                   @(graphicRendition.fgDarkColorCode)]];
             }
             break;
 
@@ -3639,9 +3664,21 @@ static BOOL VT100TokenIsTmux(VT100Token *token) {
         case ColorMode24bit:
             [result addObject:[NSString stringWithFormat:@"38:2:1:%@:%@:%@",
               @(graphicRendition.fgColorCode), @(graphicRendition.fgGreen), @(graphicRendition.fgBlue)]];
+            if (graphicRendition.hasDualModeFg && graphicRendition.fgDarkColorMode == ColorMode24bit) {
+                [result addObject:[NSString stringWithFormat:@"38:12:%@:%@:%@:%@:%@:%@",
+                                   @(graphicRendition.fgColorCode),
+                                   @(graphicRendition.fgGreen),
+                                   @(graphicRendition.fgBlue),
+                                   @(graphicRendition.fgDarkColorCode),
+                                   @(graphicRendition.fgDarkGreen),
+                                   @(graphicRendition.fgDarkBlue)]];
+            }
             break;
 
-        case ColorModeInvalid:
+        case ColorModeExternal:
+            // Unreachable: VT100GraphicRenditionFromCharacter resolves the EA's
+            // dual-mode color into the rendition's light/dark fields before this
+            // is called.
             break;
     }
 
@@ -3653,6 +3690,11 @@ static BOOL VT100TokenIsTmux(VT100Token *token) {
                 [result addObject:[NSString stringWithFormat:@"%@", @(graphicRendition.bgColorCode + 100)]];
             } else {
                 [result addObject:[NSString stringWithFormat:@"48:5:%@", @(graphicRendition.bgColorCode)]];
+            }
+            if (graphicRendition.hasDualModeBg && graphicRendition.bgDarkColorMode == ColorModeNormal) {
+                [result addObject:[NSString stringWithFormat:@"48:13:%@:%@",
+                                   @(graphicRendition.bgColorCode),
+                                   @(graphicRendition.bgDarkColorCode)]];
             }
             break;
 
@@ -3679,9 +3721,21 @@ static BOOL VT100TokenIsTmux(VT100Token *token) {
         case ColorMode24bit:
             [result addObject:[NSString stringWithFormat:@"48:2:1:%@:%@:%@",
               @(graphicRendition.bgColorCode), @(graphicRendition.bgGreen), @(graphicRendition.bgBlue)]];
+            if (graphicRendition.hasDualModeBg && graphicRendition.bgDarkColorMode == ColorMode24bit) {
+                [result addObject:[NSString stringWithFormat:@"48:12:%@:%@:%@:%@:%@:%@",
+                                   @(graphicRendition.bgColorCode),
+                                   @(graphicRendition.bgGreen),
+                                   @(graphicRendition.bgBlue),
+                                   @(graphicRendition.bgDarkColorCode),
+                                   @(graphicRendition.bgDarkGreen),
+                                   @(graphicRendition.bgDarkBlue)]];
+            }
             break;
 
-        case ColorModeInvalid:
+        case ColorModeExternal:
+            // Unreachable: VT100GraphicRenditionFromCharacter resolves the EA's
+            // dual-mode color into the rendition's light/dark fields before this
+            // is called.
             break;
     }
 
@@ -3737,7 +3791,7 @@ static BOOL VT100TokenIsTmux(VT100Token *token) {
                                    graphicRendition.underlineColor.green,
                                    graphicRendition.underlineColor.blue]];
                  break;
-            case ColorModeInvalid:
+            case ColorModeExternal:
             case ColorModeAlternate:
                 break;
         }

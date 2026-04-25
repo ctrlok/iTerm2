@@ -418,7 +418,9 @@ static CGFloat iTermTextDrawingHelperAlphaValueForDefaultBackgroundColor(BOOL ha
                                                          matches:matches
                                                         anyBlink:&_blinkingFound
                                                                y:y
-                                                            bidi:rtlFound ? [self.delegate drawingHelperBidiInfoForLine:line] : nil];
+                                                            bidi:rtlFound ? [self.delegate drawingHelperBidiInfoForLine:line] : nil
+                                                         eaIndex:[self.delegate drawingHelperExternalAttributesOnLine:line]
+                                                        darkMode:_colorMap.backgroundIsDark];
             [backgroundRunArrays addObject:runsInLine];
         } else {
             [backgroundRunArrays addObject:[iTermBackgroundColorRunsInLine defaultRunOfLength:_gridSize.width
@@ -3434,7 +3436,9 @@ iTermKittyImageDraw *iTermFindKittyImageDrawForVirtualPlaceholder(NSArray<iTermK
                                                  matches:nil
                                                 anyBlink:&blink
                                                        y:row * _cellSize.height
-                                                    bidi:rtlFound ? [self.delegate drawingHelperBidiInfoForLine:line] : nil];
+                                                    bidi:rtlFound ? [self.delegate drawingHelperBidiInfoForLine:line] : nil
+                                                 eaIndex:iTermImmutableMetadataGetExternalAttributesIndex(metadata)
+                                                darkMode:_colorMap.backgroundIsDark];
 
 
     [self drawOffscreenCommandLineDecorationsInContext:ctx

@@ -367,3 +367,10 @@ Bug Fixes:
 - Fix “Save Current Window to File with
   Contents…” producing a file that had no
   contents.
+- Add dual-mode SGR colors so programs can
+  emit different fg/bg colors for light vs
+  dark mode, keeping scrollback readable
+  across appearance toggles. Use CSI
+  38:12:Rl:Gl:Bl:Rd:Gd:Bd m for 24-bit and
+  CSI 38:13:Nl:Nd m for 256-color (and 48
+  for backgrounds).

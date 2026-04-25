@@ -47,14 +47,35 @@ class CharacterAttributesProvider: NSObject {
         self.fontTable = fontTable
     }
 
+    // For ColorModeExternal cells with a valid dual-mode entry on the EA,
+    // returns the appearance-resolved variant; otherwise returns the cell's
+    // stored fallback in its native mode.
+    private func resolvedCellColor(red: Int32,
+                                   green: Int32,
+                                   blue: Int32,
+                                   cellMode: UInt32,
+                                   dual: iTermDualModeColor) -> (Int32, Int32, Int32, ColorMode) {
+        if cellMode == ColorModeExternal.rawValue && dual.valid.boolValue {
+            let v = colorMap.resolvedDualModeColor(dual)
+            return (v.red, v.green, v.blue, v.mode)
+        }
+        return (red, green, blue, ColorMode(rawValue: cellMode))
+    }
+
     @objc
     func attributes(_ c: screen_char_t, externalAttributes: iTermExternalAttribute, metadata: UnsafePointer<iTermImmutableMetadata>?) -> [AnyHashable: Any] {
         var isBold = ObjCBool(c.bold != 0)
         let isFaint = c.faint != 0
-        var bgColor = colorMap.color(forCode: Int32(c.backgroundColor),
-                                     green: Int32(c.bgGreen),
-                                     blue: Int32(c.bgBlue),
-                                     colorMode: ColorMode(rawValue: c.backgroundColorMode),
+        let (bgRed, bgGreen, bgBlue, bgMode) =
+            resolvedCellColor(red: Int32(c.backgroundColor),
+                              green: Int32(c.bgGreen),
+                              blue: Int32(c.bgBlue),
+                              cellMode: c.backgroundColorMode,
+                              dual: externalAttributes.dualModeBackground)
+        var bgColor = colorMap.color(forCode: bgRed,
+                                     green: bgGreen,
+                                     blue: bgBlue,
+                                     colorMode: bgMode,
                                      bold: false,
                                      faint: false,
                                      isBackground: true,
@@ -64,10 +85,16 @@ class CharacterAttributesProvider: NSObject {
         if c.invisible != 0 {
             fgColor = bgColor
         } else {
-            fgColor = colorMap.color(forCode: Int32(c.foregroundColor),
-                                     green: Int32(c.fgGreen),
-                                     blue: Int32(c.fgBlue),
-                                     colorMode: ColorMode(rawValue: c.foregroundColorMode),
+            let (fgRed, fgGreen, fgBlue, fgMode) =
+                resolvedCellColor(red: Int32(c.foregroundColor),
+                                  green: Int32(c.fgGreen),
+                                  blue: Int32(c.fgBlue),
+                                  cellMode: c.foregroundColorMode,
+                                  dual: externalAttributes.dualModeForeground)
+            fgColor = colorMap.color(forCode: fgRed,
+                                     green: fgGreen,
+                                     blue: fgBlue,
+                                     colorMode: fgMode,
                                      bold: isBold.boolValue,
                                      faint: isFaint,
                                      isBackground: false,
