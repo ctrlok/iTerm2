@@ -210,7 +210,7 @@ extern const CGFloat PSMTabBarProgressBarHeight;
 @property(nonatomic, assign) BOOL smartTruncation;
 
 @property(nonatomic, retain) IBOutlet NSTabView *tabView;
-@property(nonatomic, assign) id<PSMTabBarControlDelegate> delegate;
+@property(nonatomic, weak) id<PSMTabBarControlDelegate> delegate;
 @property(nonatomic, retain) id partnerView;
 @property(nonatomic, readonly) NSButton *overflowPopUpButton;
 @property(nonatomic, assign) BOOL ignoreTrailingParentheticalsForSmartTruncation;

@@ -428,7 +428,6 @@ NS_CLASS_AVAILABLE_MAC(10_14)
 
 - (void)dealloc {
     _tabBarControl.itermTabBarDelegate = nil;
-    _tabBarControl.delegate = nil;
     _leftTabBarDragHandle.delegate = nil;
 }
 

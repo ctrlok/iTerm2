@@ -1040,9 +1040,6 @@ ITERM_WEAKLY_REFERENCEABLE
     [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self];
 
     // Release all our sessions.
-    if (_contentView.tabBarControl.delegate == self) {
-        _contentView.tabBarControl.delegate = nil;
-    }
     NSTabViewItem *aTabViewItem;
     while ([_contentView.tabView numberOfTabViewItems])  {
         aTabViewItem = [_contentView.tabView tabViewItemAtIndex:0];
@@ -4335,9 +4332,6 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
     [autocompleteView close];
     [commandHistoryPopup close];
     [_directoriesPopupWindowController close];
-
-    // _contentView.tabBarControl is holding on to us, so we have to tell it to let go
-    [_contentView.tabBarControl setDelegate:nil];
 
     [self disableBlur];
     // If a fullscreen window is closing, hide the menu bar unless it's only fullscreen because it's
