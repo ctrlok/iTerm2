@@ -284,6 +284,10 @@ Settings Improvements:
   Han, Hangul, and Cyrillic.
 
 Bug Fixes:
+- Fix the password-manager CLI picker
+  greying out interpreter scripts (such as
+  the Homebrew-installed Bitwarden ‘bw’,
+  which is a Node.js script).
 - Improved energy efficiency.
 - Fix bell and other user notifications not being
   posted when iTerm2 is not hidden behind another

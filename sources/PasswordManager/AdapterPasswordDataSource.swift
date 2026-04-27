@@ -268,7 +268,6 @@ class AdapterPasswordDataSource: CommandLinePasswordDataSource {
         openPanel.canChooseFiles = true
         openPanel.allowsMultipleSelection = false
         openPanel.message = "Locate the CLI for \(identifier) named \(name)"
-        openPanel.allowedContentTypes = [UTType.unixExecutable]
 
         let delegate = AdapterCLIFinderOpenPanelDelegate(name: name)
         return withExtendedLifetime(delegate) {
