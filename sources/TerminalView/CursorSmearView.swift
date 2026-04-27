@@ -56,12 +56,10 @@ class CursorSmearView: NSView {
         return shapeLayer
     }
 
-    private let animationDuration = CFTimeInterval(0.1)
-
     private func makeAnimation(start: NSRect, end: NSRect) -> CAAnimation {
         DLog("Make animation from \(start) to \(end)")
         let pathAnimation = CAKeyframeAnimation(keyPath: "path")
-        pathAnimation.duration = animationDuration
+        pathAnimation.duration = CFTimeInterval(iTermAdvancedSettingsModel.cursorSmearAnimationDuration())
         pathAnimation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
 
         // Keyframes for path animation

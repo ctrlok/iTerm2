@@ -126,6 +126,7 @@ extern NSString *const iTermAdvancedSettingsDidChange;
 + (BOOL)copyBackgroundColor;
 + (BOOL)copyWithStylesByDefault;
 + (CGFloat)cursorAnimationMinDistance;
++ (double)cursorSmearAnimationDuration;
 + (double)cursorSlideAnimationDuration;
 + (int)cursorSlideAnimationMaxCells;
 + (CGFloat)customTabBarFontSize;
