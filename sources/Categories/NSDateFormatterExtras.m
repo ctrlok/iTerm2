@@ -126,40 +126,45 @@
     if (interval == 0) {
         return @"Baseline";
     }
+    NSString *sign = negative ? @"-" : @"+";
 
-    // < 10 sec → "X.yyy sec"
+    // < 10 sec → "X.yyys"
     if (interval < 10) {
-        return [NSString stringWithFormat:@"%@%0.3f sec",
-                negative ? @"-" : @"+",
-                interval];
+        return [NSString stringWithFormat:@"%@%0.3fs", sign, interval];
     }
 
-    // < 1 min → “X sec”
+    // < 1 min → "Xs"
     if (interval < 60) {
-        int sec = (int)interval;
-        return [NSString stringWithFormat:@"%@%d sec",
-                negative ? @"-" : @"+",
-                sec];
+        return [NSString stringWithFormat:@"%@%ds", sign, (int)interval];
     }
 
-    // < 1 hr → “X min”
+    // < 1 hr → "XmYs" (omit seconds if zero)
     if (interval < 3600) {
-        int mins = (int)(interval / 60);
-        return [NSString stringWithFormat:@"%@%d min",
-                negative ? @"-" : @"+",
-                mins];
+        int mins = (int)interval / 60;
+        int secs = (int)interval % 60;
+        if (secs == 0) {
+            return [NSString stringWithFormat:@"%@%dm", sign, mins];
+        }
+        return [NSString stringWithFormat:@"%@%dm%ds", sign, mins, secs];
     }
 
-    // < 1 day → “H:MM:SS”
+    // < 1 day → "XhYmZs" (omit zero components)
     if (interval < 86400) {
-        int hrs  = (int)(interval / 3600);
+        int hrs = (int)interval / 3600;
         int mins = ((int)interval % 3600) / 60;
         int secs = (int)interval % 60;
-        NSString *t = [NSString stringWithFormat:@"%d:%02d:%02d", hrs, mins, secs];
-        return negative ? [@"-" stringByAppendingString:t] : [@"+" stringByAppendingString:t];
+        NSMutableString *t = [NSMutableString stringWithFormat:@"%@%dh", sign, hrs];
+        if (mins > 0) {
+            [t appendFormat:@"%dm", mins];
+        }
+        if (secs > 0) {
+            [t appendFormat:@"%ds", secs];
+        }
+        return t;
     }
 
-    // ≥ 1 day → pick two largest non-zero of [yr, mon, wk, day, hr, min, sec]
+    // ≥ 1 day → pick two largest non-zero of [y, mo, w, d, h, m, s]
+    // "mo" is used for month to avoid colliding with "m" for minute.
     NSInteger secsInYr  = 31536000;  // 365 d
     NSInteger secsInMo  = 2592000;   // 30 d
     NSInteger secsInWk  = 604800;
@@ -175,19 +180,19 @@
         (rem % 3600) / 60,
         rem % 60
     };
-    const char *units[] = { "yr", "mon", "wk", "day", "hr", "min", "sec" };
+    const char *units[] = { "y", "mo", "w", "d", "h", "m", "s" };
 
-    NSMutableArray<NSString*> *comps = [NSMutableArray array];
-    for (int i = 0; i < 7; i++) {
+    NSMutableString *out = [NSMutableString string];
+    int components = 0;
+    for (int i = 0; i < 7 && components < 2; i++) {
         if (vals[i] > 0) {
-            [comps addObject:
-             [NSString stringWithFormat:@"%ld %s", (long)vals[i], units[i]]];
+            [out appendFormat:@"%ld%s", (long)vals[i], units[i]];
+            components++;
         }
-        if (comps.count == 2) break;
     }
-
-    NSString *out = comps.count > 0 ? ([comps componentsJoinedByString:@", "]) : @"0 sec";
-
-    return negative ? [@"-" stringByAppendingString:out] : [@"+" stringByAppendingString:out];
+    if (out.length == 0) {
+        [out appendString:@"0s"];
+    }
+    return [sign stringByAppendingString:out];
 }
 @end

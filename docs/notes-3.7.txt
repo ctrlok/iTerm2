@@ -105,6 +105,12 @@ New Features in Terminal Sessions:
 - Smooth-typing animation for underscore and
   vertical-bar cursors can be enabled in
   Settings > Profiles > Text.
+- Relative timestamps (set via the Set
+  Baseline for Relative Timestamps menu)
+  now use Go-style unit suffixes such as
+  +1m23s and +2h5m, giving sub-minute
+  precision in the 1m–1h range that was
+  previously rounded to whole minutes.
 
 Tabs, Windows, and UI:
 - The control-sequence-controlled progress
