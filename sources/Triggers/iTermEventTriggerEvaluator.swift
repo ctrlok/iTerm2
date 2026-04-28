@@ -45,7 +45,17 @@ class EventTriggerEvaluator: NSObject {
 
     @objc var triggerParametersUseInterpolatedStrings = false
     @objc var disabled = false
-    @objc var foregroundJobAncestors: [String]?
+    @objc var foregroundJobAncestors: [String]? {
+        didSet {
+            // Detect deltas in the foreground-job ancestry chain so
+            // job-started / job-ended event triggers can fire. The
+            // trigger.job filter (applied by fireTriggersForMatchType)
+            // selects which job name each trigger cares about; we
+            // just need to fire the event when ancestry membership
+            // for any job changes.
+            handleAncestorDelta(previous: oldValue, current: foregroundJobAncestors)
+        }
+    }
 
     /// Description of the owning session for logging purposes
     private let sessionDescription: String
@@ -173,6 +183,71 @@ class EventTriggerEvaluator: NSObject {
 
     @objc var hasCustomEscapeSequenceTrigger: Bool {
         return hasEnabledTrigger(for: .eventCustomEscapeSequence)
+    }
+
+    @objc var hasNotificationPostedTrigger: Bool {
+        return hasEnabledTrigger(for: .eventNotificationPosted)
+    }
+
+    @objc var hasProgressBarChangedTrigger: Bool {
+        return hasEnabledTrigger(for: .eventProgressBarChanged)
+    }
+
+    @objc var hasJobStartedTrigger: Bool {
+        return hasEnabledTrigger(for: .eventJobStarted)
+    }
+
+    @objc var hasJobEndedTrigger: Bool {
+        return hasEnabledTrigger(for: .eventJobEnded)
+    }
+
+    // Diff successive `foregroundJobAncestors` updates and fire
+    // jobStarted / jobEnded triggers for the difference. Membership
+    // comparison is case-insensitive (lowercased keys), but the
+    // capture passed to the trigger preserves the original case so
+    // a substitution like "Process \1 started" reads "Claude" not
+    // "claude".
+    private func handleAncestorDelta(previous: [String]?, current: [String]?) {
+        let previousLower = (previous ?? []).reduce(into: [String: String]()) {
+            $0[$1.lowercased()] = $1
+        }
+        let currentLower = (current ?? []).reduce(into: [String: String]()) {
+            $0[$1.lowercased()] = $1
+        }
+        let previousKeys = Set(previousLower.keys)
+        let currentKeys = Set(currentLower.keys)
+        guard previousKeys != currentKeys else { return }
+        for key in currentKeys.subtracting(previousKeys) {
+            let original = currentLower[key] ?? key
+            fireJobAncestryTriggers(matchType: .eventJobStarted,
+                                    job: original)
+        }
+        for key in previousKeys.subtracting(currentKeys) {
+            let original = previousLower[key] ?? key
+            fireJobAncestryTriggers(matchType: .eventJobEnded,
+                                    job: original)
+        }
+    }
+
+    // Fires the relevant triggers for a single newly-added or newly-
+    // removed job. Bypasses the ancestor-membership check inside
+    // fireTriggersForMatchType (the job has just left the chain in
+    // the .ended case, so that check would never match) and uses
+    // the trigger's own jobName param (the global trigger.job field
+    // is suppressed for these event types since it'd be redundant).
+    private func fireJobAncestryTriggers(matchType: iTermTriggerMatchType,
+                                         job: String) {
+        guard !disabled,
+              let triggers = eventTriggers[matchType] else { return }
+        let jobLower = job.lowercased()
+        for trigger in triggers where !trigger.disabled {
+            if let target = trigger.eventParams?["jobName"] as? String,
+               !target.isEmpty,
+               target.lowercased() != jobLower {
+                continue
+            }
+            fireTrigger(trigger, capturedStrings: [job])
+        }
     }
 
     private func hasEnabledTrigger(for matchType: iTermTriggerMatchType) -> Bool {
@@ -380,6 +455,51 @@ class EventTriggerEvaluator: NSObject {
         }
     }
 
+    /// Called when a notification is posted by a control sequence.
+    /// `messages` contains the decoded text values from the notification (e.g., title, message, subtitle).
+    /// The trigger fires if any of them matches the filter regex.
+    @objc func notificationPosted(messages: [String]) {
+        DLog("[\(sessionDescription)] Notification posted: \(messages)")
+        guard !disabled else {
+            DLog("[\(sessionDescription)] Disabled, skipping notification posted triggers")
+            return
+        }
+        guard let triggers = eventTriggers[.eventNotificationPosted] else {
+            DLog("[\(sessionDescription)] No notification posted triggers configured")
+            return
+        }
+
+        for trigger in triggers where !trigger.disabled {
+            if matchesNotificationMessageFilter(trigger: trigger, messages: messages) {
+                fireTrigger(trigger, capturedStrings: messages)
+            } else {
+                DLog("[\(sessionDescription)] Messages \(messages) did not match filter for trigger \(trigger.action)")
+            }
+        }
+    }
+
+    /// Called when the progress bar appears or disappears
+    /// - Parameter appeared: true if progress bar appeared, false if it disappeared
+    @objc func progressBarChanged(appeared: Bool) {
+        DLog("[\(sessionDescription)] Progress bar \(appeared ? "appeared" : "disappeared")")
+        guard !disabled else {
+            DLog("[\(sessionDescription)] Disabled, skipping progress bar changed triggers")
+            return
+        }
+        guard let triggers = eventTriggers[.eventProgressBarChanged] else {
+            DLog("[\(sessionDescription)] No progress bar changed triggers configured")
+            return
+        }
+
+        for trigger in triggers where !trigger.disabled {
+            if matchesProgressBarFilter(trigger: trigger, appeared: appeared) {
+                fireTrigger(trigger, capturedStrings: [appeared ? "appeared" : "disappeared"])
+            } else {
+                DLog("[\(sessionDescription)] Progress bar filter did not match for trigger \(trigger.action)")
+            }
+        }
+    }
+
     // MARK: - Timer Management
 
     private func invalidateAllTimers() {
@@ -580,6 +700,34 @@ class EventTriggerEvaluator: NSObject {
 
     private func matchesCommandFilter(trigger: Trigger, command: String) -> Bool {
         return matchesRegexParam(trigger: trigger, paramKey: "commandRegex", value: command)
+    }
+
+    private func matchesNotificationMessageFilter(trigger: Trigger, messages: [String]) -> Bool {
+        guard let pattern = trigger.eventParams?["messageRegex"] as? String, !pattern.isEmpty else {
+            return true
+        }
+        return messages.contains { matchesRegexParam(trigger: trigger, paramKey: "messageRegex", value: $0) }
+    }
+
+    private func matchesProgressBarFilter(trigger: Trigger, appeared: Bool) -> Bool {
+        guard let filter = trigger.eventParams?["progressBarFilter"] as? String else {
+            DLog("[\(sessionDescription)] No progress bar filter, matches by default")
+            return true
+        }
+
+        let matches: Bool
+        switch filter {
+        case "appeared":
+            matches = appeared
+        case "disappeared":
+            matches = !appeared
+        case "*", "":
+            matches = true
+        default:
+            matches = true
+        }
+        DLog("[\(sessionDescription)] Progress bar filter '\(filter)' \(matches ? "matches" : "does not match") appeared=\(appeared)")
+        return matches
     }
 }
 

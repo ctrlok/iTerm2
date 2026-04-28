@@ -2280,6 +2280,15 @@ launchCoprocessWithCommand:(NSString *)command
 }
 
 - (void)triggerSession:(Trigger *)trigger
+    enterWorkgroupWithIdentifier:(NSString *)workgroupUniqueIdentifier {
+    [self.delegate triggerSideEffectEnterWorkgroupWithIdentifier:workgroupUniqueIdentifier];
+}
+
+- (void)triggerSessionExitWorkgroup:(Trigger *)trigger {
+    [self.delegate triggerSideEffectExitWorkgroup];
+}
+
+- (void)triggerSession:(Trigger *)trigger
   showAlertWithMessage:(NSString *)message
              rateLimit:(iTermRateLimitedUpdate *)rateLimit
                disable:(void (^)(void))disable {

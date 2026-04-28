@@ -35,7 +35,29 @@ Major New Features:
 - Claude Code integration was added.
   This is still a work in progress as of 3.7.0beta1.
 
-- The new Fold All menu item folds everyting
+- Workgroups let you configure a session
+  to be transformed into a group of related
+  sessions — peers, split panes, or tabs —
+  each with its own toolbar. Configure
+  them in Settings > Shortcuts >
+  Workgroups. Still a work in progress.
+
+- Enter Workgroup and Exit Workgroup are
+  also available as URL-regex triggers on
+  browser profiles, so a navigation event
+  can change the active workgroup.
+
+- Workgroup sessions now have a Mode
+  setting. The new Code Review mode shows
+  an in-session prompt overlay with a Start
+  button before the program runs; the
+  entered text is exposed as the variable
+  codeReviewPrompt for swifty interpolation
+  in the command. The Claude Code
+  workgroup’s review peer uses this mode
+  by default.
+
+- The new Fold All menu item folds everything
   (aside from folds at the very top of history).
   This makes it easy to keep history around
   without it getting in the way.
@@ -282,6 +304,11 @@ Settings Improvements:
 - Special Exceptions has a new Add Preset
   button with common Unicode ranges such as
   Han, Hangul, and Cyrillic.
+- Profiles using a custom Command can now opt
+  to run the command through the user’s login
+  shell so dotfiles set $PATH and exported
+  variables (API keys, GEM_HOME, etc.) before
+  the command starts.
 
 Bug Fixes:
 - Fix the password-manager CLI picker
@@ -384,3 +411,16 @@ Bug Fixes:
   38:12:Rl:Gl:Bl:Rd:Gd:Bd m for 24-bit and
   CSI 38:13:Nl:Nd m for 256-color (and 48
   for backgrounds).
+- Fix tab graphic matching when the
+  foreground binary is a versioned symlink
+  target (e.g., claude → 2.1.121) by also
+  consulting argv0 and the command line,
+  and by walking up to a non-shell ancestor
+  when the deepest foreground job has no
+  icon match.
+- Sessions spawned by entering a workgroup
+  now receive an ITERM_WORKGROUP_ID
+  environment variable identifying the
+  workgroup entry, so external tools can
+  distinguish runs of the same workgroup
+  config.

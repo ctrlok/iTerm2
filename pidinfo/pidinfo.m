@@ -601,6 +601,7 @@ static const char *GetPathToSelf(void) {
 
 - (void)requestGitStateForPath:(NSString *)path
                        timeout:(int)timeout
+              includeDiffStats:(BOOL)includeDiffStats
                     completion:(void (^)(iTermGitState * _Nullable, BOOL timedOut))reply {
     // The git subprocess SIGKILLs itself at `timeout` seconds; give the wedge watchdog that long
     // plus a small grace for fork/XPC overhead so it doesn't fire before the subprocess can
@@ -624,7 +625,10 @@ static const char *GetPathToSelf(void) {
         if (pathToSelf) {
             free((void *)pathToSelf);
         }
-        task.arguments = @[ @"--git-state", path, [@(timeout) stringValue] ];
+        task.arguments = @[ @"--git-state",
+                            path,
+                            [@(timeout) stringValue],
+                            includeDiffStats ? @"1" : @"0" ];
         task.standardOutput = pipe;
         @try {
             [task launch];

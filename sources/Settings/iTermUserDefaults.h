@@ -38,6 +38,9 @@ typedef NS_ENUM(NSUInteger, iTermAppleWindowTabbingMode) {
 @property (class, nonatomic) BOOL haveBeenWarnedAboutTabDockSetting;
 @property (class, nonatomic) BOOL requireAuthenticationAfterScreenLocks;
 @property (class, nonatomic) BOOL openTmuxDashboardIfHiddenWindows;
+@property (class, nonatomic) BOOL claudeCodeWorkgroupUpsellSuppressed;
+@property (class, nonatomic) BOOL claudeCodeHooksInstalled;
+@property (class, nonatomic) BOOL claudeCodeTriggersInstalled;
 @property (class, nonatomic) BOOL haveExplainedHowToAddTouchbarControls;
 @property (class, nonatomic) BOOL ignoreSystemWindowRestoration;
 @property (class, nonatomic) NSUInteger globalSearchMode;
@@ -48,6 +51,7 @@ typedef NS_ENUM(NSUInteger, iTermAppleWindowTabbingMode) {
 @property (class, nonatomic, copy, nullable) NSString *importPath;
 @property (class, nonatomic) BOOL shouldSendReturnAfterPassword;
 @property (class, nonatomic, copy, nullable) NSDictionary<NSString *, NSNumber *> *windowCornerRadiusCache;
+@property (class, nonatomic, copy, nullable) NSData *workgroupsData;
 
 // Returns whether the previous process exited cleanly. The value is latched on
 // first access: the on-disk flag is read then immediately reset so that if this

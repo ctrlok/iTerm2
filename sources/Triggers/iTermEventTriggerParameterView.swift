@@ -39,6 +39,9 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
     private var hostRegexTextField: NSTextField?
     private var userRegexTextField: NSTextField?
     private var commandRegexTextField: NSTextField?
+    private var notificationMessageRegexTextField: NSTextField?
+    private var progressBarFilterPopup: NSPopUpButton?
+    private var jobNameTextField: NSTextField?
 
     // MARK: - Initialization
 
@@ -103,6 +106,9 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
         hostRegexTextField = nil
         userRegexTextField = nil
         commandRegexTextField = nil
+        notificationMessageRegexTextField = nil
+        progressBarFilterPopup = nil
+        jobNameTextField = nil
 
         // Add appropriate UI for this event type
         switch matchType {
@@ -120,6 +126,12 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
             addLongRunningCommandUI()
         case .eventCustomEscapeSequence:
             addSequenceIdUI()
+        case .eventNotificationPosted:
+            addNotificationMessageRegexUI()
+        case .eventProgressBarChanged:
+            addProgressBarFilterUI()
+        case .eventJobStarted, .eventJobEnded:
+            addJobNameUI()
         default:
             // No parameters needed for other event types
             addNoParametersLabel()
@@ -154,6 +166,26 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
         row.addArrangedSubview(popup)
         row.addArrangedSubview(textField)
         stackView.addArrangedSubview(row)
+    }
+
+    private func addJobNameUI() {
+        let row = createRow(label: "Job:")
+
+        let textField = NSTextField()
+        textField.translatesAutoresizingMaskIntoConstraints = false
+        textField.placeholderString = "claude"
+        textField.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        textField.delegate = self
+        jobNameTextField = textField
+
+        row.addArrangedSubview(textField)
+        stackView.addArrangedSubview(row)
+
+        let helpLabel = NSTextField(labelWithString: "Process name to match in the foreground-job ancestry chain (case-insensitive)")
+        helpLabel.translatesAutoresizingMaskIntoConstraints = false
+        helpLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        helpLabel.textColor = .secondaryLabelColor
+        stackView.addArrangedSubview(helpLabel)
     }
 
     private func addDirectoryRegexUI() {
@@ -209,6 +241,26 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
         stackView.addArrangedSubview(row)
 
         let helpLabel = NSTextField(labelWithString: "Regular expression to match the sequence identifier")
+        helpLabel.translatesAutoresizingMaskIntoConstraints = false
+        helpLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        helpLabel.textColor = .secondaryLabelColor
+        stackView.addArrangedSubview(helpLabel)
+    }
+
+    private func addNotificationMessageRegexUI() {
+        let row = createRow(label: "Message:")
+
+        let textField = NSTextField()
+        textField.translatesAutoresizingMaskIntoConstraints = false
+        textField.placeholderString = ".*"
+        textField.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        textField.delegate = self
+        notificationMessageRegexTextField = textField
+
+        row.addArrangedSubview(textField)
+        stackView.addArrangedSubview(row)
+
+        let helpLabel = NSTextField(labelWithString: "Regular expression to match the notification message")
         helpLabel.translatesAutoresizingMaskIntoConstraints = false
         helpLabel.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         helpLabel.textColor = .secondaryLabelColor
@@ -294,6 +346,20 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
         stackView.addArrangedSubview(helpLabel)
     }
 
+    private func addProgressBarFilterUI() {
+        let row = createRow(label: "Fire When:")
+
+        let popup = NSPopUpButton()
+        popup.translatesAutoresizingMaskIntoConstraints = false
+        popup.addItems(withTitles: ["Appears or Disappears", "Appears", "Disappears"])
+        popup.target = self
+        popup.action = #selector(progressBarFilterChanged(_:))
+        progressBarFilterPopup = popup
+
+        row.addArrangedSubview(popup)
+        stackView.addArrangedSubview(row)
+    }
+
     private func addNoParametersLabel() {
         let label = NSTextField(labelWithString: "No additional parameters required.")
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -322,6 +388,10 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
     @objc private func exitCodeFilterChanged(_ sender: NSPopUpButton) {
         let isSpecific = sender.indexOfSelectedItem == 3
         exitCodeTextField?.isHidden = !isSpecific
+        onParametersChanged?()
+    }
+
+    @objc private func progressBarFilterChanged(_ sender: NSPopUpButton) {
         onParametersChanged?()
     }
 
@@ -385,6 +455,12 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
         case .eventCustomEscapeSequence:
             params["sequenceId"] = sequenceIdTextField?.stringValue ?? ""
 
+        case .eventNotificationPosted:
+            let regex = notificationMessageRegexTextField?.stringValue ?? ""
+            if !regex.isEmpty {
+                params["messageRegex"] = regex
+            }
+
         case .eventDirectoryChanged:
             let regex = directoryRegexTextField?.stringValue ?? ""
             if !regex.isEmpty {
@@ -401,6 +477,26 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
             let regex = userRegexTextField?.stringValue ?? ""
             if !regex.isEmpty {
                 params["userRegex"] = regex
+            }
+
+        case .eventProgressBarChanged:
+            if let popup = progressBarFilterPopup {
+                switch popup.indexOfSelectedItem {
+                case 0:
+                    params["progressBarFilter"] = "*"
+                case 1:
+                    params["progressBarFilter"] = "appeared"
+                case 2:
+                    params["progressBarFilter"] = "disappeared"
+                default:
+                    params["progressBarFilter"] = "*"
+                }
+            }
+
+        case .eventJobStarted, .eventJobEnded:
+            let jobName = jobNameTextField?.stringValue ?? ""
+            if !jobName.isEmpty {
+                params["jobName"] = jobName
             }
 
         default:
@@ -449,6 +545,11 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
                 sequenceIdTextField?.stringValue = sequenceId
             }
 
+        case .eventNotificationPosted:
+            if let regex = params["messageRegex"] as? String {
+                notificationMessageRegexTextField?.stringValue = regex
+            }
+
         case .eventDirectoryChanged:
             if let regex = params["directoryRegex"] as? String {
                 directoryRegexTextField?.stringValue = regex
@@ -462,6 +563,25 @@ class EventTriggerParameterView: NSView, NSTextFieldDelegate {
         case .eventUserChanged:
             if let regex = params["userRegex"] as? String {
                 userRegexTextField?.stringValue = regex
+            }
+
+        case .eventProgressBarChanged:
+            if let filter = params["progressBarFilter"] as? String {
+                switch filter {
+                case "*", "":
+                    progressBarFilterPopup?.selectItem(at: 0)
+                case "appeared":
+                    progressBarFilterPopup?.selectItem(at: 1)
+                case "disappeared":
+                    progressBarFilterPopup?.selectItem(at: 2)
+                default:
+                    progressBarFilterPopup?.selectItem(at: 0)
+                }
+            }
+
+        case .eventJobStarted, .eventJobEnded:
+            if let jobName = params["jobName"] as? String {
+                jobNameTextField?.stringValue = jobName
             }
 
         default:
@@ -500,6 +620,14 @@ class EventTriggerMatchTypeHelper: NSObject {
             return "Long-Running Command"
         case .eventCustomEscapeSequence:
             return "Custom Escape Sequence"
+        case .eventNotificationPosted:
+            return "Notification Posted"
+        case .eventProgressBarChanged:
+            return "Progress Bar Changed"
+        case .eventJobStarted:
+            return "Job Started"
+        case .eventJobEnded:
+            return "Job Ended"
         default:
             return "Unknown Event"
         }
@@ -530,6 +658,14 @@ class EventTriggerMatchTypeHelper: NSObject {
             return "Fires when a command runs longer than the threshold."
         case .eventCustomEscapeSequence:
             return "Fires when a specific OSC escape sequence is received."
+        case .eventNotificationPosted:
+            return "Fires when a notification is posted by a control sequence (OSC 9)."
+        case .eventProgressBarChanged:
+            return "Fires when a progress bar appears or disappears."
+        case .eventJobStarted:
+            return "Fires when a process matching the job filter enters the foreground-job ancestry chain."
+        case .eventJobEnded:
+            return "Fires when a process matching the job filter leaves the foreground-job ancestry chain."
         default:
             return ""
         }
@@ -548,7 +684,11 @@ class EventTriggerMatchTypeHelper: NSObject {
             NSNumber(value: iTermTriggerMatchType.eventSessionEnded.rawValue),
             NSNumber(value: iTermTriggerMatchType.eventBellReceived.rawValue),
             NSNumber(value: iTermTriggerMatchType.eventLongRunningCommand.rawValue),
-            NSNumber(value: iTermTriggerMatchType.eventCustomEscapeSequence.rawValue)
+            NSNumber(value: iTermTriggerMatchType.eventCustomEscapeSequence.rawValue),
+            NSNumber(value: iTermTriggerMatchType.eventNotificationPosted.rawValue),
+            NSNumber(value: iTermTriggerMatchType.eventProgressBarChanged.rawValue),
+            NSNumber(value: iTermTriggerMatchType.eventJobStarted.rawValue),
+            NSNumber(value: iTermTriggerMatchType.eventJobEnded.rawValue)
         ]
     }
 

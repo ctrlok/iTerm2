@@ -161,6 +161,7 @@ NSString *iTermNamespaceFromSignature(NSString *signature) {
 }
 
 + (void)registerStandardFunctions {
+    [iTermAddClippingBuiltInFunction registerBuiltInFunction];
     [iTermArrayCountBuiltInFunction registerBuiltInFunction];
     [iTermAlertBuiltInFunction registerBuiltInFunction];
     [iTermGetStringBuiltInFunction registerBuiltInFunction];
@@ -173,6 +174,7 @@ NSString *iTermNamespaceFromSignature(NSString *signature) {
     [iTermGetProfilePropertyBuiltInFunction registerBuiltInFunction];
     [iTermURLEncodeBuiltInFunction registerBuiltInFunction];
     [iTermTmuxFormatBuiltInFunction registerBuiltInFunction];
+    [iTermSetStatusBuiltInFunction registerBuiltInFunction];
 }
 
 + (instancetype)sharedInstance {

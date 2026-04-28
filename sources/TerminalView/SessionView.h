@@ -48,6 +48,7 @@
 @protocol PSMPUAFontProvider;
 @protocol iTermSearchResultsMinimapViewDelegate;
 @class iTermSearchResultsMinimapView;
+@class iTermSessionToolbarItem;
 @class PTYSession;
 @class iTermSessionNoteModel;
 @class SplitSelectionView;
@@ -225,6 +226,10 @@ typedef NS_ENUM(NSUInteger, iTermSessionViewFindDriver) {
 // bar or bottom per-pane status bar.
 @property(nonatomic, readonly) NSEdgeInsets extraMargins;
 @property (nonatomic) CGFloat actualRightExtra;
+// Subset of actualRightExtra that is reserved for right-gutter panel views
+// (the rest is the timestamp slot, if any). Used to position timestamps at
+// the inner edge of the panel area.
+@property (nonatomic) CGFloat actualPanelReservation;
 @property (nonatomic, readonly) BOOL isBrowser;
 @property (nonatomic) VT100ScreenProgress progress;
 @property (nonatomic) BOOL enableProgressBars;
@@ -234,6 +239,11 @@ typedef NS_ENUM(NSUInteger, iTermSessionViewFindDriver) {
 @property (nonatomic, readonly, nullable) SessionTitleView *title;
 @property (nonatomic) NSSize savedSize;
 
+// Returns YES if the toolbar's presence changed (meaning the session's usable
+// height changed and the tab should refit).
+- (BOOL)setToolbarItems:(NSArray<iTermSessionToolbarItem *> * _Nullable)toolbarItems;
+- (void)moveToolbarTo:(SessionView *)other;
+- (void)layoutContentsForNewlyActiveSession;
 - (void)setBrowserViewController:(iTermBrowserViewController *)browserViewController
                       initialURL:(nullable NSString *)initialURL
                  restorableState:(nullable NSDictionary *)restorableState NS_AVAILABLE_MAC(11_0);
