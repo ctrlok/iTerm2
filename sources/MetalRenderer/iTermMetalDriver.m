@@ -26,6 +26,7 @@
 #import "iTermMetalFrameData.h"
 #import "iTermMarkRenderer.h"
 #import "iTermMetalRowData.h"
+#import "iTermCommandLineBackgroundRenderer.h"
 #import "iTermOffscreenCommandLineBackgroundRenderer.h"
 #import "iTermPreciseTimer.h"
 #import "iTermPreferences.h"
@@ -112,6 +113,7 @@ typedef struct {
     iTermBackgroundImageRenderer *_backgroundImageRenderer;
     iTermBackgroundColorRenderer *_backgroundColorRenderer;
     iTermOffscreenCommandLineBackgroundRenderer *_offscreenCommandLineBackgroundRenderer;
+    iTermCommandLineBackgroundRenderer *_commandLineBackgroundRenderer;
     iTermTextRenderer *_textRenderer;
     iTermOffscreenCommandLineTextRenderer *_offscreenCommandLineTextRenderer;
     iTermOffscreenCommandLineBackgroundColorRenderer *_offscreenCommandLineBackgroundColorRenderer;
@@ -211,6 +213,7 @@ typedef struct {
         _offscreenCommandLineBackgroundColorRenderer = [[iTermOffscreenCommandLineBackgroundColorRenderer alloc] initWithDevice:device];
         _backgroundColorRenderer = [[iTermBackgroundColorRenderer alloc] initWithDevice:device];
         _offscreenCommandLineBackgroundRenderer = [[iTermOffscreenCommandLineBackgroundRenderer alloc] initWithDevice:device];
+        _commandLineBackgroundRenderer = [[iTermCommandLineBackgroundRenderer alloc] initWithDevice:device];
         _arrowStyleMarkRenderer = [[iTermMarkRenderer alloc] initWithDevice:device];
         _lineStyleMarkRenderer = [[iTermLineStyleMarkRenderer alloc] initWithDevice:device];
         _badgeRenderer = [[iTermBadgeRenderer alloc] initWithDevice:device];
@@ -1703,12 +1706,46 @@ legacyScrollbarWidth:(unsigned int)legacyScrollbarWidth
     }
 }
 
+- (void)_populateCommandLineBackgroundRendererWithFrameData:(iTermMetalFrameData *)frameData {
+    if (_commandLineBackgroundRenderer.rendererDisabled) {
+        return;
+    }
+    iTermCommandLineBackgroundRendererTransientState *tState =
+        [frameData transientStateForRenderer:_commandLineBackgroundRenderer];
+    NSIndexSet *absLines = frameData.perFrameState.pastCommandAbsLines;
+    if (!absLines.count) {
+        tState.shouldDraw = NO;
+        return;
+    }
+    // Convert absolute line numbers to viewport-local row indices (0 = topmost
+    // visible row). Recomputing per frame is what makes the tint scroll-correct.
+    const long long firstAbs = frameData.perFrameState.firstVisibleAbsoluteLineNumber;
+    const NSInteger height = frameData.gridSize.height;
+    NSMutableIndexSet *rows = [NSMutableIndexSet indexSet];
+    [absLines enumerateIndexesUsingBlock:^(NSUInteger absLine, BOOL *stop) {
+        const long long delta = (long long)absLine - firstAbs;
+        if (delta < 0 || delta >= height) {
+            return;
+        }
+        [rows addIndex:(NSUInteger)delta];
+    }];
+    if (rows.count == 0) {
+        tState.shouldDraw = NO;
+        return;
+    }
+    tState.shouldDraw = YES;
+    tState.rowIndices = rows;
+    tState.tintColor = frameData.perFrameState.commandLineBackgroundColor;
+    tState.rowHeight = frameData.cellSize.height;
+}
+
 - (void)populateTextAndBackgroundRenderersTransientStateWithFrameData:(iTermMetalFrameData *)frameData {
     if (_textRenderer.rendererDisabled && _backgroundColorRenderer.rendererDisabled) {
         return;
     }
 
     [self _populateOffscreenCommandLineBackgroundRendererWithFrameData:frameData];
+    [self _populateCommandLineBackgroundRendererWithFrameData:frameData];
 
     // Initialize span data for multi-pass underline rendering.
     frameData.hasUnderlines = NO;
@@ -2366,6 +2403,13 @@ extraIdentifyingInfoForIcon:button.extraIdentifyingInfoForIcon];
                  frameData:frameData
                       stat:iTermMetalFrameDataStatPqEnqueueDrawBackgroundColor];
 
+    // Draw the per-command tint OVER per-cell backgrounds so cells with the
+    // default background show the tint. Cells with an explicit bg get partially
+    // tinted by the alpha.
+    [self drawRenderer:_commandLineBackgroundRenderer
+             frameData:frameData
+                  stat:iTermMetalFrameDataStatPqEnqueueDrawOffscreenCommandLineBg];
+
     _kittyImageRenderer.minZ = -1073741824;
     _kittyImageRenderer.maxZ = 0;
     [self drawCellRenderer:_kittyImageRenderer
@@ -2674,6 +2718,7 @@ extraIdentifyingInfoForIcon:button.extraIdentifyingInfoForIcon];
     // Always include _copyToDrawableRenderer for deferred drawable support.
     return @[ _backgroundImageRenderer,
               _offscreenCommandLineBackgroundRenderer,
+              _commandLineBackgroundRenderer,
               _badgeRenderer,
               _copyBackgroundRenderer,
               _underlineCompositeRenderer,

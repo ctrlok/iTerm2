@@ -468,6 +468,9 @@ static CGFloat iTermTextDrawingHelperAlphaValueForDefaultBackgroundColor(BOOL ha
                                                   drawingMode:iTermBackgroundDrawingModeDefault
                                                 virtualOffset:virtualOffset];
     }
+
+    // Per-line command tint is now applied inside drawBackgroundRunArrays:
+    // immediately after each line's per-cell backgrounds are drawn.
     // Negative z-index values mean that the images will be drawn under the text. This allows
     // rendering of text on top of images.
     // NOTE: The spec doesn't match Kitty, where z=0 is also drawn under the text.
@@ -606,6 +609,11 @@ static CGFloat iTermTextDrawingHelperAlphaValueForDefaultBackgroundColor(BOOL ha
     NSColor *cursorBackgroundColor = nil;
     NSColor *defaultColor = [self colorForMarginsUsingDominant:NO];
     const BOOL extend = [iTermAdvancedSettingsModel extendBackgroundColorIntoMargins] && self.softAlternateScreenMode;
+    const BOOL tintPastCommands = ([iTermAdvancedSettingsModel highlightAllCommandLines] &&
+                                   _pastCommandAbsLines.count > 0 &&
+                                   drawingMode != iTermBackgroundDrawingModeOnlyTransparent);
+    NSColor *tintColor = tintPastCommands ? [self commandLineBackgroundTintColor] : nil;
+    const CGFloat tintWidth = _scrollViewDocumentVisibleRect.size.width;
     for (NSInteger i = 0; i < backgroundRunArrays.count; ) {
         iTermBackgroundColorRunsInLine *runArray = backgroundRunArrays[i];
         NSInteger rows = runArray.numberOfEquivalentRows;
@@ -625,6 +633,35 @@ static CGFloat iTermTextDrawingHelperAlphaValueForDefaultBackgroundColor(BOOL ha
                      equivalentRows:rows
                         drawingMode:drawingMode
                       virtualOffset:virtualOffset];
+
+        if (tintPastCommands && tintColor) {
+            // Per-line tint overlay. We loop because rows may have been coalesced
+            // across non-tinted lines is impossible (coalescing requires same bg
+            // runs and same fold state — but to be safe we iterate each line).
+            for (NSInteger j = i; j < MIN(i + rows, backgroundRunArrays.count); j++) {
+                iTermBackgroundColorRunsInLine *thisRow = backgroundRunArrays[j];
+                const long long absLine = (long long)thisRow.line + _totalScrollbackOverflow;
+                if (![_pastCommandAbsLines containsIndex:(NSUInteger)absLine]) {
+                    continue;
+                }
+                // Skip lines inside the selected command region — the dim-others
+                // code already paints those.
+                if (_selectedCommandRegion.length > 0 &&
+                    NSLocationInRange(thisRow.line, _selectedCommandRegion)) {
+                    continue;
+                }
+                // Extend a few pixels past the cell so font descenders aren't
+                // left untinted. Only extend when the next line isn't also
+                // tinted, otherwise consecutive rows would double-blend.
+                const BOOL nextRowTinted = [_pastCommandAbsLines containsIndex:(NSUInteger)(absLine + 1)];
+                const CGFloat extra = nextRowTinted ? 0.0 : 8.0;
+                const NSRect rect = NSMakeRect(0, thisRow.y, tintWidth, _cellSize.height + extra);
+                [self drawBackgroundColor:tintColor
+                                   inRect:rect
+                           enableBlending:YES
+                            virtualOffset:virtualOffset];
+            }
+        }
 
         for (NSInteger j = i; j < MIN(i + rows, backgroundRunArrays.count); j++) {
             NSColor *leftColor = (!extend || runArray.array[0].isDefault) ? defaultColor : runArray.array[0].backgroundColor;
@@ -997,6 +1034,26 @@ const CGFloat commandRegionOutlineThickness = 2.0;
         return [NSColor colorWithDisplayP3Red:1 green:1 blue:1 alpha:alpha];
     }
     return [NSColor colorWithDisplayP3Red:0 green:0 blue:0 alpha:alpha];
+}
+
+- (NSColor *)commandLineBackgroundTintColor {
+    // Match the offscreen-command-line indicator's dim formula, but compute
+    // it against the theme bg with transparency stripped, then pre-blend at
+    // the user's alpha and return opaque. This way the tint color stays the
+    // same regardless of terminal transparency — drawing opaquely over a
+    // transparent bg keeps the desktop from bleeding through past commands.
+    NSColor *themeBg = [[self defaultBackgroundColor] colorWithAlphaComponent:1.0];
+    NSColor *dimmed;
+    if ([themeBg isDark]) {
+        dimmed = [themeBg it_colorByDimmingByAmount:0.7];
+    } else {
+        dimmed = [themeBg it_colorByDimmingByAmount:0.1];
+    }
+    // 0.5 matches the offscreen-command-line indicator's hard-coded alpha.
+    const CGFloat alpha = 0.5;
+    // [a blendedWithColor:b weight:w] = (1-w)*a + w*b. We want
+    // alpha*dimmed + (1-alpha)*themeBg, i.e. weight = 1 - alpha.
+    return [dimmed blendedWithColor:themeBg weight:1.0 - alpha];
 }
 
 - (void)drawShadeOverNonSelectedCommands:(CGFloat)virtualOffset {

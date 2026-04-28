@@ -105,6 +105,11 @@ NS_CLASS_AVAILABLE(10_11, NA)
 @property (nonatomic, readonly) BOOL hasSelectedCommand;
 @property (nonatomic, readonly) VT100GridRect selectedCommandRect;
 @property (nonatomic, readonly) NSRange selectedCommandRegion;  // absolute line numbers
+// Absolute line numbers of past commands whose backgrounds should be tinted.
+// The renderer converts these to viewport rows per frame for scroll-correctness.
+@property (nonatomic, readonly, nullable) NSIndexSet *pastCommandAbsLines;
+// Premultiplied tint color for command-line background.
+@property (nonatomic, readonly) vector_float4 commandLineBackgroundColor;
 @property (nonatomic, readonly) BOOL forceRegularBottomMargin;
 @property (nonatomic, readonly) const vector_float4 *selectedCommandOutlineColors;  // array of length 2
 @property (nonatomic, readonly) long long totalScrollbackOverflow;

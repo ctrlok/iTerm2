@@ -564,6 +564,7 @@ DEFINE_STRING(nativeRenderingCSSDark, @"", SECTION_DRAWING @"Path to CSS file to
 DEFINE_BOOL(supportPowerlineExtendedSymbols, YES, SECTION_DRAWING @"Include extended symbols when drawing Powerline natively.");
 DEFINE_BOOL(alwaysUseLineStyleMarks, NO, SECTION_DRAWING @"Always use line-style marks?");
 DEFINE_FLOAT(alphaForDeselectedCommandShade, 0.25, SECTION_DRAWING @"Alpha value for shade that covers areas outside the currently selected command.");
+DEFINE_BOOL(highlightAllCommandLines, NO, SECTION_DRAWING @"Tint background of every executed command line.");
 DEFINE_BOOL(showURLPreviewForSemanticHistory, YES, SECTION_DRAWING @"Show URL preview on cmd-hover for semantic history matches.");
 DEFINE_FLOAT(cursorAnimationMinDistance, 150.0, SECTION_DRAWING @"When animated cursor movement is enabled, only perform animation if the cursor moves at least this distance in points.");
 DEFINE_FLOAT(cursorSmearAnimationDuration, 0.1, SECTION_DRAWING @"Duration in seconds for the “Animate large movements” cursor animation.");

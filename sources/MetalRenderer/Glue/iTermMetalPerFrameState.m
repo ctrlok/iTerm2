@@ -519,6 +519,22 @@ typedef struct {
                             a);
 }
 
+- (nullable NSIndexSet *)pastCommandAbsLines {
+    return _configuration->_pastCommandAbsLines;
+}
+
+- (vector_float4)commandLineBackgroundColor {
+    NSColor *c = _configuration->_commandLineBackgroundColor;
+    if (!c) {
+        return simd_make_float4(0, 0, 0, 0);
+    }
+    const float a = (float)c.alphaComponent;
+    return simd_make_float4((float)c.redComponent * a,
+                            (float)c.greenComponent * a,
+                            (float)c.blueComponent * a,
+                            a);
+}
+
 - (VT100GridRange)linesToSuppressDrawing {
     return _linesToSuppressDrawing;
 }

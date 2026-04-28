@@ -108,6 +108,12 @@ NS_ASSUME_NONNULL_BEGIN
     NSColor *_offscreenCommandLineBackgroundColor;
     NSColor *_offscreenCommandLineOutlineColor;
 
+    // Command line backgrounds (every executed command).
+    // Absolute line numbers; the renderer converts to viewport-local rows
+    // each frame so scrolling doesn't pin the tint.
+    NSIndexSet *_pastCommandAbsLines;
+    NSColor *_commandLineBackgroundColor;
+
     // Selected command (absolute lines)
     NSRange _selectedCommandRegion;
 

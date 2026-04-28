@@ -1885,6 +1885,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
         helper.pointsOnBottomToSuppressDrawing = 0;
         helper.forceRegularBottomMargin = NO;
         helper.selectedCommandRegion = NSMakeRange(NSNotFound, 0);
+        helper.pastCommandAbsLines = nil;
         helper.folds = nil;
         helper.rightExtra = 0;
         helper.highlightedBlockLineRange = NSMakeRange(NSNotFound, 0);
@@ -1931,6 +1932,8 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
         helper.selectedCommandRegion = [self relativeRangeFromAbsLineRange:self.findOnPageHelper.absLineRange];
         const VT100GridRange range = [self rangeOfVisibleLines];
         helper.folds = [self.dataSource foldsInRange:range];
+        helper.pastCommandAbsLines = [self computePastCommandAbsLinesInVisibleRange:range
+                                                                              folds:helper.folds];
         helper.rightExtra = self.delegate.textViewRightExtra;
         helper.highlightedBlockLineRange = _hoverBlockFoldButton ? [self relativeRangeFromAbsLineRange:_hoverBlockFoldButton.absLineRange] : NSMakeRange(NSNotFound, 0);
         helper.timestampBaseline = _timestampBaseline;
@@ -2014,6 +2017,82 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
     first = MAX(0, first);
     last = MAX(first, last);
     return NSMakeRange(first, last - first);
+}
+
+// Returns an NSIndexSet of absolute line numbers belonging to past (executed,
+// non-running) commands whose backgrounds should be tinted. The set is built
+// once per frame and used for per-line lookup in both pipelines, so it remains
+// correct when the view is scrolled mid-frame.
+//
+// We start from mark.commandRange.start.y (the typed-command's first line, not
+// the prompt) and include through commandRange.end.y inclusive. Lines that fall
+// inside fully-folded ranges are excluded; lines covered by the
+// selectedCommandRegion are kept here (the per-line draw filters them out so
+// the dim-others code can paint them).
+- (NSIndexSet *)computePastCommandAbsLinesInVisibleRange:(VT100GridRange)visibleRange
+                                                   folds:(NSIndexSet *)folds {
+    if (![iTermAdvancedSettingsModel highlightAllCommandLines]) {
+        return nil;
+    }
+    if (visibleRange.length <= 0) {
+        return nil;
+    }
+    const long long offset = _dataSource.totalScrollbackOverflow;
+    const NSRange absLineRange = NSMakeRange((NSUInteger)(visibleRange.location + offset),
+                                             (NSUInteger)visibleRange.length);
+    id<VT100ScreenMarkReading> mark = [self.dataSource firstCommandMarkWithCommandInRange:absLineRange];
+    if (!mark) {
+        // A command may start before the visible range and extend into it.
+        mark = [self.dataSource commandMarkAtOrBeforeLine:visibleRange.location];
+    }
+    NSMutableIndexSet *result = [NSMutableIndexSet indexSet];
+    const long long visibleEndAbs = (long long)NSMaxRange(absLineRange);
+    while (mark) {
+        if (mark.command.length > 0) {
+            // Use outputStart.y as the half-open end: in the shell-integration
+            // path commandRange.end.y is post-Enter cursor (one row past the
+            // typed text); outputStart.y agrees with where output actually
+            // starts, so it's correct in both that path and auto-composer.
+            const VT100GridAbsCoordRange absRange = mark.commandRange;
+            const long long absStart = absRange.start.y;
+            const long long absEnd = (long long)mark.outputStart.y;
+            if (absEnd <= absStart) {
+                mark = [self.dataSource screenMarkAfterScreenMark:mark];
+                continue;
+            }
+            if (absEnd <= (long long)absLineRange.location) {
+                mark = [self.dataSource screenMarkAfterScreenMark:mark];
+                continue;
+            }
+            if (absStart >= visibleEndAbs) {
+                break;
+            }
+            // Clip to visible range so the indexset stays small.
+            const long long clipStart = MAX(absStart, (long long)absLineRange.location);
+            const long long clipEnd = MIN(absEnd, visibleEndAbs);
+            if (clipEnd > clipStart) {
+                NSRange absSubrange = NSMakeRange((NSUInteger)clipStart,
+                                                  (NSUInteger)(clipEnd - clipStart));
+                if (folds.count > 0) {
+                    // Folds are in local line numbers; convert to absolute.
+                    const NSRange localRange = NSMakeRange((NSUInteger)(clipStart - offset),
+                                                            absSubrange.length);
+                    NSMutableIndexSet *foldedAbs = [NSMutableIndexSet indexSet];
+                    [folds enumerateRangesInRange:localRange
+                                          options:0
+                                       usingBlock:^(NSRange r, BOOL *stop) {
+                        [foldedAbs addIndexesInRange:NSMakeRange(r.location + (NSUInteger)offset, r.length)];
+                    }];
+                    [result addIndexesInRange:absSubrange];
+                    [result removeIndexes:foldedAbs];
+                } else {
+                    [result addIndexesInRange:absSubrange];
+                }
+            }
+        }
+        mark = [self.dataSource screenMarkAfterScreenMark:mark];
+    }
+    return [result copy];
 }
 
 - (NSPoint)currentMouseCursorCoordinate:(out BOOL *)validPtr {

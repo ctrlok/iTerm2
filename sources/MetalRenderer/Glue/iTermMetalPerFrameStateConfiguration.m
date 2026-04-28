@@ -158,6 +158,12 @@ static vector_float4 VectorForColor(NSColor *color) {
         _offscreenCommandLineOutlineColor = [textView.drawingHelper.offscreenCommandLineOutlineColor colorUsingColorSpace:_colorSpace];
     }
 
+    // Command-line background tint (every executed command).
+    if (drawingHelper.pastCommandAbsLines.count > 0) {
+        _pastCommandAbsLines = [drawingHelper.pastCommandAbsLines copy];
+        _commandLineBackgroundColor = [drawingHelper.commandLineBackgroundTintColor colorUsingColorSpace:_colorSpace];
+    }
+
     _selectedCommandRegion = drawingHelper.selectedCommandRegion;
     _selectedCommandRegion.location += drawingHelper.totalScrollbackOverflow;
     _totalScrollbackOverflow = drawingHelper.totalScrollbackOverflow;

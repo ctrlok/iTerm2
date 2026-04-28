@@ -1619,6 +1619,7 @@
 		A62A79B42F98835A007CAA0B /* iTermImageRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = A62A79942F98835A007CAA0B /* iTermImageRenderer.m */; };
 		A62A79B52F98835A007CAA0B /* iTermTextRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A62A799F2F98835A007CAA0B /* iTermTextRenderer.mm */; };
 		A62A79B62F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = A62A799D2F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.m */; };
+		C71E0001310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = C71E0003310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.m */; };
 		A62A79B72F98835A007CAA0B /* iTermTimestampsRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = A62A79A82F98835A007CAA0B /* iTermTimestampsRenderer.m */; };
 		A62A79B82F98835A007CAA0B /* iTermCursorRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = A62A798D2F98835A007CAA0B /* iTermCursorRenderer.m */; };
 		A62A79B92F98835A007CAA0B /* iTermLineStyleMarkRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = A62A79982F98835A007CAA0B /* iTermLineStyleMarkRenderer.m */; };
@@ -1663,6 +1664,7 @@
 		A62A79E02F98835A007CAA0B /* iTermTexturePageCollection.h in Headers */ = {isa = PBXBuildFile; fileRef = A62A79A52F98835A007CAA0B /* iTermTexturePageCollection.h */; };
 		A62A79E12F98835A007CAA0B /* iTermBadgeRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = A62A79842F98835A007CAA0B /* iTermBadgeRenderer.h */; };
 		A62A79E22F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = A62A799C2F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.h */; };
+		C71E0002310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.h in Headers */ = {isa = PBXBuildFile; fileRef = C71E0004310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.h */; };
 		A62A79FD2F98838F007CAA0B /* TerminalButton.metal in Sources */ = {isa = PBXBuildFile; fileRef = A62A79F92F98838F007CAA0B /* TerminalButton.metal */; };
 		A62A79FE2F98838F007CAA0B /* UnderlineComposite.metal in Sources */ = {isa = PBXBuildFile; fileRef = A62A79FB2F98838F007CAA0B /* UnderlineComposite.metal */; };
 		A62A79FF2F98838F007CAA0B /* iTermBroadcastStripes.metal in Sources */ = {isa = PBXBuildFile; fileRef = A62A79E72F98838F007CAA0B /* iTermBroadcastStripes.metal */; };
@@ -7001,6 +7003,8 @@
 		A62A799B2F98835A007CAA0B /* iTermMarkRenderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = iTermMarkRenderer.m; sourceTree = "<group>"; };
 		A62A799C2F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iTermOffscreenCommandLineBackgroundRenderer.h; sourceTree = "<group>"; };
 		A62A799D2F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = iTermOffscreenCommandLineBackgroundRenderer.m; sourceTree = "<group>"; };
+		C71E0003310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = iTermCommandLineBackgroundRenderer.m; sourceTree = "<group>"; };
+		C71E0004310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iTermCommandLineBackgroundRenderer.h; sourceTree = "<group>"; };
 		A62A799E2F98835A007CAA0B /* iTermTextRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iTermTextRenderer.h; sourceTree = "<group>"; };
 		A62A799F2F98835A007CAA0B /* iTermTextRenderer.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = iTermTextRenderer.mm; sourceTree = "<group>"; };
 		A62A79A02F98835A007CAA0B /* iTermTextRendererCommon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iTermTextRendererCommon.h; sourceTree = "<group>"; };
@@ -11499,6 +11503,8 @@
 				A62A799B2F98835A007CAA0B /* iTermMarkRenderer.m */,
 				A62A799C2F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.h */,
 				A62A799D2F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.m */,
+				C71E0004310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.h */,
+				C71E0003310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.m */,
 				A62A799E2F98835A007CAA0B /* iTermTextRenderer.h */,
 				A62A799F2F98835A007CAA0B /* iTermTextRenderer.mm */,
 				A62A79A02F98835A007CAA0B /* iTermTextRendererCommon.h */,
@@ -16583,6 +16589,7 @@
 				A62A79E02F98835A007CAA0B /* iTermTexturePageCollection.h in Headers */,
 				A62A79E12F98835A007CAA0B /* iTermBadgeRenderer.h in Headers */,
 				A62A79E22F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.h in Headers */,
+				C71E0002310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.h in Headers */,
 				5378FA40224DAE4700CA2B2D /* iTermPreferencesSearch.h in Headers */,
 				A656674F219EA46E005FE60E /* NSNumber+iTerm.h in Headers */,
 				A6EC936F24E787BA00EEADEF /* iTermSnippetsModel.h in Headers */,
@@ -19606,6 +19613,7 @@
 				A62A79B42F98835A007CAA0B /* iTermImageRenderer.m in Sources */,
 				A62A79B52F98835A007CAA0B /* iTermTextRenderer.mm in Sources */,
 				A62A79B62F98835A007CAA0B /* iTermOffscreenCommandLineBackgroundRenderer.m in Sources */,
+				C71E0001310B0001000CAA0B /* iTermCommandLineBackgroundRenderer.m in Sources */,
 				A62A79B72F98835A007CAA0B /* iTermTimestampsRenderer.m in Sources */,
 				A62A79B82F98835A007CAA0B /* iTermCursorRenderer.m in Sources */,
 				A62A79B92F98835A007CAA0B /* iTermLineStyleMarkRenderer.m in Sources */,

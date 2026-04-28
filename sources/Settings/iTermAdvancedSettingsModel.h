@@ -67,6 +67,7 @@ extern NSString *const iTermAdvancedSettingsDidChange;
 + (BOOL)alwaysUseLineStyleMarks;
 + (BOOL)alwaysUseStatusBarComposer;
 + (double)alphaForDeselectedCommandShade;
++ (BOOL)highlightAllCommandLines;
 #if DEBUG
 + (NSString *)alternateSSHIntegrationScript;
 #endif

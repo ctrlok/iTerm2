@@ -345,6 +345,7 @@ extern const CGFloat iTermCursorGuideAlphaThreshold;
 @property (nonatomic, strong) iTermOffscreenCommandLine *offscreenCommandLine;
 @property (nonatomic, readonly) NSRect offscreenCommandLineFrame;
 @property (nonatomic, readonly) NSColor *offscreenCommandLineBackgroundColor;
+@property (nonatomic, readonly) NSColor *commandLineBackgroundTintColor;
 @property (nonatomic, readonly) NSColor *offscreenCommandLineOutlineColor;
 @property (nonatomic) BOOL useSelectedTextColor;
 @property (nonatomic, strong) iTermFontTable *fontTable;
@@ -352,6 +353,10 @@ extern const CGFloat iTermCursorGuideAlphaThreshold;
 @property (nonatomic) CGFloat pointsOnBottomToSuppressDrawing;
 // NOTE: This is a relative line range.
 @property (nonatomic) NSRange selectedCommandRegion;
+// Set of absolute line numbers belonging to past (executed, non-running) commands
+// whose backgrounds should be tinted. Used when highlightAllCommandLines is enabled.
+// Recomputed per frame by PTYTextView; scroll-correct because we look up by absolute line.
+@property (nonatomic, copy) NSIndexSet *pastCommandAbsLines;
 @property (nonatomic) BOOL selectedCommandHasLineStyleMarks;
 @property (nonatomic) BOOL forceRegularBottomMargin;
 @property (nonatomic, readonly) NSArray<NSColor *> *selectedCommandOutlineColors;
