@@ -21,7 +21,7 @@ final class WorkgroupEntryTests: WorkgroupEntryTestBase {
     func test_1_1_toolbarItemCountMatchesConfig() {
         let wg = WGFix.wgRootWithPeers(n: 2,
                                        rootItems: [.modeSwitcher, .reload],
-                                       peerItems: [.modeSwitcher, .reload, .settings])
+                                       peerItems: [.modeSwitcher, .reload])
         enterWorkgroup(wg)
         XCTAssertNotNil(instance)
         for cfg in wg.sessions {
@@ -37,9 +37,14 @@ final class WorkgroupEntryTests: WorkgroupEntryTestBase {
         }
     }
 
-    // §1.2 — order of returned views matches config order.
+    // §1.2 — order of returned views matches config order. The
+    // navigation cluster + standalone reload only render alongside a
+    // changed-file selector (the build-time guard drops .navigation
+    // otherwise), so the input list seeds one. .modeSwitcher is in
+    // the list so the auto-injection of .name is suppressed (it
+    // would prepend otherwise and throw off the order check).
     func test_1_2_toolbarItemOrderMatchesConfig() {
-        let items: [iTermWorkgroupToolbarItem] = [.reload, .back, .forward, .settings]
+        let items: [iTermWorkgroupToolbarItem] = [.modeSwitcher, .changedFileSelector, .reload, .navigation]
         let wg = WGFix.wgRootWithPeers(n: 1, rootItems: items, peerItems: items)
         enterWorkgroup(wg)
         for cfg in wg.sessions {
@@ -86,17 +91,18 @@ final class WorkgroupEntryTests: WorkgroupEntryTestBase {
         })!
         let live = liveSession(forConfigID: peer.uniqueIdentifier)!
         let views = instance!.toolbarItems(for: live)
-        // The expected sequence for the peer matches its config (it's
-        // a peer-port toolbar so .modeSwitcher is kept; poller exists
-        // because gitStatus + changedFileSelector are in the mix).
+        // Expected sequence matches the fixture's item order:
+        // modeSwitcher, changedFileSelector, gitStatus, navigation
+        // (back/forward/reload cluster), reload (standalone), spacer.
+        // This is a peer-port toolbar so .modeSwitcher is kept; the
+        // poller is alive because gitStatus + changedFileSelector are
+        // in the mix.
         let expectedClasses: [AnyClass] = [
             WorkgroupModeSwitcherItem.self,
             CCDiffSelectorItem.self,
             CCGitSessionToolbarItem.self,
-            CCModeButtonToolbarItem.self,   // back
-            CCModeButtonToolbarItem.self,   // forward
-            CCModeButtonToolbarItem.self,   // reload
-            CCModeButtonToolbarItem.self,   // settings
+            WorkgroupNavigationToolbarItem.self,
+            WorkgroupReloadToolbarItem.self,
             SessionToolbarSpacer.self,
         ]
         XCTAssertEqual(views.count, expectedClasses.count)
@@ -118,8 +124,11 @@ final class WorkgroupEntryTests: WorkgroupEntryTestBase {
         for cfg in wg.sessions {
             guard let live = liveSession(forConfigID: cfg.uniqueIdentifier) else { continue }
             for view in instance!.toolbarItems(for: live) {
-                if let button = view as? CCModeButtonToolbarItem {
-                    XCTAssertEqual(button.ownerPeerID, cfg.uniqueIdentifier)
+                if let nav = view as? WorkgroupNavigationToolbarItem {
+                    XCTAssertEqual(nav.ownerPeerID, cfg.uniqueIdentifier)
+                }
+                if let reload = view as? WorkgroupReloadToolbarItem {
+                    XCTAssertEqual(reload.ownerPeerID, cfg.uniqueIdentifier)
                 }
                 if let selector = view as? CCDiffSelectorItem {
                     XCTAssertEqual(selector.ownerPeerID, cfg.uniqueIdentifier)
@@ -139,8 +148,8 @@ final class WorkgroupEntryTests: WorkgroupEntryTestBase {
         for cfg in wg.sessions {
             guard let live = liveSession(forConfigID: cfg.uniqueIdentifier) else { continue }
             for view in instance!.toolbarItems(for: live) {
-                if let button = view as? CCModeButtonToolbarItem,
-                   let id = button.ownerPeerID {
+                if let reload = view as? WorkgroupReloadToolbarItem,
+                   let id = reload.ownerPeerID {
                     allTags.insert(id)
                 }
             }
@@ -157,10 +166,15 @@ final class WorkgroupEntryTests: WorkgroupEntryTestBase {
         for cfg in wg.sessions {
             guard let live = liveSession(forConfigID: cfg.uniqueIdentifier) else { continue }
             for view in instance!.toolbarItems(for: live) {
-                if let button = view as? CCModeButtonToolbarItem {
-                    XCTAssertEqual(button.ownerPeerID,
+                if let nav = view as? WorkgroupNavigationToolbarItem {
+                    XCTAssertEqual(nav.ownerPeerID,
                                    cfg.uniqueIdentifier,
-                                   "Button on \(cfg.displayName) should be tagged with its own config UUID, not the workgroup or peer-group ID")
+                                   "Navigation cluster on \(cfg.displayName) should be tagged with its own config UUID, not the workgroup or peer-group ID")
+                }
+                if let reload = view as? WorkgroupReloadToolbarItem {
+                    XCTAssertEqual(reload.ownerPeerID,
+                                   cfg.uniqueIdentifier,
+                                   "Reload button on \(cfg.displayName) should be tagged with its own config UUID, not the workgroup or peer-group ID")
                 }
             }
         }
@@ -168,26 +182,33 @@ final class WorkgroupEntryTests: WorkgroupEntryTestBase {
 
     // MARK: - §3 Delegate wiring
 
-    // §3.1, §3.2 — buttonDelegate non-nil on every button; identity is
-    // the peer port for peer-port toolbars and the workgroup instance
-    // for non-peer toolbars.
+    // §3.1, §3.2 — navigationDelegate non-nil on every navigation /
+    // reload toolbar item; identity is the peer port for peer-port
+    // toolbars and the workgroup instance for non-peer toolbars.
     func test_3_1_3_2_buttonDelegateWiring() {
         let wg = WGFix.wgRootPeersAndSplits(peerCount: 1, splitCount: 1)
         enterWorkgroup(wg)
         for cfg in wg.sessions {
             guard let live = liveSession(forConfigID: cfg.uniqueIdentifier) else { continue }
             for view in instance!.toolbarItems(for: live) {
-                guard let button = view as? CCModeButtonToolbarItem else { continue }
-                XCTAssertNotNil(button.buttonDelegate,
-                                "\(cfg.displayName): button missing delegate")
+                let delegate: WorkgroupNavigationToolbarItemDelegate?
+                if let nav = view as? WorkgroupNavigationToolbarItem {
+                    delegate = nav.navigationDelegate
+                } else if let reload = view as? WorkgroupReloadToolbarItem {
+                    delegate = reload.navigationDelegate
+                } else {
+                    continue
+                }
+                XCTAssertNotNil(delegate,
+                                "\(cfg.displayName): toolbar item missing navigationDelegate")
                 if expectedToolbarIsPeerPort(cfg: cfg) {
                     XCTAssertTrue(
-                        button.buttonDelegate is iTermWorkgroupPeerPort,
-                        "\(cfg.displayName): peer-port button delegate should be the port")
+                        delegate is iTermWorkgroupPeerPort,
+                        "\(cfg.displayName): peer-port toolbar's delegate should be the port")
                 } else {
                     XCTAssertTrue(
-                        button.buttonDelegate is iTermWorkgroupInstance,
-                        "\(cfg.displayName): non-peer button delegate should be the instance")
+                        delegate is iTermWorkgroupInstance,
+                        "\(cfg.displayName): non-peer toolbar's delegate should be the instance")
                 }
             }
         }

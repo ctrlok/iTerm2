@@ -300,17 +300,17 @@ enum WGFix {
                     sessions: [root, split1, split2, split3, split4, tabUnderL3])
     }
 
-    // Workgroup with one of every toolbar-item kind — used to exercise
-    // §1.4 (correct view classes for each kind).
+    // Workgroup with one of every user-addable toolbar-item kind —
+    // used to exercise §1.4 (correct view classes for each kind).
+    // .name isn't included; it's auto-injected only when no
+    // .modeSwitcher is present, which we have here.
     static func wgAllToolbarKinds() -> iTermWorkgroup {
         let items: [iTermWorkgroupToolbarItem] = [
             .modeSwitcher,
             .changedFileSelector,
             .gitStatus,
-            .back,
-            .forward,
+            .navigation,
             .reload,
-            .settings,
             .spacer(minWidth: 4, maxWidth: 8)
         ]
         let root = makeRoot(items: items)
