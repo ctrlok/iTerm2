@@ -650,12 +650,9 @@ static CGFloat iTermTextDrawingHelperAlphaValueForDefaultBackgroundColor(BOOL ha
                     NSLocationInRange(thisRow.line, _selectedCommandRegion)) {
                     continue;
                 }
-                // Extend a few pixels past the cell so font descenders aren't
-                // left untinted. Only extend when the next line isn't also
-                // tinted, otherwise consecutive rows would double-blend.
-                const BOOL nextRowTinted = [_pastCommandAbsLines containsIndex:(NSUInteger)(absLine + 1)];
-                const CGFloat extra = nextRowTinted ? 0.0 : 8.0;
-                const NSRect rect = NSMakeRect(0, thisRow.y, tintWidth, _cellSize.height + extra);
+                // Tint the full cell — `_cellSize.height` already includes
+                // inter-line spacing.
+                const NSRect rect = NSMakeRect(0, thisRow.y, tintWidth, _cellSize.height);
                 [self drawBackgroundColor:tintColor
                                    inRect:rect
                            enableBlending:YES

@@ -1737,6 +1737,11 @@ legacyScrollbarWidth:(unsigned int)legacyScrollbarWidth
     tState.rowIndices = rows;
     tState.tintColor = frameData.perFrameState.commandLineBackgroundColor;
     tState.rowHeight = frameData.cellSize.height;
+    // The top of row 0 sits below both the standard topBottomMargins (in
+    // pixels) and any per-pane extra top margin. Without including
+    // `vmargin * scale` here, the tint would float a few pixels above where
+    // the CG path draws it.
+    tState.topMargin = frameData.scale * frameData.vmargin + frameData.perFrameState.extraMargins.top;
 }
 
 - (void)populateTextAndBackgroundRenderersTransientStateWithFrameData:(iTermMetalFrameData *)frameData {

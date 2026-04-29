@@ -22,6 +22,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic) CGFloat rowHeight;  // pixels
 
+// Top margin in pixels — distance from the top edge of the viewport down
+// to the top edge of row 0. This must include both the standard
+// topBottomMargins (in pixels) and the per-pane extraMargins.top, matching
+// the effective top margin used by the cell renderers.
+@property (nonatomic) CGFloat topMargin;
+
 @end
 
 @interface iTermCommandLineBackgroundRenderer : NSObject<iTermMetalRenderer>

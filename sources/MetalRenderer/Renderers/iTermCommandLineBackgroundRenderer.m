@@ -52,7 +52,9 @@
     const CGFloat viewportHeight = tState.configuration.viewportSize.y;
     const CGFloat viewportWidth = tState.configuration.viewportSize.x;
     const CGFloat rowHeight = tState.rowHeight;
-    const CGFloat topMargin = tState.configuration.extraMargins.top;
+    // tState.topMargin is the full top inset (topBottomMargins*scale +
+    // extraMargins.top) so row 0 sits where the cell renderers place it.
+    const CGFloat topMargin = tState.topMargin;
     const CGFloat bottomMargin = tState.configuration.extraMargins.bottom;
 
     const NSUInteger numQuads = tState.rowIndices.count;
@@ -71,12 +73,8 @@
         // Row 0 is the topmost visible row. The viewport origin is at the
         // bottom-left, so y decreases as row increases.
         const CGFloat top = viewportHeight - topMargin - (CGFloat)row * rowHeight;
-        // Extend a few pixels past the cell so font descenders aren't left
-        // untinted. Only extend when the next row isn't also tinted, otherwise
-        // consecutive rows would double-blend on the seam.
-        const BOOL nextRowTinted = [rowIndices containsIndex:row + 1];
-        const CGFloat extra = nextRowTinted ? 0.0 : 8.0;
-        const CGFloat bottom = top - rowHeight - extra;
+        // Tint the full cell — rowHeight already includes inter-line spacing.
+        const CGFloat bottom = top - rowHeight;
         const CGFloat minY = MAX(bottom, bottomMargin);
         const CGFloat maxY = MIN(top, viewportHeight - topMargin);
         if (maxY <= minY) {
