@@ -38,16 +38,41 @@ NS_ASSUME_NONNULL_BEGIN
                    ahead:(NSInteger *)aheadCount
                   behind:(NSInteger *)behindCount;
 
-- (BOOL)getDirty:(BOOL *)dirtyPtr
-       deletions:(NSInteger *)deletionsPtr
-       untracked:(NSInteger *)untrackedPtr;
+// Single git_status_list_new walk feeding the on-state fields that
+// were previously computed by three separate walks (repoIsDirty +
+// getDeletions:untracked: + a fileStatuses pass). Always populates
+// dirty, adds (untracked count), and deletes (workdir-deleted
+// count). When `includeFileStatuses` is YES, also builds the
+// per-file fileStatuses array; callers that don't need it (the
+// status-bar git component) skip the allocation cost by passing NO.
+//
+// Behavior note vs the older code path: this walk uses
+// RECURSE_UNTRACKED_DIRS, so a directory of N untracked files
+// contributes N to `adds` instead of the directory rollup of 1.
+// The status bar's adds/deletes counts shift accordingly — more
+// accurate, matches what `git status` actually reports.
+- (BOOL)populateFromStatusListOnState:(iTermGitState *)state
+                  includeFileStatuses:(BOOL)includeFileStatuses;
+
+// Populate on state: linesInserted, linesDeleted, filesAdded, filesModified,
+// filesDeleted by diffing HEAD's tree against workdir-with-index. Returns NO
+// if diffing fails or there is no HEAD commit.
+- (BOOL)populateDiffStatsOnState:(iTermGitState *)state;
+
 - (void)forEachReference:(void (^)(git_reference *ref, BOOL *stop))block;
 
 @end
 
 @interface iTermGitState(GitClient)
 
+// Basic state (branch, push/pull, dirty, untracked/deleted file counts).
 + (instancetype _Nullable)gitStateForRepoAtPath:(NSString *)path;
+
+// Same as above, but if includeDiffStats is YES also populates linesInserted,
+// linesDeleted, filesAdded, filesModified, filesDeleted via git_diff. Skip it
+// when not needed — diffing can touch many files on slow repos/filesystems.
++ (instancetype _Nullable)gitStateForRepoAtPath:(NSString *)path
+                               includeDiffStats:(BOOL)includeDiffStats;
 
 @end
 

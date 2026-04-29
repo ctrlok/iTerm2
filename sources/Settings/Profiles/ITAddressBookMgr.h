@@ -254,6 +254,7 @@ extern NSString *const iTermProgressBarColorSchemeOrange;
 #define KEY_SUPPRESS_ALERTS_IN_ACTIVE_SESSION @"Suppress Alerts in Active Session"
 #define KEY_ALLOW_CHANGE_CURSOR_BLINK         @"Allow Change Cursor Blink"
 #define KEY_LOAD_SHELL_INTEGRATION_AUTOMATICALLY @"Load Shell Integration Automatically"
+#define KEY_RUN_COMMAND_IN_LOGIN_SHELL        @"Run Command In Login Shell"
 #define KEY_AUTOMATICALLY_ENABLE_ALTERNATE_MOUSE_SCROLL @"Automatically Enable Alternate Mouse Scroll"
 #define KEY_RESTRICT_ALTERNATE_MOUSE_SCROLL_TO_VERTICAL @"Restrict Alternate Mouse Scroll to Vertical"
 
@@ -573,7 +574,13 @@ typedef NS_ENUM(NSInteger, iTermTriggerMatchType) {
     iTermTriggerMatchTypeEventSessionEnded = 107,
     iTermTriggerMatchTypeEventBellReceived = 108,
     iTermTriggerMatchTypeEventLongRunningCommand = 109,
-    iTermTriggerMatchTypeEventCustomEscapeSequence = 110
+    iTermTriggerMatchTypeEventCustomEscapeSequence = 110,
+    iTermTriggerMatchTypeEventNotificationPosted = 111,
+    iTermTriggerMatchTypeEventProgressBarChanged = 112,
+    // Foreground-job ancestry deltas. The trigger's job filter
+    // selects the process name to watch for (e.g. "claude").
+    iTermTriggerMatchTypeEventJobStarted = 113,
+    iTermTriggerMatchTypeEventJobEnded = 114,
 };
 
 static inline BOOL iTermTriggerMatchTypeIsEvent(iTermTriggerMatchType type) {
@@ -614,6 +621,13 @@ NSString *iTermPathToSSH(void);
                             forObjectType:(iTermObjectType)objectType;
 
 + (NSString *)customShellForProfile:(Profile *)profile;
+
+// Wraps `command` so it runs through `/usr/bin/login` + ShellLauncher,
+// matching what KEY_RUN_COMMAND_IN_LOGIN_SHELL does inside
+// bookmarkCommandSwiftyString:. Use this at sites that bypass the
+// session-factory launch path (e.g. workgroup spawn / per-file restart)
+// but still need dotfiles sourced and the user's interactive PATH.
++ (NSString *)commandByWrappingInLoginShell:(NSString *)command;
 
 // Indicates if it is safe to remove the profile from the model.
 + (BOOL)canRemoveProfile:(Profile *)profile fromModel:(ProfileModel *)model;

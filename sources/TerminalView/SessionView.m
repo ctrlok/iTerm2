@@ -52,6 +52,10 @@ static const CGFloat iTermGetSessionViewTitleHeight(void) {
     return iTermGetStatusBarHeight() + 1;
 }
 
+static const CGFloat iTermGetSessionViewToolbarHeight(void) {
+    return 40;
+}
+
 // Last time any window was resized TODO(georgen):it would be better to track per window.
 static NSDate* lastResizeDate_;
 
@@ -168,6 +172,9 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
     iTermActivePaneBorderView *_activePaneBorderView;
 
     iTermSessionNoteView *_sessionNoteView;
+    iTermSessionToolbarView *_toolbarView;
+
+    iTermRightGutterController *_rightGutterController;
 }
 
 + (double)titleHeight {
@@ -292,6 +299,7 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
             [self addSubviewBelowFindView:_scrollview.verticalScroller];
             _scrollview.verticalScroller.frame = [self frameForScroller];
         }
+        _rightGutterController = [[iTermRightGutterController alloc] initWithSessionView:self];
         [self updateSessionSelectorButton];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(scrollerStyleDidChange:)
@@ -327,6 +335,72 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
     [super viewWillDraw];
 }
 
+- (void)moveToolbarTo:(SessionView *)other {
+    DLog(@"moveToolbarTo: from %p (frame=%@) to %p (frame=%@)",
+         self, NSStringFromRect(self.frame),
+         other, NSStringFromRect(other.frame));
+    [other->_toolbarView removeFromSuperview];
+    other->_toolbarView = _toolbarView;
+    [other addSubviewBelowFindView:_toolbarView];
+    _toolbarView = nil;
+    // Both views' reserved-height calculations just changed, so re-run layout
+    // to reposition scrollview/browser content and the toolbar itself.
+    [self updateLayout];
+    [other updateLayout];
+}
+
+- (void)layoutContentsForNewlyActiveSession {
+    // Called right after a peer swap puts this view on screen. The destination
+    // SessionView's frame often didn't change size during the swap, so
+    // -resizeSubviewsWithOldSize: didn't fire, and updatePaneTitles'
+    // setToolbarItems: path returns changedToolbar==NO (the toolbar was moved,
+    // not added or removed). Force a layout so browser / scrollview frames
+    // reflect this view's current toolbar state.
+    DLog(@"layoutContentsForNewlyActiveSession on %p frame=%@ toolbar=%p scrollview.frame=%@",
+         self, NSStringFromRect(self.frame), _toolbarView,
+         NSStringFromRect([self scrollview].frame));
+    [self updateLayout];
+    DLog(@"layoutContentsForNewlyActiveSession AFTER on %p scrollview.frame=%@",
+         self, NSStringFromRect([self scrollview].frame));
+}
+
+- (BOOL)setToolbarItems:(NSArray<iTermSessionToolbarItem *> *)toolbarItems {
+    const BOOL hadToolbar = (_toolbarView != nil);
+    const BOOL shouldHaveToolbar = (toolbarItems.count > 0);
+    const BOOL presenceChanged = (hadToolbar != shouldHaveToolbar);
+    DLog(@"setToolbarItems on %p: hadToolbar=%d shouldHave=%d presenceChanged=%d items=%@",
+         self, hadToolbar, shouldHaveToolbar, presenceChanged, @(toolbarItems.count));
+    if (!shouldHaveToolbar) {
+        if (_toolbarView) {
+            [_toolbarView removeFromSuperview];
+            _toolbarView = nil;
+        }
+    } else if (_toolbarView) {
+        [_toolbarView setItems:toolbarItems];
+    } else {
+        _toolbarView = [[iTermSessionToolbarView alloc] initWithItems:toolbarItems];
+        [self addSubviewBelowFindView:_toolbarView];
+    }
+    [self updateLayout];
+    return presenceChanged;
+}
+
+- (CGFloat)toolbarReservedHeight {
+    return _toolbarView ? iTermGetSessionViewToolbarHeight() : 0;
+}
+
+- (void)updateToolbarFrame {
+    if (!_toolbarView) {
+        return;
+    }
+    const CGFloat titleHeight = _showTitle ? iTermGetSessionViewTitleHeight() : 0;
+    const CGFloat toolbarHeight = iTermGetSessionViewToolbarHeight();
+    _toolbarView.frame = NSMakeRect(0,
+                                    self.bounds.size.height - titleHeight - toolbarHeight,
+                                    self.bounds.size.width,
+                                    toolbarHeight);
+}
+
 - (void)setBrowserViewController:(iTermBrowserViewController *)browserViewController
                       initialURL:(NSString *)initialURL
                  restorableState:(NSDictionary *)restorableState NS_AVAILABLE_MAC(11_0) {
@@ -334,11 +408,12 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
 
     // Set initial frame to avoid constraint conflicts
     CGFloat titleHeight = _showTitle ? _title.frame.size.height : 0;
+    CGFloat toolbarHeight = [self toolbarReservedHeight];
     CGFloat reservedSpaceOnBottom = _showBottomStatusBar ? iTermGetStatusBarHeight() : 0;
     NSRect initialFrame = NSMakeRect(0,
                                      reservedSpaceOnBottom,
                                      self.frame.size.width,
-                                     self.frame.size.height - titleHeight - reservedSpaceOnBottom);
+                                     self.frame.size.height - titleHeight - toolbarHeight - reservedSpaceOnBottom);
     _browserViewController.view.frame = initialFrame;
 
     // This magic incantation prevents auto layout from virally eating everything in the window preventing it from resizing.
@@ -620,6 +695,7 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
     if (_showTitle) {
         size.height += _title.frame.size.height;
     }
+    size.height += [self toolbarReservedHeight];
     if (_showBottomStatusBar) {
         size.height += iTermGetStatusBarHeight();
     }
@@ -1077,6 +1153,7 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
         if (self.showTitle) {
             [self updateTitleFrame];
         } else {
+            [self updateToolbarFrame];
             [self updateScrollViewFrame];
             [self updateFindViewFrame];
         }
@@ -1112,6 +1189,7 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
                 _scrollview.verticalScroller.frame = [self frameForScroller];
             }
         }
+        [self updateToolbarFrame];
         if (_showBottomStatusBar) {
             _genericStatusBarContainer.frame = NSMakeRect(0,
                                                           0,
@@ -1141,6 +1219,7 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
         if (_showTitle) {
             progressBarY -= iTermGetSessionViewTitleHeight();
         }
+        progressBarY -= [self toolbarReservedHeight];
         _progressBar.frame = NSMakeRect(0,
                                         progressBarY,
                                         self.bounds.size.width,
@@ -1182,6 +1261,7 @@ NSString *const SessionViewWasSelectedForInspectionNotification = @"SessionViewW
     }
     [self updateUploadIndicatorFrame];
     [self updateSessionNoteFrame];
+    [_rightGutterController layoutPanels];
     DLog(@"After:\n%@", [self iterm_recursiveDescription]);
 }
 
@@ -1692,6 +1772,7 @@ typedef NS_ENUM(NSInteger, SessionViewTrackingMode) {
     if (_showTitle) {
         insets.top = iTermGetSessionViewTitleHeight();
     }
+    insets.top += [self toolbarReservedHeight];
     if (self.showBottomStatusBar) {
         insets.bottom = iTermGetStatusBarHeight();
     }
@@ -2149,6 +2230,7 @@ typedef NS_ENUM(NSInteger, SessionViewTrackingMode) {
     if (_showTitle) {
         size.height += iTermGetSessionViewTitleHeight();
     }
+    size.height += [self toolbarReservedHeight];
     if (_showBottomStatusBar) {
         size.height += iTermGetStatusBarHeight();
     }
@@ -2163,6 +2245,7 @@ typedef NS_ENUM(NSInteger, SessionViewTrackingMode) {
         size.height -= iTermGetSessionViewTitleHeight();
         DLog(@"maximumPossibleScrollViewContentSize: sub title height. size=%@", [NSValue valueWithSize:size]);
     }
+    size.height -= [self toolbarReservedHeight];
     if (_showBottomStatusBar) {
         size.height -= iTermGetStatusBarHeight();
         DLog(@"maximumPossibleScrollViewContentSize: sub bottom status bar height. size=%@", NSStringFromSize(size));
@@ -2193,9 +2276,10 @@ typedef NS_ENUM(NSInteger, SessionViewTrackingMode) {
                                     aRect.size.width,
                                     iTermGetSessionViewTitleHeight())];
         NSViewController *viewController = [self.delegate sessionViewStatusBarViewController];
-        
+
         [[viewController view] setNeedsLayout:YES];
     }
+    [self updateToolbarFrame];
     [self updateScrollViewFrame];
     [self updateFindViewFrame];
 }
@@ -2222,14 +2306,18 @@ typedef NS_ENUM(NSInteger, SessionViewTrackingMode) {
 - (void)updateScrollViewFrame {
     DLog(@"update scrollview frame");
     CGFloat titleHeight = _showTitle ? _title.frame.size.height : 0;
+    CGFloat toolbarHeight = [self toolbarReservedHeight];
     CGFloat reservedSpaceOnBottom = _showBottomStatusBar ? iTermGetStatusBarHeight() : 0;
     NSSize proposedSize = NSMakeSize(self.frame.size.width,
-                                     self.frame.size.height - titleHeight - reservedSpaceOnBottom);
+                                     self.frame.size.height - titleHeight - toolbarHeight - reservedSpaceOnBottom);
     NSSize size = [_delegate sessionViewScrollViewWillResize:proposedSize];
     NSRect rect = NSMakeRect(0,
                              reservedSpaceOnBottom + proposedSize.height - size.height,
                              size.width,
                              size.height);
+    DLog(@"updateScrollViewFrame on %p: selfFrame=%@ toolbarView=%p toolbarH=%.1f titleH=%.1f -> scrollview rect=%@ (prevRect=%@)",
+         self, NSStringFromRect(self.frame), _toolbarView, toolbarHeight, titleHeight,
+         NSStringFromRect(rect), NSStringFromRect([self scrollview].frame));
     DLog(@"titleHeight=%@ bottomStatusBarHeight=%@ proposedSize=%@ size=%@ rect=%@",
          @(titleHeight), @(reservedSpaceOnBottom), NSStringFromSize(proposedSize), NSStringFromSize(size),
          NSStringFromRect(rect));
@@ -2247,6 +2335,7 @@ typedef NS_ENUM(NSInteger, SessionViewTrackingMode) {
     }
     [self updateLegacyViewFrame];
     [self updateMinimapFrameAnimated:NO];
+    [_rightGutterController layoutPanels];
     [_delegate sessionViewScrollViewDidResize];
     DLog(@"Returning");
 }
@@ -2255,16 +2344,17 @@ typedef NS_ENUM(NSInteger, SessionViewTrackingMode) {
     if (!_browserViewController) {
         return;
     }
-    
+
     // Browser view should cover the entire content area, similar to how scrollview is positioned
     CGFloat titleHeight = _showTitle ? _title.frame.size.height : 0;
+    CGFloat toolbarHeight = [self toolbarReservedHeight];
     CGFloat reservedSpaceOnBottom = _showBottomStatusBar ? iTermGetStatusBarHeight() : 0;
-    
+
     NSRect browserFrame = NSMakeRect(0,
                                      reservedSpaceOnBottom,
                                      self.frame.size.width,
-                                     self.frame.size.height - titleHeight - reservedSpaceOnBottom);
-    
+                                     self.frame.size.height - titleHeight - toolbarHeight - reservedSpaceOnBottom);
+
     _browserViewController.view.frame = browserFrame;
 }
 
@@ -2518,6 +2608,7 @@ typedef NS_OPTIONS(NSUInteger, iTermCornerFlags) {
     if (_showTitle) {
         rect.origin.y -= iTermGetSessionViewTitleHeight();
     }
+    rect.origin.y -= [self toolbarReservedHeight];
     _currentAnnouncement.view.frame = rect;
 }
 

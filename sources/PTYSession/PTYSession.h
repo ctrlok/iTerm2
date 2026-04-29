@@ -59,6 +59,7 @@ extern NSString *const PTYSessionArrangementOptionsLargeContentProvider;
 @class CapturedOutput;
 @protocol ExternalSearchResultsController;
 @class FakeWindow;
+@class PTYSessionSwiftState;
 @class iTermAction;
 @class iTermAnnouncementViewController;
 @class iTermAutomaticProfileSwitcher;
@@ -82,6 +83,7 @@ extern NSString *const PTYSessionArrangementOptionsLargeContentProvider;
 @class iTermVariableReference;
 @class iTermVariables;
 @class iTermVariableScope;
+@class PTYSessionPeerPort;
 @class PTYSessionZoomState;
 @class PTYTab;
 @class PTYTask;
@@ -103,6 +105,7 @@ extern NSString *const PTYSessionArrangementOptionsLargeContentProvider;
 @protocol iTermSessionScope;
 @class SessionView;
 @class iTermSessionNoteModel;
+@class iTermSessionToolbarItem;
 @class TmuxHistory;
 @class WKWebViewConfiguration;
 
@@ -313,6 +316,11 @@ backgroundColor:(NSColor *)backgroundColor;
 - (iTermBackgroundImageMode)sessionBackgroundImageMode;
 - (CGFloat)sessionBlend;
 - (void)sessionDidUpdatePreferencesFromProfile:(PTYSession *)session;
+
+// Signals that the session's desired toolbar items may have changed. The tab
+// should run its chrome update (which calls setToolbarItems: on the view and
+// refits the session if the toolbar's presence changed).
+- (void)sessionDidChangeDesiredToolbarItems:(PTYSession *)session;
 - (id<iTermSwipeHandler>)sessionSwipeHandler;
 - (BOOL)sessionIsInSelectedTab:(PTYSession *)session;
 - (void)sessionDisableFocusFollowsMouseAtCurrentLocation;
@@ -331,6 +339,9 @@ backgroundColor:(NSColor *)backgroundColor;
 - (BOOL)sessionBelongsToHotkeyWindow:(PTYSession *)session;
 - (void)swapSession:(PTYSession *)existing withBuriedSession:(PTYSession *)buried;
 - (void)session:(PTYSession *)session progressDidChange:(VT100ScreenProgress)progress;
+- (void)sessionActivateSession:(PTYSession *)session
+                    amongPeers:(PTYSessionPeerPort *)peerPort
+                   moveToolbar:(BOOL)moveToolbar;
 
 @end
 
@@ -347,7 +358,7 @@ backgroundColor:(NSColor *)backgroundColor;
     PTYTextViewDelegate,
     TmuxGatewayDelegate,
     VT100ScreenDelegate>
-@property(nonatomic, assign) id<PTYSessionDelegate> delegate;
+@property(nonatomic, weak) id<PTYSessionDelegate> delegate;
 
 // A session is active when it's in a visible tab and it needs periodic redraws (something is
 // blinking, it isn't idle, etc), or when a background tab is updating its tab label. This controls
@@ -625,6 +636,9 @@ backgroundColor:(NSColor *)backgroundColor;
 @property(nonatomic, readonly) iTermEchoProbe *echoProbe;
 @property(nonatomic, readonly) BOOL canOpenPasswordManager;
 @property(nonatomic) BOOL shortLivedSingleUse;
+
+// nil unless this session has an active workgroup instance.
+@property(nonatomic, readonly, nullable) NSArray<iTermSessionToolbarItem *> *desiredToolbarItems;
 @property(nonatomic, retain) NSMutableDictionary<NSString *, NSString *> *hostnameToShell;  // example.com -> fish
 @property(nonatomic, readonly) NSString *sessionId;
 @property(nonatomic, retain) NSNumber *cursorTypeOverride;
@@ -668,6 +682,7 @@ backgroundColor:(NSColor *)backgroundColor;
 @property(nonatomic, readonly) iTermAutomaticProfileSwitchingSession *apsContext;
 
 @property(nonatomic, readonly, retain) iTermNaggingController *naggingController;
+@property(nonatomic, readonly, strong) PTYSessionSwiftState *swiftState;
 
 #pragma mark - methods
 
@@ -1010,6 +1025,12 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
 // Kill the running command (if possible), print a banner, and rerun the profile's command.
 - (void)restartSession;
 
+// Like restartSession, but replace the program before relaunching. Used by
+// workgroups so a "reload" button or a per-file diff selector can restart
+// the session with a different command instead of just typing keystrokes
+// into whatever's running.
+- (void)restartSessionWithCommand:(NSString *)command;
+
 // Make this session's textview the first responder.
 - (void)takeFocus;
 
@@ -1086,13 +1107,23 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
 - (BOOL)handleKeyUpWithBuckyBits:(NSEvent *)event;
 - (BOOL)handleFlagsChangedWithBuckyBits:(NSEvent *)event;
 - (CGFloat)desiredRightExtra;
-+ (CGFloat)desiredRightExtraForProfile:(Profile *)profile;
++ (CGFloat)desiredRightExtraForProfile:(Profile *)profile
+                               session:(nullable PTYSession *)session;
+
+// Portion of desiredRightExtra contributed by right-gutter panels (the rest
+// is the timestamp-Adjacent reservation, if any). Used to position
+// timestamps at the inner edge of the panel area instead of all the way at
+// PTYTextView's right edge.
+- (CGFloat)desiredPanelReservation;
++ (CGFloat)desiredPanelReservationForProfile:(Profile *)profile
+                                     session:(nullable PTYSession *)session;
 - (void)refuseFirstResponderAtCurrentMouseLocation;
 - (void)showError:(NSString *)message suppressionKey:(NSString *)key identifier:(NSString *)identifier;
 - (void)dismissAnnouncementWithIdentifier:(NSString *)identifier;
 - (void)sync;
 - (void)toggleSettingWithKey:(NSString *)key
                    isProfile:(BOOL)isProfile;
+- (void)moveToolbarTo:(PTYSession *)destination;
 
 #pragma mark - API
 

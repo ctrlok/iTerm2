@@ -443,6 +443,10 @@ static NSModalResponse iTermCompareRenderingRunModal(id self, SEL _cmd) {
         return YES;
     } else if ([menuItem action] == @selector(makeDefaultTerminal:)) {
         return ![[iTermLaunchServices sharedInstance] iTermIsDefaultTerminal];
+    } else if ([menuItem action] == @selector(installClaudeCodeIntegration:)) {
+        return [[iTermClaudeCodeIntegrationMenuController shared] validateInstallMenuItem:menuItem];
+    } else if ([menuItem action] == @selector(uninstallClaudeCodeIntegration:)) {
+        return [[iTermClaudeCodeIntegrationMenuController shared] validateUninstallMenuItem:menuItem];
     } else if (menuItem == maximizePane) {
         if ([[[iTermController sharedInstance] currentTerminal] inInstantReplay]) {
             // Things get too complex if you allow this. It crashes.
@@ -1275,6 +1279,7 @@ void TurnOnDebugLoggingAutomatically(void) {
     [PTYTab registerBuiltInFunctions];
     DLog(@"registerStandardFunctions");
     [iTermBuiltInFunctions registerStandardFunctions];
+    [iTermClippingsGutterPanelRegistration register];
 
     DLog(@"migrateApplicationSupportDirectoryIfNeeded");
     [iTermMigrationHelper migrateApplicationSupportDirectoryIfNeeded];
@@ -1564,6 +1569,16 @@ void TurnOnDebugLoggingAutomatically(void) {
 
     [self registerMenuTips];
     [iTermClaudeWatcher start];
+    [iTermClaudeCodeModeController start];
+    // Seed the cached "are hooks installed" / "are triggers
+    // installed" flags from disk once at launch so validateMenuItem
+    // (called constantly) can read user defaults instead of re-
+    // walking ~/.claude/settings.json or every profile's trigger list.
+    [iTermClaudeCodeOnboarding reconcileHooksCache];
+    [iTermClaudeCodeOnboarding reconcileTriggersCache];
+    if (_workgroupsMenuItem) {
+        [iTermWorkgroupMenu attachTo:_workgroupsMenuItem];
+    }
 #if DEBUG
     NSMenu *appMenu = [[[[NSApp mainMenu] itemArray] firstObject] submenu];
     [appMenu addItem:[NSMenuItem separatorItem]];
@@ -2280,7 +2295,11 @@ static iTermKeyEventReplayer *gReplayer;
 }
 
 - (IBAction)installClaudeCodeIntegration:(id)sender {
-    [iTermClaudeCodeOnboarding show];
+    [[iTermClaudeCodeIntegrationMenuController shared] install:sender];
+}
+
+- (IBAction)uninstallClaudeCodeIntegration:(id)sender {
+    [[iTermClaudeCodeIntegrationMenuController shared] uninstall:sender];
 }
 
 #pragma mark - Main Menu

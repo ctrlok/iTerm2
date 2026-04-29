@@ -107,7 +107,9 @@ NS_ASSUME_NONNULL_BEGIN
     DLog(@"%@: POLL: request path %@", self, polledPath);
     iTermGitPollWorker *worker = [iTermGitPollWorker sharedInstance];
     DLog(@"%@: Using worker %@", self, worker);
-    [worker requestPath:polledPath completion:^(iTermGitState *state, BOOL timedOut) {
+    [worker requestPath:polledPath
+       includeDiffStats:self.includeDiffStats
+             completion:^(iTermGitState *state, BOOL timedOut) {
         __strong __typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) {
             return;

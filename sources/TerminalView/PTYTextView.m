@@ -1888,6 +1888,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
         helper.pastCommandAbsLines = nil;
         helper.folds = nil;
         helper.rightExtra = 0;
+        helper.panelReservation = 0;
         helper.highlightedBlockLineRange = NSMakeRange(NSNotFound, 0);
         helper.timestampBaseline = 0;
         helper.offscreenCommandLine = nil;
@@ -1935,6 +1936,7 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
         helper.pastCommandAbsLines = [self computePastCommandAbsLinesInVisibleRange:range
                                                                               folds:helper.folds];
         helper.rightExtra = self.delegate.textViewRightExtra;
+        helper.panelReservation = self.delegate.textViewPanelReservation;
         helper.highlightedBlockLineRange = _hoverBlockFoldButton ? [self relativeRangeFromAbsLineRange:_hoverBlockFoldButton.absLineRange] : NSMakeRange(NSNotFound, 0);
         helper.timestampBaseline = _timestampBaseline;
     }
@@ -1973,6 +1975,9 @@ static NSString *iTermStringForEventPhase(NSEventPhase eventPhase) {
         [_drawingHelper createTimestampDrawingHelperWithFontInfo:_fontTable.asciiFont];
         rightMargin = _drawingHelper.timestampDrawHelper.maximumWidth + 8;
     }
+    // Indicators must also clear the right-gutter panels, which sit outboard
+    // of where timestamps draw.
+    rightMargin += self.delegate.textViewPanelReservation;
     _drawingHelper.indicatorFrame = [self configureIndicatorsHelperWithRightMargin:rightMargin];
     [_drawingHelper didFinishSetup];
 

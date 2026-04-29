@@ -152,6 +152,7 @@ typedef void (^DeferralBlock)(void);
     if (git_commit_lookup(&commit, _repo, oid)) {
         return nil;
     }
+    [_defers addObject:^{ git_commit_free(commit); }];
     git_time_t t = git_commit_time(commit);
     return [NSDate dateWithTimeIntervalSince1970:t];
 }
@@ -190,37 +191,200 @@ typedef void (^DeferralBlock)(void);
     return YES;
 }
 
-- (BOOL)getDirty:(BOOL *)dirtyPtr
-       deletions:(NSInteger *)deletionsPtr
-       untracked:(NSInteger *)untrackedPtr {
+// One git_status_list pass feeding everything that previously took
+// three: dirty (any entry), adds (workdir-new count), deletes
+// (workdir-deleted count), and the per-file fileStatuses array used
+// by the workgroup menu. Mirrors `git status --porcelain` so the
+// menu builder can group staged / unstaged / untracked the same way
+// the user sees them in the terminal.
+- (BOOL)populateFromStatusListOnState:(iTermGitState *)state
+                  includeFileStatuses:(BOOL)includeFileStatuses {
     git_status_list *status_list = NULL;
-    git_status_options status_options = GIT_STATUS_OPTIONS_INIT;
-    status_options.show = GIT_STATUS_SHOW_INDEX_AND_WORKDIR;
-    status_options.flags = (GIT_STATUS_OPT_INCLUDE_UNTRACKED |
-                            GIT_STATUS_OPT_EXCLUDE_SUBMODULES);
-    const int error = git_status_list_new(&status_list, _repo, &status_options);
-    if (error) {
+    git_status_options opts = GIT_STATUS_OPTIONS_INIT;
+    opts.show = GIT_STATUS_SHOW_INDEX_AND_WORKDIR;
+    opts.flags = (GIT_STATUS_OPT_INCLUDE_UNTRACKED |
+                  GIT_STATUS_OPT_RECURSE_UNTRACKED_DIRS |
+                  GIT_STATUS_OPT_EXCLUDE_SUBMODULES);
+    // Rename detection (head→index, index→workdir) is only useful
+    // when we're emitting per-file statuses; the count fields don't
+    // need it. Skip the similarity scan for the cheap path.
+    if (includeFileStatuses) {
+        opts.flags |= (GIT_STATUS_OPT_RENAMES_HEAD_TO_INDEX |
+                       GIT_STATUS_OPT_RENAMES_INDEX_TO_WORKDIR);
+    }
+    if (git_status_list_new(&status_list, _repo, &opts) != 0) {
         return NO;
     }
-
-    NSInteger deletions = 0;
+    NSMutableArray<iTermGitFileStatus *> *result =
+        includeFileStatuses ? [NSMutableArray array] : nil;
     NSInteger untracked = 0;
+    NSInteger deletions = 0;
     const size_t count = git_status_list_entrycount(status_list);
     for (size_t i = 0; i < count; i++) {
-        const git_status_entry *status_entry = git_status_byindex(status_list, i);
-        if (status_entry->status & GIT_STATUS_WT_DELETED) {
-            deletions += 1;
-        }
-        if (status_entry->status & GIT_STATUS_WT_NEW) {
+        const git_status_entry *e = git_status_byindex(status_list, i);
+        if (!e) continue;
+        const unsigned int s = e->status;
+        if (s & GIT_STATUS_WT_NEW) {
             untracked += 1;
         }
+        if (s & GIT_STATUS_WT_DELETED) {
+            deletions += 1;
+        }
+        if (!includeFileStatuses) {
+            continue;
+        }
+        // Pick the most-recent path: workdir's new_file when the
+        // workdir side has anything to say (incl. rename), else
+        // index's new_file, else index's old_file (rare).
+        const char *cpath = NULL;
+        if (e->index_to_workdir &&
+            e->index_to_workdir->new_file.path) {
+            cpath = e->index_to_workdir->new_file.path;
+        } else if (e->head_to_index &&
+                   e->head_to_index->new_file.path) {
+            cpath = e->head_to_index->new_file.path;
+        } else if (e->head_to_index &&
+                   e->head_to_index->old_file.path) {
+            cpath = e->head_to_index->old_file.path;
+        }
+        if (!cpath) continue;
+        NSString *path = [NSString stringWithUTF8String:cpath];
+        // -stringWithUTF8String: returns nil if the C string isn't
+        // valid UTF-8. Skipping is the right move here — passing a
+        // nil path through to Swift would crash on the NSString
+        // bridge, and the file isn't actionable anyway since the
+        // per-file restart can't reference a name we can't print.
+        if (!path) continue;
+        iTermGitFileChangeKind indexStatus = iTermGitFileChangeKindNone;
+        iTermGitFileChangeKind workdirStatus = iTermGitFileChangeKindNone;
+        if (s & GIT_STATUS_INDEX_NEW) {
+            indexStatus = iTermGitFileChangeKindAdded;
+        } else if (s & GIT_STATUS_INDEX_MODIFIED) {
+            indexStatus = iTermGitFileChangeKindModified;
+        } else if (s & GIT_STATUS_INDEX_DELETED) {
+            indexStatus = iTermGitFileChangeKindDeleted;
+        } else if (s & GIT_STATUS_INDEX_RENAMED) {
+            indexStatus = iTermGitFileChangeKindRenamed;
+        } else if (s & GIT_STATUS_INDEX_TYPECHANGE) {
+            indexStatus = iTermGitFileChangeKindTypeChange;
+        }
+        if (s & GIT_STATUS_WT_NEW) {
+            workdirStatus = iTermGitFileChangeKindUntracked;
+        } else if (s & GIT_STATUS_WT_MODIFIED) {
+            workdirStatus = iTermGitFileChangeKindModified;
+        } else if (s & GIT_STATUS_WT_DELETED) {
+            workdirStatus = iTermGitFileChangeKindDeleted;
+        } else if (s & GIT_STATUS_WT_TYPECHANGE) {
+            workdirStatus = iTermGitFileChangeKindTypeChange;
+        } else if (s & GIT_STATUS_WT_RENAMED) {
+            workdirStatus = iTermGitFileChangeKindRenamed;
+        }
+        if (s & GIT_STATUS_CONFLICTED) {
+            // Conflict trumps both columns — surface it once on the
+            // workdir side so it lands in the "unstaged" group, the
+            // section users expect to find conflicts in.
+            workdirStatus = iTermGitFileChangeKindConflicted;
+        }
+        if (indexStatus == iTermGitFileChangeKindNone &&
+            workdirStatus == iTermGitFileChangeKindNone) {
+            // Nothing to report (probably an ignored file slipping in).
+            continue;
+        }
+        iTermGitFileStatus *fs = [[iTermGitFileStatus alloc] init];
+        fs.path = path;
+        fs.indexStatus = indexStatus;
+        fs.workdirStatus = workdirStatus;
+        [result addObject:fs];
     }
     git_status_list_free(status_list);
-
-    *dirtyPtr = count > 0;
-    *deletionsPtr = deletions;
-    *untrackedPtr = untracked;
+    state.dirty = (count > 0);
+    state.adds = untracked;
+    state.deletes = deletions;
+    state.fileStatuses = result;
     return YES;
+}
+
+- (BOOL)populateDiffStatsOnState:(iTermGitState *)state {
+    git_object *head_tree_obj = NULL;
+    git_diff *diff = NULL;
+    BOOL ok = NO;
+
+    // "HEAD^{tree}" peels HEAD down to the commit's tree.
+    if (git_revparse_single(&head_tree_obj, _repo, "HEAD^{tree}") != 0) {
+        goto cleanup;
+    }
+    git_tree *head_tree = (git_tree *)head_tree_obj;
+
+    git_diff_options opts = GIT_DIFF_OPTIONS_INIT;
+    // Include untracked files so newly-created files count as added.
+    opts.flags = (GIT_DIFF_INCLUDE_UNTRACKED |
+                  GIT_DIFF_RECURSE_UNTRACKED_DIRS);
+
+    if (git_diff_tree_to_workdir_with_index(&diff, _repo, head_tree, &opts) != 0) {
+        goto cleanup;
+    }
+
+    NSInteger filesAdded = 0;
+    NSInteger filesDeleted = 0;
+    NSInteger filesModified = 0;
+    NSInteger linesInserted = 0;
+    NSInteger linesDeleted = 0;
+
+    const size_t numDeltas = git_diff_num_deltas(diff);
+    for (size_t i = 0; i < numDeltas; i++) {
+        const git_diff_delta *delta = git_diff_get_delta(diff, i);
+        if (!delta) {
+            continue;
+        }
+        switch (delta->status) {
+            case GIT_DELTA_ADDED:
+            case GIT_DELTA_UNTRACKED:
+                // New file: only increments filesAdded. Its contents are not
+                // counted as inserted lines.
+                filesAdded += 1;
+                break;
+
+            case GIT_DELTA_DELETED:
+                // File actually removed from disk. Doesn't contribute to
+                // linesDeleted.
+                filesDeleted += 1;
+                break;
+
+            case GIT_DELTA_MODIFIED:
+            case GIT_DELTA_RENAMED:
+            case GIT_DELTA_TYPECHANGE: {
+                filesModified += 1;
+                git_patch *patch = NULL;
+                if (git_patch_from_diff(&patch, diff, i) == 0 && patch) {
+                    size_t additions = 0;
+                    size_t deletions = 0;
+                    if (git_patch_line_stats(NULL, &additions, &deletions, patch) == 0) {
+                        linesInserted += (NSInteger)additions;
+                        linesDeleted += (NSInteger)deletions;
+                    }
+                    git_patch_free(patch);
+                }
+                break;
+            }
+
+            default:
+                // COPIED, IGNORED, UNREADABLE, CONFLICTED — skip.
+                break;
+        }
+    }
+
+    state.filesAdded = filesAdded;
+    state.filesDeleted = filesDeleted;
+    state.filesModified = filesModified;
+    state.linesInserted = linesInserted;
+    state.linesDeleted = linesDeleted;
+
+    ok = YES;
+
+cleanup:
+    if (diff) git_diff_free(diff);
+    if (head_tree_obj) git_object_free(head_tree_obj);
+    return ok;
 }
 
 static int GitForEachCallback(git_reference *ref, void *data) {
@@ -240,6 +404,11 @@ static int GitForEachCallback(git_reference *ref, void *data) {
 @implementation iTermGitState(GitClient)
 
 + (instancetype)gitStateForRepoAtPath:(NSString *)path {
+    return [self gitStateForRepoAtPath:path includeDiffStats:NO];
+}
+
++ (instancetype)gitStateForRepoAtPath:(NSString *)path
+                     includeDiffStats:(BOOL)includeDiffStats {
     iTermGitClient *client = [[iTermGitClient alloc] initWithRepoPath:path];
 
     if (!client.repo) {
@@ -247,7 +416,7 @@ static int GitForEachCallback(git_reference *ref, void *data) {
         if ([parent isEqualToString:path] || parent.length == 0) {
             return nil;
         }
-        return [self gitStateForRepoAtPath:parent];
+        return [self gitStateForRepoAtPath:parent includeDiffStats:includeDiffStats];
     }
 
     git_reference *headRef = [client head];
@@ -276,13 +445,21 @@ static int GitForEachCallback(git_reference *ref, void *data) {
         state.behind = @"";
     }
 
-    BOOL dirty = NO;
-    NSInteger deletions = 0;
-    NSInteger untracked = 0;
-    if ([client getDirty:&dirty deletions:&deletions untracked:&untracked]) {
-        state.dirty = dirty;
-        state.adds = untracked;
-        state.deletes = deletions;
+    // Single status_list pass: dirty, adds (untracked count), deletes
+    // (workdir-deleted count). Replaces the old repoIsDirty +
+    // getDeletions:untracked: walks. fileStatuses comes from the same
+    // pass when includeDiffStats is YES (the workgroup menu is the
+    // only consumer); the cheap path skips the per-file array
+    // allocation and the rename-detection similarity scan entirely.
+    [client populateFromStatusListOnState:state
+                      includeFileStatuses:includeDiffStats];
+
+    // Richer diff stats: only if the caller explicitly asked. Can be expensive.
+    // Adds linesInserted/Deleted and filesAdded/Modified/Deleted by
+    // walking diff deltas with patches; fileStatuses already came from
+    // the status_list pass above.
+    if (includeDiffStats) {
+        [client populateDiffStatsOnState:state];
     }
 
     // Current operation

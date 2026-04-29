@@ -26,6 +26,9 @@ static NSString *const iTermUserDefaultsKeyEnableAutomaticProfileSwitchingLoggin
 
 static NSString *const iTermUserDefaultsKeyRequireAuthenticationAfterScreenLocks = @"RequireAuthenticationAfterScreenLocks";
 static NSString *const iTermUserDefaultsKeyOpenTmuxDashboardIfHiddenWindows = @"OpenTmuxDashboardIfHiddenWindows";
+static NSString *const iTermUserDefaultsKeyClaudeCodeWorkgroupUpsellSuppressed = @"ClaudeCodeWorkgroupUpsellSuppressed";
+static NSString *const iTermUserDefaultsKeyClaudeCodeHooksInstalled = @"ClaudeCodeHooksInstalled";
+static NSString *const iTermUserDefaultsKeyClaudeCodeTriggersInstalled = @"ClaudeCodeTriggersInstalled";
 static NSString *const iTermUserDefaultsKeyHaveExplainedHowToAddTouchbarControls = @"NoSyncHaveExplainedHowToAddTouchbarControls";
 static NSString *const iTermUserDefaultsKeyIgnoreSystemWindowRestoration = @"NoSyncIgnoreSystemWindowRestoration";
 static NSString *const iTermUserDefaultsKeyGlobalSearchMode = @"NoSyncGlobalSearchMode";
@@ -37,6 +40,7 @@ static NSString *const iTermUserDefaultsKeyImportPath = @"ImportPath";
 static NSString *const iTermUserDefaultsKeyShouldSendReturnAfterPassword = @"ShouldSendReturnAfterPassword";
 static NSString *const iTermUserDefaultsKeyWindowCornerRadiusCache = @"NoSyncWindowCornerRadiusCache";
 static NSString *const iTermUserDefaultsKeyLastShutdownWasClean = @"NoSyncLastShutdownWasClean";
+static NSString *const iTermUserDefaultsKeyWorkgroupsData = @"Workgroups";
 
 @implementation iTermUserDefaults
 
@@ -189,6 +193,33 @@ static NSUserDefaults *iTermPrivateUserDefaults(void) {
                         forKey:iTermUserDefaultsKeyOpenTmuxDashboardIfHiddenWindows];
 }
 
++ (BOOL)claudeCodeWorkgroupUpsellSuppressed {
+    return [self.userDefaults boolForKey:iTermUserDefaultsKeyClaudeCodeWorkgroupUpsellSuppressed];
+}
+
++ (void)setClaudeCodeWorkgroupUpsellSuppressed:(BOOL)suppressed {
+    [self.userDefaults setBool:suppressed
+                        forKey:iTermUserDefaultsKeyClaudeCodeWorkgroupUpsellSuppressed];
+}
+
++ (BOOL)claudeCodeHooksInstalled {
+    return [self.userDefaults boolForKey:iTermUserDefaultsKeyClaudeCodeHooksInstalled];
+}
+
++ (void)setClaudeCodeHooksInstalled:(BOOL)installed {
+    [self.userDefaults setBool:installed
+                        forKey:iTermUserDefaultsKeyClaudeCodeHooksInstalled];
+}
+
++ (BOOL)claudeCodeTriggersInstalled {
+    return [self.userDefaults boolForKey:iTermUserDefaultsKeyClaudeCodeTriggersInstalled];
+}
+
++ (void)setClaudeCodeTriggersInstalled:(BOOL)installed {
+    [self.userDefaults setBool:installed
+                        forKey:iTermUserDefaultsKeyClaudeCodeTriggersInstalled];
+}
+
 + (BOOL)haveExplainedHowToAddTouchbarControls {
     return [self.userDefaults boolForKey:iTermUserDefaultsKeyHaveExplainedHowToAddTouchbarControls];
 }
@@ -276,6 +307,15 @@ static NSUserDefaults *iTermPrivateUserDefaults(void) {
 + (void)setWindowCornerRadiusCache:(NSDictionary<NSString *, NSNumber *> *)windowCornerRadiusCache {
     [self.userDefaults setObject:windowCornerRadiusCache
                           forKey:iTermUserDefaultsKeyWindowCornerRadiusCache];
+}
+
++ (NSData *)workgroupsData {
+    return [self.userDefaults objectForKey:iTermUserDefaultsKeyWorkgroupsData];
+}
+
++ (void)setWorkgroupsData:(NSData *)workgroupsData {
+    [self.userDefaults setObject:workgroupsData
+                          forKey:iTermUserDefaultsKeyWorkgroupsData];
 }
 
 + (BOOL)lastShutdownWasClean {

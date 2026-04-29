@@ -270,6 +270,8 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
             [iTermBufferInputTrigger class],
             [iTermFoldTrigger class],
             [iTermInjectTrigger class],
+            [iTermEnterWorkgroupTrigger class],
+            [iTermExitWorkgroupTrigger class],
             [iTermHighlightLineTrigger class],
             [iTermUserNotificationTrigger class],
             [iTermSetUserVariableTrigger class],
@@ -295,7 +297,9 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
                         [HyperlinkBrowserTrigger class],
                         [ReloadBrowserTrigger class],
                         [InjectJavascriptURLTrigger class],
-                        [InjectJavascriptContentTrigger class]];
+                        [InjectJavascriptContentTrigger class],
+                        [iTermEnterWorkgroupBrowserTrigger class],
+                        [iTermExitWorkgroupBrowserTrigger class]];
     }
     return [allClasses sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) {
                   return [[obj1 title] compare:[obj2 title]];
@@ -700,7 +704,15 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
 }
 
 + (void)addTriggers:(NSArray<Trigger *> *)triggers toProfileWithGUID:(NSString *)guid {
-    Profile *profile = [[ProfileModel sharedInstance] bookmarkWithGuid:guid];
+    [self addTriggers:triggers
+    toProfileWithGUID:guid
+              inModel:[ProfileModel sharedInstance]];
+}
+
++ (void)addTriggers:(NSArray<Trigger *> *)triggers
+  toProfileWithGUID:(NSString *)guid
+            inModel:(ProfileModel *)model {
+    Profile *profile = [model bookmarkWithGuid:guid];
     if (!profile) {
         return;
     }
@@ -717,7 +729,7 @@ NSString *const kStatusTextComboBoxIdentifier = @"kStatusTextComboBoxIdentifier"
         return dict;
     }];
     NSArray *updated = [existing arrayByAddingObjectsFromArray:newDicts];
-    [[ProfileModel sharedInstance] setObject:updated forKey:KEY_TRIGGERS inBookmark:profile];
+    [model setObject:updated forKey:KEY_TRIGGERS inBookmark:profile];
 }
 
 #pragma mark - NSTableViewDataSource

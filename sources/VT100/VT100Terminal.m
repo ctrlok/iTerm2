@@ -4530,6 +4530,13 @@ static NSString *VT100GetURLParamForKey(NSString *params, NSString *key) {
                     status.statusColor = c;
                 }
             }
+        } else if ([key isEqualToString:@"detail"]) {
+            if (value.length > 0) {
+                status.detailPresence = VT100TabStatusUpdateFieldSet;
+                status.detail = value;
+            } else {
+                status.detailPresence = VT100TabStatusUpdateFieldCleared;
+            }
         }
         // Unknown keys are silently ignored
     }
@@ -5622,7 +5629,10 @@ static iTermPromise<NSNumber *> *VT100TerminalPromiseOfDECRPMSettingFromBoolean(
         return;
     }
     self.dirty = YES;
-    self.termType = [dict[kTerminalStateTermTypeKey] nilIfNull];
+    NSString *savedTermType = [dict[kTerminalStateTermTypeKey] nilIfNull];
+    if (savedTermType) {
+        self.termType = savedTermType;
+    }
 
     self.answerBackString = dict[kTerminalStateAnswerBackStringKey];
     if ([self.answerBackString isKindOfClass:[NSNull class]]) {

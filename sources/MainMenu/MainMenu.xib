@@ -120,7 +120,12 @@
                             </menuItem>
                             <menuItem title="Install Claude Code Integration" identifier="Install Claude Code Integration" id="Qef-e2-NCc">
                                 <connections>
-                                    <action selector="installClaudeCodeIntegration:" target="-1" id="0Ln-FF-m2P"/>
+                                    <action selector="installClaudeCodeIntegration:" target="201" id="9iz-or-Y6i"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Uninstall Claude Code Integration" identifier="Uninstall Claude Code Integration" id="O3D-kK-x3j">
+                                <connections>
+                                    <action selector="uninstallClaudeCodeIntegration:" target="201" id="fkt-E3-bxJ"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Remove Recent Profiles from Dock Menu" identifier="Remove Recent Profiles from Dock Menu" id="WcV-7l-ycc">
@@ -273,6 +278,13 @@
                                 </menu>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="sr9-jE-RB0">
+                                <modifierMask key="keyEquivalentModifierMask" command="YES"/>
+                            </menuItem>
+                            <menuItem title="Workgroups" id="OW4-ru-6dZ">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <menu key="submenu" title="Workgroups" id="wMa-7x-vmS"/>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="0Pe-Q6-LEJ">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
                             <menuItem title="Broadcast Input" id="1261">
@@ -988,6 +1000,12 @@ Gw
                             <menuItem title="Show Annotations" keyEquivalent="\" identifier="Show Annotations" id="pAu-j3-wEC">
                                 <connections>
                                     <action selector="showHideNotes:" target="-1" id="bWx-ZS-6aE"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Show Clippings" keyEquivalent="=" identifier="Show Clippings" id="Clp-vw-ShC">
+                                <modifierMask key="keyEquivalentModifierMask" shift="YES" command="YES"/>
+                                <connections>
+                                    <action selector="toggleShowClippings:" target="-1" id="Clp-ac-Tog"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Show Composer" keyEquivalent="." identifier="Composer" id="Bhs-45-5yR">
@@ -2009,6 +2027,7 @@ CQ
                 <outlet property="useTransparency" destination="1228" id="1230"/>
                 <outlet property="windowArrangementsAsTabs_" destination="z6V-EJ-Ntf" id="wse-Wc-WVw"/>
                 <outlet property="windowArrangements_" destination="1280" id="1285"/>
+                <outlet property="workgroupsMenuItem" destination="OW4-ru-6dZ" id="Yvx-Rp-XKF"/>
             </connections>
         </customObject>
         <customObject id="266" userLabel="Font Manager" customClass="NSFontManager"/>

@@ -54,6 +54,7 @@
 #import "RegexKitLite.h"
 #import "SCPFile.h"
 #import "SCPPath.h"
+#import "SFSymbolEnum.h"
 #import "SearchResult.h"
 #import "SessionView.h"
 #import "TaskNotifier.h"
@@ -154,6 +155,7 @@
 #import "iTermRawKeyMapper.h"
 #import "iTermRecentDirectoryMO.h"
 #import "iTermRestorableSession.h"
+#import "iTermRightGutterPanelRegistry.h"
 #import "iTermRule.h"
 #import "iTermSavePanel.h"
 #import "iTermScriptConsole.h"
@@ -325,6 +327,8 @@ static NSString *const SESSION_ARRANGEMENT_TIMESTAMP_BASELINE = @"Timestamp Base
 static NSString *const SESSION_ARRANGEMENT_BROWSER_TARGET = @"Browser Target";  // String
 static NSString *const SESSION_ARRANGEMENT_TAB_STATUS = @"Tab Status";  // NSDictionary
 static NSString *const SESSION_ARRANGEMENT_SESSION_NOTE = @"Session Note";  // NSDictionary (graph-encoded)
+static NSString *const SESSION_ARRANGEMENT_CLIPPINGS = @"Clippings";  // NSArray<NSDictionary<NSString *, NSString *> *>, see PTYSessionClipping. Belongs to the leader of the peer group.
+static NSString *const SESSION_ARRANGEMENT_CLIPPINGS_VISIBLE = @"Clippings Visible";  // BOOL
 
 // Keys for dictionary in SESSION_ARRANGEMENT_PROGRAM
 NSString *const kProgramType = @"Type";  // Value will be one of the kProgramTypeXxx constants.
@@ -390,6 +394,7 @@ typedef NS_ENUM(NSUInteger, PTYSessionTurdType) {
 @end
 
 @implementation PTYSession {
+
     NSString *_termVariable;
 
     // Has the underlying connection been closed?
@@ -868,6 +873,7 @@ typedef NS_ENUM(NSUInteger, PTYSessionTurdType) {
         _canChangeProfileInArrangementGeneration = -1;
         _runningRemoteCommand = [[iTermRunningRemoteCommand alloc] init];
         _channelClients = [[NSMutableArray alloc] init];
+        _swiftState = [[PTYSessionSwiftState alloc] init];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(coprocessChanged)
                                                      name:kCoprocessStatusChangeNotification
@@ -1167,6 +1173,7 @@ ITERM_WEAKLY_REFERENCEABLE
     [_bindings release];
     [_apsContext release];
     [_sessionNoteModel release];
+    [_swiftState release];
 
     [super dealloc];
 }
@@ -1357,6 +1364,20 @@ ITERM_WEAKLY_REFERENCEABLE
         return [self.view.browserViewController copyMode];
     }
     return _modeHandler.mode == iTermSessionModeCopy;
+}
+
+- (void)moveToolbarTo:(PTYSession *)destination {
+    // The toolbar items and poller are owned by the shared workgroup
+    // peer port, so the only thing that needs to happen is reparenting
+    // the physical toolbar view onto the destination's SessionView.
+    [self.view moveToolbarTo:destination.view];
+}
+
+- (NSArray<iTermSessionToolbarItem *> *)desiredToolbarItems {
+    if (self.workgroupInstance) {
+        return [self.workgroupInstance toolbarItemsFor:self];
+    }
+    return nil;
 }
 
 - (BOOL)sessionModeConsumesEvent:(NSEvent *)event {
@@ -1591,6 +1612,11 @@ ITERM_WEAKLY_REFERENCEABLE
         [aSession.commands addObjectsFromArray:arrangement[SESSION_ARRANGEMENT_COMMANDS]];
         [aSession trimCommandsIfNeeded];
     }
+    NSArray *clippingDicts = arrangement[SESSION_ARRANGEMENT_CLIPPINGS];
+    if ([clippingDicts isKindOfClass:[NSArray class]]) {
+        [aSession setLocalClippingsFromDictionaries:clippingDicts];
+    }
+    aSession.clippingsVisible = [[NSNumber castFrom:arrangement[SESSION_ARRANGEMENT_CLIPPINGS_VISIBLE]] boolValue];
     [aSession.directoryTracker restoreFromArrangement:arrangement];
 
     if (arrangement[SESSION_ARRANGEMENT_APS]) {
@@ -3374,6 +3400,27 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     return restorableSession;
 }
 
+- (void)restartSessionWithCommand:(NSString *)command {
+    // Mirror the Swift callers' isRestartable() guard. -restartSession
+    // asserts(self.isRestartable) at the top, so an ObjC caller (or
+    // any future path) that forgets the gate would abort instead of
+    // failing gracefully. A non-restartable session has nothing to
+    // restart — including reassigning `program` would only flip the
+    // session into an inconsistent restartable-but-never-launched
+    // state, so the early return covers both halves.
+    if (!self.isRestartable) {
+        return;
+    }
+    if (command.length > 0) {
+        // Update the stored program so that
+        // replaceTerminatedShellWithNewInstance (called after the
+        // shell dies) launches the new command rather than the
+        // original one.
+        self.program = command;
+    }
+    [self restartSession];
+}
+
 - (void)restartSession {
     DLog(@"Restart session %@", self);
     assert(self.isRestartable);
@@ -4362,7 +4409,7 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
 }
 
 - (CGFloat)desiredRightExtra {
-    return [PTYSession desiredRightExtraForProfile:self.profile];
+    return [PTYSession desiredRightExtraForProfile:self.profile session:self];
 }
 
 + (iTermTimestampsMode)desiredTimestampsModeForProfile:(Profile *)profile {
@@ -4377,12 +4424,24 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     return [PTYSession desiredTimestampsModeForProfile:self.profile];
 }
 
-+ (CGFloat)desiredRightExtraForProfile:(Profile *)profile {
++ (CGFloat)desiredRightExtraForProfile:(Profile *)profile
+                               session:(PTYSession *)session {
+    CGFloat extra = 0;
     if ([self desiredTimestampsModeForProfile:profile] == iTermTimestampsModeAdjacent) {
-        return 100.0;
-    } else {
-        return 0;
+        extra += 100.0;
     }
+    extra += [self desiredPanelReservationForProfile:profile session:session];
+    return extra;
+}
+
++ (CGFloat)desiredPanelReservationForProfile:(Profile *)profile
+                                     session:(PTYSession *)session {
+    return [[iTermRightGutterPanelRegistry sharedInstance] totalWidthForProfile:profile
+                                                                        session:session];
+}
+
+- (CGFloat)desiredPanelReservation {
+    return [PTYSession desiredPanelReservationForProfile:self.profile session:self];
 }
 
 - (BOOL)setScrollBarVisible:(BOOL)visible style:(NSScrollerStyle)style {
@@ -4399,6 +4458,14 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     [[self textview] updateScrollerForBackgroundColor];
     if (self.view.actualRightExtra != self.desiredRightExtra) {
         self.view.actualRightExtra = self.desiredRightExtra;
+        self.view.actualPanelReservation = self.desiredPanelReservation;
+        [self updateMetalDriver];
+        changed = YES;
+    } else if (self.view.actualPanelReservation != self.desiredPanelReservation) {
+        // Panel reservation can change without the total rightExtra changing
+        // (e.g., a panel's width grows by N while the timestamps slot
+        // disappears). Keep the two in lockstep so timestamps reposition.
+        self.view.actualPanelReservation = self.desiredPanelReservation;
         [self updateMetalDriver];
         changed = YES;
     }
@@ -5747,6 +5814,9 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
     }
     // useTransparency may have just changed.
     [self invalidateBlend];
+    if (delegate) {
+        [self didAssignDelegate];
+    }
 }
 
 - (NSString *)name {
@@ -6536,6 +6606,11 @@ webViewConfiguration:(WKWebViewConfiguration *)webViewConfiguration
         result[SESSION_ARRANGEMENT_COMMANDS] = _commands;
         [_directoryTracker encodeArrangementWith:result];
     }
+    NSArray *localClippingDicts = self.localClippingsAsDictionaries;
+    if (localClippingDicts.count > 0) {
+        result[SESSION_ARRANGEMENT_CLIPPINGS] = localClippingDicts;
+    }
+    result[SESSION_ARRANGEMENT_CLIPPINGS_VISIBLE] = @(self.clippingsVisible);
 
     NSString *pwd = [self currentLocalWorkingDirectory];
     result[SESSION_ARRANGEMENT_WORKING_DIRECTORY] = pwd ? pwd : @"";
@@ -8558,7 +8633,8 @@ extendResultsAcrossSoftBoundaries:(BOOL)extendResultsAcrossSoftBoundaries {
                         scale:_view.window.screen.backingScaleFactor
                       context:_metalContext
          legacyScrollbarWidth:self.legacyScrollbarWidth
-             rightExtraPoints:_view.actualRightExtra];
+             rightExtraPoints:_view.actualRightExtra
+       panelReservationPoints:_view.actualPanelReservation];
 }
 
 - (CGFloat)legacyScrollbarWidth {
@@ -13338,6 +13414,10 @@ typedef NS_ENUM(NSUInteger, PTYSessionTmuxReport) {
     return self.view.actualRightExtra;
 }
 
+- (CGFloat)textViewPanelReservation {
+    return self.view.actualPanelReservation;
+}
+
 - (void)textViewLiveSelectionDidEnd {
     if (_textview._haveShortSelection) {
         [[iTermChatWindowController instanceShowingErrors:NO] setSelectionText:_textview.selectedText forSession:self.guid];
@@ -14847,7 +14927,11 @@ typedef NS_ENUM(NSUInteger, PTYSessionTmuxReport) {
 }
 
 - (void)screenPromptDidStartAtLine:(int)line {
-    [self clearTabStatus];
+    // Dispatch because we are in a side-effect and it wouldn't be safe to call clearTabStatus,
+    // which can have big consequences (like terminating sessions if we're in CC integration mode).
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self clearTabStatus];
+    });
     [_pasteHelper unblock];
 }
 
@@ -17845,6 +17929,27 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
 }
 
 - (void)screenPostUserNotification:(NSString * _Nonnull)message rich:(BOOL)rich {
+    NSDictionary<NSString *, NSString *> *decoded = nil;
+    if (rich) {
+        decoded = [[message it_keyValuePairsSeparatedBy:@";"] mapValuesWithBlock:^id(NSString *key, NSString *encoded) {
+            return [encoded stringByBase64DecodingStringWithEncoding:NSUTF8StringEncoding];
+        }];
+    }
+
+    if (_eventTriggerEvaluator.hasNotificationPostedTrigger) {
+        if (rich) {
+            NSMutableArray<NSString *> *values = [NSMutableArray array];
+            for (NSString *key in @[ @"title", @"message", @"subtitle" ]) {
+                NSString *value = decoded[key];
+                if (value.length > 0) {
+                    [values addObject:value];
+                }
+            }
+            [_eventTriggerEvaluator notificationPostedWithMessages:values];
+        } else {
+            [_eventTriggerEvaluator notificationPostedWithMessages:@[ message ]];
+        }
+    }
     if (![self shouldPostTerminalGeneratedAlert]) {
         DLog(@"Declining to allow terminal to post user notification %@", message);
         return;
@@ -17855,13 +17960,10 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
     iTermNotificationController* controller = [iTermNotificationController sharedInstance];
 
     if (rich) {
-        NSDictionary<NSString *, NSString *> *dict = [[message it_keyValuePairsSeparatedBy:@";"] mapValuesWithBlock:^id(NSString *key, NSString *encoded) {
-            return [encoded stringByBase64DecodingStringWithEncoding:NSUTF8StringEncoding];
-        }];
-        NSString *description = dict[@"message"] ?: @"";
-        NSString *title = dict[@"title"];
-        NSString *subtitle = dict[@"subtitle"];
-        NSString *image = [dict[@"image"] stringByTrimmingTrailingCharactersFromCharacterSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        NSString *description = decoded[@"message"] ?: @"";
+        NSString *title = decoded[@"title"];
+        NSString *subtitle = decoded[@"subtitle"];
+        NSString *image = [decoded[@"image"] stringByTrimmingTrailingCharactersFromCharacterSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 
         [controller notifyRich:title
                   withSubtitle:subtitle
@@ -19569,6 +19671,16 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
     if (_inScreenshotMode && _view.window == nil) {
         [iTermScreenshotPanel closePanelForSession:self];
     }
+    // After a peer swap, the view may have had outstanding temporarilyDisableMetal
+    // tokens dropped while it had no window, leaving the metal view stuck at alpha=0.
+    // Now that we have a window again, render frames and show it.
+    if (_view.window != nil &&
+        _useMetal &&
+        _metalDisabledTokens.count == 0 &&
+        _view.metalView.alphaValue == 0) {
+        DLog(@"sessionViewDidChangeWindow: metal view alpha is 0 with no pending tokens; re-showing %@", self);
+        [self renderTwoMetalFramesAndShowMetalView];
+    }
 }
 
 - (void)sessionViewAnnouncementDidChange:(SessionView *)sessionView {
@@ -19618,7 +19730,10 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
             return;
         }
         if (!_view.window) {
-            DLog(@"drawFrameAndRemoveTemporarilyDisablementOfMetal: Returning because the view has no window");
+            // Drop the token instead of leaking it. We can't draw without a window, but a later
+            // sessionViewDidChangeWindow will re-show the metal view when it returns.
+            [_metalDisabledTokens removeObject:token];
+            DLog(@"drawFrameAndRemoveTemporarilyDisablementOfMetal: Returning because the view has no window. Tokens are now %@", _metalDisabledTokens);
             return;
         }
         if (!_useMetal) {
@@ -21518,6 +21633,13 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
 }
 
 - (void)naggingControllerRestart {
+    if (self.workgroupSessionMode == iTermWorkgroupSessionModeCodeReview &&
+        self.codeReviewRawCommand) {
+        // Code-review sessions re-show the prompt overlay so the user
+        // can edit the prompt before the program is rerun.
+        [self reloadCodeReviewPromptOverlay];
+        return;
+    }
     [self replaceTerminatedShellWithNewInstance];
 }
 
@@ -21824,8 +21946,13 @@ static const NSTimeInterval PTYSessionFocusReportBellSquelchTimeIntervalThreshol
     [self updateAutoComposerFrame];
     [self updateSearchRange];
     if (_view.progress != _screen.progress) {
+        BOOL wasVisible = VT100ScreenProgressIsVisible(_view.progress);
+        BOOL isVisible = VT100ScreenProgressIsVisible(_screen.progress);
         _view.progress = _screen.progress;
         [self.delegate session:self progressDidChange:_screen.progress];
+        if (wasVisible != isVisible && _eventTriggerEvaluator.hasProgressBarChangedTrigger) {
+            [_eventTriggerEvaluator progressBarChangedWithAppeared:isVisible];
+        }
     }
 }
 
@@ -22877,6 +23004,54 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
     }
 }
 
+- (void)triggerSideEffectEnterWorkgroupWithIdentifier:(NSString * _Nonnull)workgroupUniqueIdentifier {
+    [iTermGCD assertMainQueueSafe];
+    // No-op if this session is already in a workgroup. The
+    // controller's enter would otherwise replace a different active
+    // workgroup with this one, which causes churn when the user
+    // has multiple triggers (each fires on its own match) and would
+    // also disagree with the Workgroups menu's behavior of disabling
+    // itself for sessions that are already in a workgroup. The user
+    // must exit the current workgroup first.
+    if (self.workgroupInstance != nil) {
+        return;
+    }
+    // Defer to the next main-runloop tick. We're inside a screen
+    // side-effect right now, and workgroup entry spawns splits/tabs
+    // which call performBlockWithJoinedThreads — that asserts we're
+    // NOT currently performing a side effect. Yielding to the next
+    // tick gets us outside the side-effect critical section.
+    NSString *identifier = [workgroupUniqueIdentifier copy];
+    __weak __typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong __typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || strongSelf.workgroupInstance != nil) {
+            return;
+        }
+        [iTermWorkgroupController.instance enterWithWorkgroupUniqueIdentifier:identifier
+                                                                           on:strongSelf];
+    });
+}
+
+- (void)triggerSideEffectExitWorkgroup {
+    [iTermGCD assertMainQueueSafe];
+    // No-op if not in a workgroup. Same dispatch_async deferral as
+    // the enter side: we're inside a screen side-effect, and the
+    // teardown path can call into PTYTab/PseudoTerminal which trip
+    // the "not currently performing a side effect" assert.
+    if (self.workgroupInstance == nil) {
+        return;
+    }
+    __weak __typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong __typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || strongSelf.workgroupInstance == nil) {
+            return;
+        }
+        [iTermWorkgroupController.instance exitOn:strongSelf];
+    });
+}
+
 - (void)triggerSideEffectInvokeFunctionCall:(NSString * _Nonnull)invocation
                               withVariables:(NSDictionary * _Nonnull)temporaryVariables
                                    captures:(NSArray<NSString *> * _Nonnull)captureStringArray
@@ -23064,7 +23239,7 @@ getOptionKeyBehaviorLeft:(iTermOptionKeyBehavior *)left
 }
 
 - (void)screenSetTabStatus:(VT100TabStatusUpdate *)status {
-    DLog(@"%@ screenSetTabStatus: %@", self, status);
+    DLog(@"%@ screenSetTabStatus: %@", self, status.description);
     NSString *previousStatusText = self.tabStatus.statusText;
     if (![self.tabStatus apply:status]) {
         DLog(@"No change");

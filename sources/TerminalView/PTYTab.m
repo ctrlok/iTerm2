@@ -510,16 +510,11 @@ static void SetAgainstGrainDim(BOOL isVertical, NSSize *dest, CGFloat value) {
                                                       userInfo:nil];
     PtyLog(@"PTYTab dealloc");
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    for (PTYSession *aSession in [self sessions]) {
-        aSession.delegate = nil;
-    }
-
     for (id key in idMap_) {
         SessionView* aView = [idMap_ objectForKey:key];
 
         PTYSession* aSession = [self sessionForSessionView:aView];
         aSession.active = NO;
-        aSession.delegate = nil;
     }
 
     root_ = nil;
@@ -612,7 +607,8 @@ static void SetAgainstGrainDim(BOOL isVertical, NSSize *dest, CGFloat value) {
                                      adjustScrollView:![self isTmuxTab]];
         const BOOL changedBottomStatusBar = [aSession.view setShowBottomStatusBar:shouldShowBottomStatusBar
                                                                  adjustScrollView:!self.isTmuxTab];
-        if (changedTitle || changedBottomStatusBar) {
+        const BOOL changedToolbar = [aSession.view setToolbarItems:aSession.desiredToolbarItems];
+        if (changedTitle || changedBottomStatusBar || changedToolbar) {
             if (![self isTmuxTab]) {
                 if ([self fitSessionToCurrentViewSize:aSession]) {
                     anyChange = YES;
@@ -3912,7 +3908,7 @@ typedef struct {
                                                                             [parseTree[kLayoutDictHeightKey] intValue])
                                                       showTitles:showTitles
                                              showBottomStatusBar:showBottomStatusBar
-                                                      rightExtra:[PTYSession desiredRightExtraForProfile:profile]
+                                                      rightExtra:[PTYSession desiredRightExtraForProfile:profile session:nil]
                                                       inTerminal:term];
             parseTree[kLayoutDictPixelWidthKey] = @(size.width);
             parseTree[kLayoutDictPixelHeightKey] = @(size.height);
@@ -5104,6 +5100,8 @@ typedef struct {
     const BOOL haveMultipleSessions = self.sessions.count > 1;
     const BOOL showTitles = forceTitleBar || (perPaneTitleBarEnabled && haveMultipleSessions);
 
+    const BOOL hasScrollbar = [realParentWindow_ scrollbarShouldBeVisible];
+    const NSScrollerStyle scrollerStyle = [realParentWindow_ scrollerStyle];
     for (PTYSession *aSession in [self sessions]) {
         NSNumber *n = [NSNumber numberWithInt:[aSession tmuxPane]];
         if (![preexistingPanes containsObject:n]) {
@@ -5112,6 +5110,11 @@ typedef struct {
                                     withPane:[aSession tmuxPane]
                                     inWindow:self.tmuxWindow];
             [aSession setTmuxController:tmuxController_];
+            // Sync scrollbar/right-extra state so timestamps and gutter
+            // panels get their reserved space. +openTabWithTmuxLayout: does
+            // this for new tabs; it was missed here for in-place layout
+            // updates (i.e. tmux-driven splits in an existing tab).
+            [aSession setScrollBarVisible:hasScrollbar style:scrollerStyle];
         }
         [aSession.view setShowTitle:showTitles adjustScrollView:NO];
         [aSession.view setShowBottomStatusBar:NO adjustScrollView:NO];
@@ -5598,6 +5601,7 @@ typedef struct {
         DLog(@"tmux");
         return;
     }
+    [buried disinter];
     PTYSplitView *splitView = (PTYSplitView *)existing.view.superview;
     const NSUInteger index = [splitView.subviews indexOfObject:existing.view];
     buried.view.frame = existing.view.frame;
@@ -6999,7 +7003,7 @@ typedef struct {
                                                          borderType:anySession.view.scrollview.borderType
                                                         controlSize:NSControlSizeRegular
                                                       scrollerStyle:anySession.view.scrollview.scrollerStyle
-                                                         rightExtra:[PTYSession desiredRightExtraForProfile:profile]];
+                                                         rightExtra:[PTYSession desiredRightExtraForProfile:profile session:anySession]];
         NSSize cellSize = [PTYTab cellSizeForBookmark:profile];
         return VT100GridSizeMake((contentSize.width - [iTermPreferences intForKey:kPreferenceKeySideMargins] * 2) / cellSize.width,
                                  (contentSize.height - [iTermPreferences intForKey:kPreferenceKeyTopBottomMargins] * 2) / cellSize.height);
@@ -7116,6 +7120,10 @@ typedef struct {
 
 - (void)sessionDidUpdatePaneTitle:(PTYSession *)session {
     [_tmuxTitleMonitor updateOnce];
+}
+
+- (void)sessionDidChangeDesiredToolbarItems:(PTYSession *)session {
+    [self updatePaneTitles];
 }
 
 - (void)sessionDidSetWindowTitle:(NSString *)title {
@@ -7311,7 +7319,48 @@ backgroundColor:(NSColor *)backgroundColor {
     [self.delegate tab:self progressDidChange:self.progress];
 }
 
-- (NSScriptObjectSpecifier *)objectSpecifier { 
+- (void)sessionActivateSession:(PTYSession *)sessionToActivate
+                    amongPeers:(PTYSessionPeerPort *)peerPort
+                   moveToolbar:(BOOL)moveToolbar {
+    DLog(@"sessionActivateSession: activate=%p moveToolbar=%d", sessionToActivate, moveToolbar);
+    for (PTYSession *visiblePeer in [self sessions]) {
+        if (visiblePeer != sessionToActivate && [visiblePeer sessionBelongsToPeers:peerPort]) {
+            DLog(@"found visiblePeer=%p to swap", visiblePeer);
+            // TODO: Ensure self.activeSession is buriable (not synthetic) - if it is synthetic we need to replace it with the live session before burial
+            if (moveToolbar) {
+                [visiblePeer moveToolbarTo:sessionToActivate];
+            }
+            DLog(@"before swapSession: activate.view.frame=%@ scrollview.frame=%@",
+                 NSStringFromRect(sessionToActivate.view.frame),
+                 NSStringFromRect(sessionToActivate.view.scrollview.frame));
+            [self swapSession:visiblePeer withBuriedSession:sessionToActivate];
+            DLog(@"after swapSession: activate.view.frame=%@ scrollview.frame=%@",
+                 NSStringFromRect(sessionToActivate.view.frame),
+                 NSStringFromRect(sessionToActivate.view.scrollview.frame));
+            break;
+        }
+    }
+    if ([self.sessions containsObject:sessionToActivate]) {
+        [self setActiveSession:sessionToActivate];
+    }
+    // Update layout for toolbar
+    DLog(@"before updatePaneTitles");
+    [self updatePaneTitles];
+    DLog(@"after updatePaneTitles: activate.view.frame=%@ scrollview.frame=%@ grid=%dx%d",
+         NSStringFromRect(sessionToActivate.view.frame),
+         NSStringFromRect(sessionToActivate.view.scrollview.frame),
+         sessionToActivate.columns, sessionToActivate.rows);
+    if (!self.isTmuxTab) {
+        const BOOL fit = [self fitSessionToCurrentViewSize:sessionToActivate];
+        DLog(@"fitSessionToCurrentViewSize returned %d (grid is now %dx%d)",
+             fit, sessionToActivate.columns, sessionToActivate.rows);
+    }
+    [sessionToActivate.view layoutContentsForNewlyActiveSession];
+    DLog(@"end sessionActivateSession: scrollview.frame=%@",
+         NSStringFromRect(sessionToActivate.view.scrollview.frame));
+}
+
+- (NSScriptObjectSpecifier *)objectSpecifier {
     return [self scriptingObjectSpecifier];
 }
 

@@ -14,6 +14,12 @@ NSString *const iTermGitStateVariableNameGitDirty = @"user.gitDirty";
 NSString *const iTermGitStateVariableNameGitAdds = @"user.gitAdds";
 NSString *const iTermGitStateVariableNameGitDeletes = @"user.gitDeletes";
 
+NSString *const iTermGitStateVariableNameGitLinesInserted = @"user.gitLinesInserted";
+NSString *const iTermGitStateVariableNameGitLinesDeleted = @"user.gitLinesDeleted";
+NSString *const iTermGitStateVariableNameGitFilesAdded = @"user.gitFilesAdded";
+NSString *const iTermGitStateVariableNameGitFilesModified = @"user.gitFilesModified";
+NSString *const iTermGitStateVariableNameGitFilesDeleted = @"user.gitFilesDeleted";
+
 NSArray<NSString *> *iTermGitStatePaths(void) {
     return @[ iTermGitStateVariableNameGitBranch,
               iTermGitStateVariableNameGitPushCount,
@@ -22,6 +28,46 @@ NSArray<NSString *> *iTermGitStatePaths(void) {
               iTermGitStateVariableNameGitAdds,
               iTermGitStateVariableNameGitDeletes ];
 }
+
+NSArray<NSString *> *iTermGitStateOptionalPaths(void) {
+    return @[ iTermGitStateVariableNameGitLinesInserted,
+              iTermGitStateVariableNameGitLinesDeleted,
+              iTermGitStateVariableNameGitFilesAdded,
+              iTermGitStateVariableNameGitFilesModified,
+              iTermGitStateVariableNameGitFilesDeleted ];
+}
+
+@implementation iTermGitFileStatus
+
++ (BOOL)supportsSecureCoding {
+    return YES;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder {
+    [coder encodeObject:self.path forKey:@"path"];
+    [coder encodeInteger:self.indexStatus forKey:@"indexStatus"];
+    [coder encodeInteger:self.workdirStatus forKey:@"workdirStatus"];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder {
+    self = [super init];
+    if (self) {
+        _path = [[coder decodeObjectOfClass:[NSString class] forKey:@"path"] copy];
+        _indexStatus = (iTermGitFileChangeKind)[coder decodeIntegerForKey:@"indexStatus"];
+        _workdirStatus = (iTermGitFileChangeKind)[coder decodeIntegerForKey:@"workdirStatus"];
+    }
+    return self;
+}
+
+- (id)copyWithZone:(NSZone *)zone {
+    iTermGitFileStatus *theCopy = [[iTermGitFileStatus alloc] init];
+    theCopy.path = self.path.copy;
+    theCopy.indexStatus = self.indexStatus;
+    theCopy.workdirStatus = self.workdirStatus;
+    return theCopy;
+}
+
+@end
 
 @implementation iTermGitState
 
@@ -39,6 +85,12 @@ NSArray<NSString *> *iTermGitStatePaths(void) {
     [coder encodeBool:self.dirty forKey:@"dirty"];
     [coder encodeInteger:self.adds forKey:@"adds"];
     [coder encodeInteger:self.deletes forKey:@"deletes"];
+    [coder encodeInteger:self.linesInserted forKey:@"linesInserted"];
+    [coder encodeInteger:self.linesDeleted forKey:@"linesDeleted"];
+    [coder encodeInteger:self.filesAdded forKey:@"filesAdded"];
+    [coder encodeInteger:self.filesModified forKey:@"filesModified"];
+    [coder encodeInteger:self.filesDeleted forKey:@"filesDeleted"];
+    [coder encodeObject:self.fileStatuses forKey:@"fileStatuses"];
     [coder encodeInteger:self.creationTime forKey:@"creationTime"];
     [coder encodeInteger:self.repoState forKey:@"repoState"];
 }
@@ -53,6 +105,13 @@ NSArray<NSString *> *iTermGitStatePaths(void) {
         _dirty = [coder decodeBoolForKey:@"dirty"];
         _adds = [coder decodeIntegerForKey:@"adds"];
         _deletes = [coder decodeIntegerForKey:@"deletes"];
+        _linesInserted = [coder decodeIntegerForKey:@"linesInserted"];
+        _linesDeleted = [coder decodeIntegerForKey:@"linesDeleted"];
+        _filesAdded = [coder decodeIntegerForKey:@"filesAdded"];
+        _filesModified = [coder decodeIntegerForKey:@"filesModified"];
+        _filesDeleted = [coder decodeIntegerForKey:@"filesDeleted"];
+        _fileStatuses = [[coder decodeObjectOfClasses:[NSSet setWithObjects:[NSArray class], [iTermGitFileStatus class], nil]
+                                               forKey:@"fileStatuses"] copy];
         _creationTime = [coder decodeIntegerForKey:@"creationTime"];
         _repoState = [coder decodeIntegerForKey:@"repoState"];
     }
@@ -70,21 +129,33 @@ NSArray<NSString *> *iTermGitStatePaths(void) {
     theCopy.dirty = self.dirty;
     theCopy.adds = self.adds;
     theCopy.deletes = self.deletes;
+    theCopy.linesInserted = self.linesInserted;
+    theCopy.linesDeleted = self.linesDeleted;
+    theCopy.filesAdded = self.filesAdded;
+    theCopy.filesModified = self.filesModified;
+    theCopy.filesDeleted = self.filesDeleted;
+    theCopy.fileStatuses = [[NSArray alloc] initWithArray:self.fileStatuses
+                                                 copyItems:YES];
     return theCopy;
 }
 
 #pragma mark NSObject
 
 - (NSString *)description {
-    return [NSString stringWithFormat:@"<%@: %p dir=%@ xcode=%@ ahead=%@ behind=%@ branch=%@ dirty=%@ adds=%@ deletes=%@>",
+    return [NSString stringWithFormat:@"<%@: %p dir=%@ xcode=%@ ahead=%@ behind=%@ branch=%@ dirty=%@ adds=%@ deletes=%@ lines=+%@/-%@ files=+%@/~%@/-%@>",
             self.class, self,
-            _directory, _xcode, _ahead, _behind, _branch, @(_dirty), @(_adds), @(_deletes)];
+            _directory, _xcode, _ahead, _behind, _branch, @(_dirty),
+            @(_adds), @(_deletes),
+            @(_linesInserted), @(_linesDeleted),
+            @(_filesAdded), @(_filesModified), @(_filesDeleted)];
 }
 
 - (NSString *)prettyDescription {
-    return [NSString stringWithFormat:@"dir=%@ xcode=%@ ahead=%@ behind=%@ branch=%@ dirty=%@ adds=%@ deletes=%@",
-            _directory, _xcode, _ahead, _behind, _branch, @(_dirty), @(_adds), @(_deletes)];
-
+    return [NSString stringWithFormat:@"dir=%@ xcode=%@ ahead=%@ behind=%@ branch=%@ dirty=%@ adds=%@ deletes=%@ lines=+%@/-%@ files=+%@/~%@/-%@",
+            _directory, _xcode, _ahead, _behind, _branch, @(_dirty),
+            @(_adds), @(_deletes),
+            @(_linesInserted), @(_linesDeleted),
+            @(_filesAdded), @(_filesModified), @(_filesDeleted)];
 }
 @end
 
