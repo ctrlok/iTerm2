@@ -399,7 +399,11 @@ static CGFloat PSMWeightedAverage(CGFloat l, CGFloat u, CGFloat w) {
         // bg-mirror (or any caller passing a translucent tab color) — skip the
         // bar-level fill so the active session's bg doesn't bleed under every
         // cell's translucent overlay. Each cell paints its own bg over the
-        // window directly.
+        // window directly. Paint the start/end insets (the empty tab bar space)
+        // with the same translucent color so the bar reads as a continuation
+        // of the active tab.
+        [self drawRect:[self startInsetFrame] withColor:selectedCell.tabColor];
+        [self drawRect:[self endInsetFrame] withColor:selectedCell.tabColor];
         return;
     }
     const CGFloat highlightAmount = [selectedCell highlightAmount];
