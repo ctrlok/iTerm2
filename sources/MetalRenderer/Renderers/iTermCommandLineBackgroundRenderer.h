@@ -28,6 +28,20 @@ NS_ASSUME_NONNULL_BEGIN
 // the effective top margin used by the cell renderers.
 @property (nonatomic) CGFloat topMargin;
 
+// Left margin in pixels — distance from the left edge of the viewport in
+// to the left edge of column 0. This includes the standard sideMargins (in
+// pixels) and the per-pane extraMargins.left.
+@property (nonatomic) CGFloat leftMargin;
+
+// Cell width in pixels.
+@property (nonatomic) CGFloat cellWidth;
+
+// Maps @(row) -> NSIndexSet of selected visual cell columns on that row.
+// Rows missing from the dictionary (or with an empty index set) are tinted
+// at full width. Selected cells are punched out of the tint so the user’s
+// text selection remains visible.
+@property (nonatomic, copy, nullable) NSDictionary<NSNumber *, NSIndexSet *> *selectedColumnsByRow;
+
 @end
 
 @interface iTermCommandLineBackgroundRenderer : NSObject<iTermMetalRenderer>

@@ -635,6 +635,7 @@ static CGFloat iTermTextDrawingHelperAlphaValueForDefaultBackgroundColor(BOOL ha
                       virtualOffset:virtualOffset];
 
         if (tintPastCommands && tintColor) {
+            const CGFloat sideMargin = [iTermPreferences sideMargins];
             // Per-line tint overlay. We loop because rows may have been coalesced
             // across non-tinted lines is impossible (coalescing requires same bg
             // runs and same fold state — but to be safe we iterate each line).
@@ -650,13 +651,63 @@ static CGFloat iTermTextDrawingHelperAlphaValueForDefaultBackgroundColor(BOOL ha
                     NSLocationInRange(thisRow.line, _selectedCommandRegion)) {
                     continue;
                 }
+                // Collect x-ranges of selected runs so we can skip tinting
+                // them — the user’s text selection should remain visible.
+                NSMutableArray<NSValue *> *selectedRanges = nil;
+                for (iTermBoxedBackgroundColorRun *box in thisRow.array) {
+                    iTermBackgroundColorRun *run = box.valuePointer;
+                    if (!run->selected) {
+                        continue;
+                    }
+                    const CGFloat runLeft = floor(sideMargin + run->visualRange.location * _cellSize.width);
+                    const CGFloat runRight = runLeft + ceil(run->visualRange.length * _cellSize.width);
+                    if (runRight <= runLeft) {
+                        continue;
+                    }
+                    if (!selectedRanges) {
+                        selectedRanges = [NSMutableArray array];
+                    }
+                    [selectedRanges addObject:[NSValue valueWithRange:NSMakeRange((NSUInteger)runLeft,
+                                                                                   (NSUInteger)(runRight - runLeft))]];
+                }
                 // Tint the full cell — `_cellSize.height` already includes
                 // inter-line spacing.
-                const NSRect rect = NSMakeRect(0, thisRow.y, tintWidth, _cellSize.height);
-                [self drawBackgroundColor:tintColor
-                                   inRect:rect
-                           enableBlending:YES
-                            virtualOffset:virtualOffset];
+                if (selectedRanges.count == 0) {
+                    const NSRect rect = NSMakeRect(0, thisRow.y, tintWidth, _cellSize.height);
+                    [self drawBackgroundColor:tintColor
+                                       inRect:rect
+                               enableBlending:YES
+                                virtualOffset:virtualOffset];
+                } else {
+                    [selectedRanges sortUsingComparator:^NSComparisonResult(NSValue *a, NSValue *b) {
+                        const NSUInteger la = a.rangeValue.location;
+                        const NSUInteger lb = b.rangeValue.location;
+                        if (la < lb) return NSOrderedAscending;
+                        if (la > lb) return NSOrderedDescending;
+                        return NSOrderedSame;
+                    }];
+                    CGFloat cursor = 0;
+                    for (NSValue *value in selectedRanges) {
+                        const NSRange range = value.rangeValue;
+                        const CGFloat rangeStart = (CGFloat)range.location;
+                        const CGFloat rangeEnd = (CGFloat)NSMaxRange(range);
+                        if (rangeStart > cursor) {
+                            const NSRect rect = NSMakeRect(cursor, thisRow.y, rangeStart - cursor, _cellSize.height);
+                            [self drawBackgroundColor:tintColor
+                                               inRect:rect
+                                       enableBlending:YES
+                                        virtualOffset:virtualOffset];
+                        }
+                        cursor = MAX(cursor, rangeEnd);
+                    }
+                    if (cursor < tintWidth) {
+                        const NSRect rect = NSMakeRect(cursor, thisRow.y, tintWidth - cursor, _cellSize.height);
+                        [self drawBackgroundColor:tintColor
+                                           inRect:rect
+                                   enableBlending:YES
+                                    virtualOffset:virtualOffset];
+                    }
+                }
             }
         }
 

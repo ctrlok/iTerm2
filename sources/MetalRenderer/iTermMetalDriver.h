@@ -174,6 +174,10 @@ NS_CLASS_AVAILABLE(10_11, NA)
 
 - (ScreenCharArray *)screenCharArrayForRow:(int)y;
 
+// Visual cell columns selected on the given viewport-local row.
+// Returns an empty index set if the row is out of range.
+- (NSIndexSet *)selectedColumnIndexesForLocalRow:(NSInteger)row;
+
 - (CGRect)relativeFrame;
 - (CGRect)containerRect;
 - (NSArray<iTermKittyImageDraw *> *)kittyImageDraws;

@@ -56,8 +56,77 @@
     // extraMargins.top) so row 0 sits where the cell renderers place it.
     const CGFloat topMargin = tState.topMargin;
     const CGFloat bottomMargin = tState.configuration.extraMargins.bottom;
+    const CGFloat leftMargin = tState.leftMargin;
+    const CGFloat cellWidth = tState.cellWidth;
+    NSDictionary<NSNumber *, NSIndexSet *> *const selectedColumnsByRow = tState.selectedColumnsByRow;
 
-    const NSUInteger numQuads = tState.rowIndices.count;
+    // Build per-row pixel-space x ranges of selected cells. Each entry is the
+    // list of [start, end) pairs for a row that has any selected columns.
+    // We compute these once up front so we can size the buffers correctly.
+    NSMutableDictionary<NSNumber *, NSData *> *selectedXRangesByRow = [NSMutableDictionary dictionary];
+    [selectedColumnsByRow enumerateKeysAndObjectsUsingBlock:^(NSNumber *key, NSIndexSet *indexes, BOOL *stop) {
+        if (indexes.count == 0) {
+            return;
+        }
+        NSMutableData *data = [NSMutableData data];
+        [indexes enumerateRangesUsingBlock:^(NSRange range, BOOL *innerStop) {
+            const CGFloat start = leftMargin + (CGFloat)range.location * cellWidth;
+            const CGFloat end = start + (CGFloat)range.length * cellWidth;
+            const CGFloat clampedStart = MAX(0.0, MIN(viewportWidth, start));
+            const CGFloat clampedEnd = MAX(0.0, MIN(viewportWidth, end));
+            if (clampedEnd <= clampedStart) {
+                return;
+            }
+            CGFloat pair[2] = { clampedStart, clampedEnd };
+            [data appendBytes:pair length:sizeof(pair)];
+        }];
+        if (data.length > 0) {
+            selectedXRangesByRow[key] = data;
+        }
+    }];
+
+    // First pass: count quads. Off-screen rows still emit one (degenerate)
+    // quad to keep buffer indexing balanced.
+    NSIndexSet *const rowIndices = tState.rowIndices;
+    __block NSUInteger numQuads = 0;
+    [rowIndices enumerateIndexesUsingBlock:^(NSUInteger row, BOOL *stop) {
+        const CGFloat top = viewportHeight - topMargin - (CGFloat)row * rowHeight;
+        const CGFloat bottom = top - rowHeight;
+        const CGFloat minY = MAX(bottom, bottomMargin);
+        const CGFloat maxY = MIN(top, viewportHeight - topMargin);
+        if (maxY <= minY) {
+            numQuads += 1;
+            return;
+        }
+        NSData *ranges = selectedXRangesByRow[@(row)];
+        if (!ranges) {
+            numQuads += 1;
+            return;
+        }
+        const NSUInteger count = ranges.length / (sizeof(CGFloat) * 2);
+        const CGFloat *pairs = (const CGFloat *)ranges.bytes;
+        NSUInteger gaps = 0;
+        CGFloat cursor = 0;
+        for (NSUInteger i = 0; i < count; i++) {
+            const CGFloat rs = pairs[i * 2];
+            const CGFloat re = pairs[i * 2 + 1];
+            if (rs > cursor) {
+                gaps++;
+            }
+            cursor = MAX(cursor, re);
+        }
+        if (cursor < viewportWidth) {
+            gaps++;
+        }
+        if (gaps == 0) {
+            // Selection covers the entire row width — still emit one
+            // degenerate quad to keep bookkeeping simple.
+            numQuads += 1;
+        } else {
+            numQuads += gaps;
+        }
+    }];
+
     NSMutableData *vertexData = [NSMutableData dataWithLength:sizeof(iTermVertex) * 6 * numQuads];
     iTermVertex *vertices = (iTermVertex *)vertexData.mutableBytes;
 
@@ -67,7 +136,24 @@
     // tintColor is already premultiplied by the per-frame state.
     const vector_float4 tint = tState.tintColor;
 
-    NSIndexSet *const rowIndices = tState.rowIndices;
+    void (^emitDegenerate)(NSUInteger) = ^(NSUInteger quadIndex) {
+        for (int i = 0; i < 6; i++) {
+            vertices[quadIndex * 6 + i] = (iTermVertex){ {0, 0}, {0, 0} };
+        }
+        colors[quadIndex] = (vector_float4){0, 0, 0, 0};
+    };
+
+    void (^emitQuad)(NSUInteger, CGRect) = ^(NSUInteger quadIndex, CGRect rect) {
+        vertices[quadIndex * 6 + 0] = (iTermVertex){ { CGRectGetMaxX(rect), CGRectGetMinY(rect) }, { 1, 0 } };
+        vertices[quadIndex * 6 + 1] = (iTermVertex){ { CGRectGetMinX(rect), CGRectGetMinY(rect) }, { 0, 0 } };
+        vertices[quadIndex * 6 + 2] = (iTermVertex){ { CGRectGetMinX(rect), CGRectGetMaxY(rect) }, { 0, 1 } };
+
+        vertices[quadIndex * 6 + 3] = (iTermVertex){ { CGRectGetMaxX(rect), CGRectGetMinY(rect) }, { 1, 0 } };
+        vertices[quadIndex * 6 + 4] = (iTermVertex){ { CGRectGetMinX(rect), CGRectGetMaxY(rect) }, { 0, 1 } };
+        vertices[quadIndex * 6 + 5] = (iTermVertex){ { CGRectGetMaxX(rect), CGRectGetMaxY(rect) }, { 1, 1 } };
+        colors[quadIndex] = tint;
+    };
+
     __block NSUInteger quadIndex = 0;
     [rowIndices enumerateIndexesUsingBlock:^(NSUInteger row, BOOL *stop) {
         // Row 0 is the topmost visible row. The viewport origin is at the
@@ -78,25 +164,42 @@
         const CGFloat minY = MAX(bottom, bottomMargin);
         const CGFloat maxY = MIN(top, viewportHeight - topMargin);
         if (maxY <= minY) {
-            // Off-screen; emit a degenerate quad.
-            for (int i = 0; i < 6; i++) {
-                vertices[quadIndex * 6 + i] = (iTermVertex){ {0, 0}, {0, 0} };
-            }
-            colors[quadIndex] = (vector_float4){0, 0, 0, 0};
+            emitDegenerate(quadIndex);
             quadIndex++;
             return;
         }
 
-        const CGRect rect = CGRectMake(0, minY, viewportWidth, maxY - minY);
-        vertices[quadIndex * 6 + 0] = (iTermVertex){ { CGRectGetMaxX(rect), CGRectGetMinY(rect) }, { 1, 0 } };
-        vertices[quadIndex * 6 + 1] = (iTermVertex){ { CGRectGetMinX(rect), CGRectGetMinY(rect) }, { 0, 0 } };
-        vertices[quadIndex * 6 + 2] = (iTermVertex){ { CGRectGetMinX(rect), CGRectGetMaxY(rect) }, { 0, 1 } };
+        NSData *ranges = selectedXRangesByRow[@(row)];
+        if (!ranges) {
+            emitQuad(quadIndex, CGRectMake(0, minY, viewportWidth, maxY - minY));
+            quadIndex++;
+            return;
+        }
 
-        vertices[quadIndex * 6 + 3] = (iTermVertex){ { CGRectGetMaxX(rect), CGRectGetMinY(rect) }, { 1, 0 } };
-        vertices[quadIndex * 6 + 4] = (iTermVertex){ { CGRectGetMinX(rect), CGRectGetMaxY(rect) }, { 0, 1 } };
-        vertices[quadIndex * 6 + 5] = (iTermVertex){ { CGRectGetMaxX(rect), CGRectGetMaxY(rect) }, { 1, 1 } };
-        colors[quadIndex] = tint;
-        quadIndex++;
+        const NSUInteger count = ranges.length / (sizeof(CGFloat) * 2);
+        const CGFloat *pairs = (const CGFloat *)ranges.bytes;
+        NSUInteger emitted = 0;
+        CGFloat cursor = 0;
+        for (NSUInteger i = 0; i < count; i++) {
+            const CGFloat rs = pairs[i * 2];
+            const CGFloat re = pairs[i * 2 + 1];
+            if (rs > cursor) {
+                emitQuad(quadIndex, CGRectMake(cursor, minY, rs - cursor, maxY - minY));
+                quadIndex++;
+                emitted++;
+            }
+            cursor = MAX(cursor, re);
+        }
+        if (cursor < viewportWidth) {
+            emitQuad(quadIndex, CGRectMake(cursor, minY, viewportWidth - cursor, maxY - minY));
+            quadIndex++;
+            emitted++;
+        }
+        if (emitted == 0) {
+            // Selection covers the entire row width.
+            emitDegenerate(quadIndex);
+            quadIndex++;
+        }
     }];
 
     tState.vertexBuffer = [_verticesPool requestBufferFromContext:tState.poolContext

@@ -2284,6 +2284,14 @@ static int iTermEmitGlyphsAndSetAttributes(iTermMetalPerFrameState *self,
     return _rows[y]->_screenCharLine;
 }
 
+- (NSIndexSet *)selectedColumnIndexesForLocalRow:(NSInteger)row {
+    if (row < 0 || row >= (NSInteger)_rows.count) {
+        return [NSIndexSet indexSet];
+    }
+    NSIndexSet *indexes = _rows[row]->_selectedIndexSet;
+    return indexes ?: [NSIndexSet indexSet];
+}
+
 - (CGRect)containerRect {
     return _containerRect;
 }

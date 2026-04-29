@@ -1741,11 +1741,21 @@ panelReservationPoints:(CGFloat)panelReservationPoints {
     tState.rowIndices = rows;
     tState.tintColor = frameData.perFrameState.commandLineBackgroundColor;
     tState.rowHeight = frameData.cellSize.height;
+    tState.cellWidth = frameData.cellSize.width;
     // The top of row 0 sits below both the standard topBottomMargins (in
     // pixels) and any per-pane extra top margin. Without including
     // `vmargin * scale` here, the tint would float a few pixels above where
     // the CG path draws it.
     tState.topMargin = frameData.scale * frameData.vmargin + frameData.perFrameState.extraMargins.top;
+    tState.leftMargin = frameData.scale * [iTermPreferences sideMargins] + frameData.perFrameState.extraMargins.left;
+    NSMutableDictionary<NSNumber *, NSIndexSet *> *selectedColumnsByRow = [NSMutableDictionary dictionary];
+    [rows enumerateIndexesUsingBlock:^(NSUInteger row, BOOL *stop) {
+        NSIndexSet *columns = [frameData.perFrameState selectedColumnIndexesForLocalRow:(NSInteger)row];
+        if (columns.count > 0) {
+            selectedColumnsByRow[@(row)] = columns;
+        }
+    }];
+    tState.selectedColumnsByRow = selectedColumnsByRow;
 }
 
 - (void)populateTextAndBackgroundRenderersTransientStateWithFrameData:(iTermMetalFrameData *)frameData {
