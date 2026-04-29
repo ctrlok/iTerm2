@@ -395,6 +395,13 @@ static CGFloat PSMWeightedAverage(CGFloat l, CGFloat u, CGFloat w) {
     }
 
     PSMTabBarCell *selectedCell = [self selectedCellInTabBarControl:self.tabBar];
+    if (selectedCell.tabColor && selectedCell.tabColor.alphaComponent < 1) {
+        // bg-mirror (or any caller passing a translucent tab color) — skip the
+        // bar-level fill so the active session's bg doesn't bleed under every
+        // cell's translucent overlay. Each cell paints its own bg over the
+        // window directly.
+        return;
+    }
     const CGFloat highlightAmount = [selectedCell highlightAmount];
     [[self backgroundColorSelected:YES highlightAmount:highlightAmount] set];
     NSRectFillUsingOperation(rect, NSCompositingOperationSourceOver);
@@ -826,6 +833,11 @@ static CGFloat PSMWeightedAverage(CGFloat l, CGFloat u, CGFloat w) {
 
 - (NSColor *)cellBackgroundColorForTabColor:(NSColor *)tabColor
                                    selected:(BOOL)selected {
+    if (tabColor.alphaComponent < 1) {
+        // Caller has baked transparency into the color (e.g. bg-mirror).
+        // Pass it through unchanged so all tabs render at the same alpha.
+        return tabColor;
+    }
     CGFloat alpha = selected ? 1 : [[self.tabBar.delegate tabView:self.tabBar valueOfOption:PSMTabBarControlOptionMinimalNonSelectedColoredTabAlpha] doubleValue];
     const BOOL keyMainAndActive = self.windowIsMainAndAppIsActive;
     if (!keyMainAndActive) {

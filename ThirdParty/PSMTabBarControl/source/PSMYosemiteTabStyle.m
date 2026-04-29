@@ -713,7 +713,6 @@
                       withTabColor:(NSColor *)tabColor
                    highlightAmount:(CGFloat)highlightAmount
                         horizontal:(BOOL)horizontal {
-    [[self backgroundColorSelected:selected highlightAmount:highlightAmount] set];
     NSRect backgroundRect = cellFrame;
     NSEdgeInsets backgroundInsets = [self backgroundInsetsWithHorizontalOrientation:horizontal];
     backgroundRect.origin.x += backgroundInsets.left;
@@ -725,7 +724,12 @@
         // right-side line but here we want to remove it completely.
         backgroundRect.size.width += 0.5;
     }
-    NSRectFill(backgroundRect);
+
+    const BOOL skipBase = (tabColor != nil && tabColor.alphaComponent < 1);
+    if (!skipBase) {
+        [[self backgroundColorSelected:selected highlightAmount:highlightAmount] set];
+        NSRectFill(backgroundRect);
+    }
 
     if (tabColor) {
         NSColor *color = [self cellBackgroundColorForTabColor:tabColor selected:selected];

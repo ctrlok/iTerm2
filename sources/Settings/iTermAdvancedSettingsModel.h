@@ -476,6 +476,7 @@ extern NSString *const iTermAdvancedSettingsDidChange;
 + (NSString *)tabColorMenuOptions;
 + (double)tabFlashAnimationDuration;
 + (BOOL)tabsWrapAround;
++ (BOOL)tabBarReflectsSessionBackgroundColor;
 + (BOOL)tabTitlesUseSmartTruncation;
 + (BOOL)tabCloseButtonsAlwaysVisible;
 + (BOOL)threeFingerDragSendsMouseReports;

@@ -7869,6 +7869,11 @@ hidingToolbeltShouldResizeWindow:(BOOL)hidingToolbeltShouldResizeWindow
         NSTabViewItem *tabViewItem = [aTab tabViewItem];
         PTYSession *aSession = [aTab activeSession];
         NSColor *color = [aSession tabColor];
+        if (!color && [iTermAdvancedSettingsModel tabBarReflectsSessionBackgroundColor]) {
+            NSColor *bg = [aSession processedBackgroundColor];
+            const CGFloat alpha = aSession.textview.transparencyAlpha;
+            color = (alpha < 1) ? [bg colorWithAlphaComponent:alpha] : bg;
+        }
         [_contentView.tabBarControl setTabColor:color forTabViewItem:tabViewItem];
         if ([_contentView.tabView selectedTabViewItem] == tabViewItem) {
             NSColor* newTabColor = [_contentView.tabBarControl tabColorForTabViewItem:tabViewItem];
